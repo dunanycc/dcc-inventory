@@ -1,0 +1,1 @@
+import { PlaceholderPage } from "@/app/components/placeholder-page"; export default function Page(){return <PlaceholderPage phase="Phase 3" title="Orders" description="Purchase orders and partial receiving are intentionally deferred."/>}

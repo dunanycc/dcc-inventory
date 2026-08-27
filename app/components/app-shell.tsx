@@ -1,0 +1,6 @@
+import Link from "next/link";
+import { signOut } from "@/auth";
+import type { AppRole } from "@/lib/authorization";
+const navigation = [["Dashboard","/dashboard"],["Products","/products"],["Inventory","/inventory"],["Orders","/orders"],["Requests","/requests"],["Imports","/imports"],["History","/history"],["Settings","/settings"]] as const;
+const roleLabels: Record<AppRole,string> = { ADMINISTRATOR:"Administrator", INVENTORY_MANAGER:"Inventory Manager", INVENTORY_USER:"Inventory User", READ_ONLY:"Read Only" };
+export function AppShell({ user, children }: { user:{ name:string|null; email:string; role:AppRole }; children:React.ReactNode }) { return <div className="app-frame"><header className="topbar"><Link href="/dashboard" className="brand"><span className="brand-mark">DCC</span><span>Inventory</span></Link><div className="account"><span><strong>{user.name||user.email}</strong><small>{roleLabels[user.role]}</small></span><form action={async()=>{"use server";await signOut({redirectTo:"/sign-in"});}}><button className="text-button">Sign out</button></form></div></header><nav className="primary-nav" aria-label="Primary navigation">{navigation.map(([label,href])=><Link key={href} href={href}>{label}</Link>)}</nav><main className="page-shell">{children}</main></div>; }

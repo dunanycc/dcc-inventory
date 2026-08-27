@@ -1,0 +1,1 @@
+import { PlaceholderPage } from "@/app/components/placeholder-page"; export default function Page(){return <PlaceholderPage phase="Phase 2" title="Inventory" description="Balances, counts, transfers and adjustments will be powered by the immutable ledger."/>}

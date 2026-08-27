@@ -1,0 +1,5 @@
+import { connection } from "next/server";
+import { PageHeading } from "@/app/components/page-heading";
+import { ProductCategoryTabs } from "@/app/products/product-category-tabs";
+import { prisma } from "@/lib/prisma";
+export default async function ProductsPage(){await connection();const categories=await prisma.category.findMany({orderBy:[{displayOrder:"asc"},{name:"asc"}],include:{products:{orderBy:{name:"asc"},include:{productLocations:{include:{location:true}}}}}});const rows=categories.map(c=>({id:c.id,name:c.name,displayOrder:c.displayOrder,active:c.active,products:c.products.map(p=>({id:p.id,name:p.name,packageSize:p.packageSize,stockUnit:p.stockUnitLabel||p.stockUnit,purchaseUnit:p.purchaseUnit,unitsPerPurchaseUnit:p.unitsPerPurchaseUnit?.toString()??null,active:p.active,starterShackEligible:p.starterShackEligible,locations:p.productLocations.filter(i=>i.active).map(i=>i.location.name)}))}));return <><PageHeading eyebrow="Catalog" title="Products" description="Work by category in a fully expanded, spreadsheet-like product view."/><ProductCategoryTabs categories={rows}/></>}

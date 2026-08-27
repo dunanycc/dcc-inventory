@@ -1,0 +1,1 @@
+import { PlaceholderPage } from "@/app/components/placeholder-page"; export default function Page(){return <PlaceholderPage phase="Phase 4" title="Requests" description="Starter Shack requests and transfer-based fulfillment are intentionally deferred."/>}

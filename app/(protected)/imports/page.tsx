@@ -1,0 +1,1 @@
+import { PlaceholderPage } from "@/app/components/placeholder-page"; export default function Page(){return <PlaceholderPage phase="Phase 5–6" title="Imports" description="Migration tooling and safe manual POS CSV review are intentionally deferred."/>}

@@ -1,0 +1,1 @@
+import { PlaceholderPage } from "@/app/components/placeholder-page"; export default function Page(){return <PlaceholderPage phase="Phase 2" title="History" description="The permanent inventory activity story begins with the ledger phase."/>}
