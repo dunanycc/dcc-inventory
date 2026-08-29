@@ -58,6 +58,16 @@ describe("OAuth Inventory authorization", () => {
     expect(deps.findUserByEmail).toHaveBeenCalledWith(administrator.email);
   });
 
+  it("allows a pre-authorized user through verified matching OAuth", async () => {
+    const approvedUser = { ...administrator, id: "approved-id", email: "approved@example.com", role: "INVENTORY_USER" };
+    const deps = dependencies(approvedUser);
+    expect(await authorizeOAuthIdentity(
+      { email: " APPROVED@EXAMPLE.COM ", emailVerified: true, name: "Approved User", provider: "yahoo" }, deps,
+      bootstrapAdminEmails("admin@example.com"),
+    )).toEqual(approvedUser);
+    expect(deps.createBootstrapAdministrator).not.toHaveBeenCalled();
+  });
+
   it("returns an existing active user without changing its role or status", async () => {
     const manager = { ...administrator, role: "INVENTORY_MANAGER" };
     const deps = dependencies(manager);
