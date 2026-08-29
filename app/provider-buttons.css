@@ -1,0 +1,20 @@
+.auth-actions .provider-button {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #b7bcc1;
+  border-radius: 0.5rem;
+  color: #202124;
+  cursor: pointer;
+  display: grid;
+  font: 600 0.95rem/1.2 Arial, sans-serif;
+  grid-template-columns: 1.5rem minmax(0, 1fr) 1.5rem;
+  min-height: 2.875rem;
+  padding: 0.55rem 0.8rem;
+  text-align: center;
+}
+
+.provider-button svg { display: block; height: 1.25rem; width: 1.25rem; }
+.provider-yahoo svg { height: 1.4rem; width: 1.75rem; }
+.auth-actions .provider-button:hover { background: #f8f9fa; border-color: #8f969d; box-shadow: 0 1px 2px rgb(32 33 36 / 12%); }
+.auth-actions .provider-button:focus-visible { outline: 3px solid rgb(26 115 232 / 35%); outline-offset: 2px; }
+.auth-actions .provider-yahoo:focus-visible { outline-color: rgb(96 1 210 / 32%); }

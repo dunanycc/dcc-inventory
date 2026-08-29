@@ -17,18 +17,23 @@ Standalone inventory application for Dunany Country Club. Phase 1 establishes th
 3. Generate the Prisma client with `npm run db:generate`.
 4. Apply migrations with `npm run db:deploy` or create a development migration with `npm run db:migrate -- --name <name>`.
 5. Seed structural locations with `npm run db:seed`.
-6. Start the application with `npm run dev`.
+6. Start the application with `npm run dev`. DCC Inventory runs at `http://localhost:3016`.
 
 ## Environment variables
 
 - `DATABASE_URL`: pooled PostgreSQL connection used by the application.
 - `DATABASE_URL_UNPOOLED`: direct PostgreSQL connection used for migrations when available.
 - `AUTH_SECRET`: a unique Auth.js signing secret for this standalone application.
-- `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`: optional independent Google OAuth application credentials.
-- `AUTH_YAHOO_ID` and `AUTH_YAHOO_SECRET`: optional independent Yahoo OAuth application credentials.
-- `BOOTSTRAP_ADMIN_EMAILS`: reserved comma-separated administrator bootstrap configuration; no user is created unless explicitly configured by a future controlled bootstrap step.
+- `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`: Google OAuth application credentials.
+- `AUTH_YAHOO_ID` and `AUTH_YAHOO_SECRET`: Yahoo OAuth application credentials.
+- `BOOTSTRAP_ADMIN_EMAILS`: comma-separated emails allowed to create their own initial Administrator row after verified OAuth. Matching is exact after trimming and lowercasing. Existing users are never modified by bootstrap.
 
-At least one OAuth provider must be configured before interactive sign-in is available. Signing in also requires a matching active `User` record; no Barsheet user table or authentication configuration is shared.
+Configure the same variables in `.env.local` for local development and in the appropriate Vercel environments. Never commit their values. Register these local OAuth callbacks:
+
+- Google: `http://localhost:3016/api/auth/callback/google`
+- Yahoo: `http://localhost:3016/api/auth/callback/yahoo`
+
+Register the corresponding HTTPS callbacks for each deployed Vercel domain (for example, `https://your-domain/api/auth/callback/google` and `/api/auth/callback/yahoo`). At least one OAuth provider must be configured before interactive sign-in is available. Apart from the narrowly configured bootstrap path, signing in requires a matching active `User` record; no Barsheet user table or authentication configuration is shared.
 
 ## Authorization
 

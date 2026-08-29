@@ -3,6 +3,7 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import { Yahoo } from "@/lib/yahoo-provider";
+import { authorizeOAuthIdentity } from "@/lib/oauth-authorization";
 
 const providers: NextAuthConfig["providers"] = [];
 
@@ -34,14 +35,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, profile, account }) {
       const email = String(profile?.email ?? user.email ?? "").trim().toLocaleLowerCase("en-CA");
-      const verified = profile?.email_verified !== false;
-      const approved = email
-        ? await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, email: true, role: true, status: true } })
-        : null;
+      const provider = account?.provider ?? "unknown";
+      const approved = await authorizeOAuthIdentity(
+        { email, emailVerified: profile?.email_verified === true, name: profile?.name ?? user.name, provider },
+        {
+          findUserByEmail: (normalizedEmail) => prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true, name: true, email: true, role: true, status: true } }),
+          async createBootstrapAdministrator(input) {
+            try {
+              return await prisma.$transaction(async (transaction) => {
+                const created = await transaction.user.create({
+                  data: { email: input.email, name: input.name, role: "ADMINISTRATOR", status: "ACTIVE" },
+                  select: { id: true, name: true, email: true, role: true, status: true },
+                });
+                await transaction.auditEvent.create({
+                  data: { actorId: created.id, action: "BOOTSTRAP_ADMIN_CREATED", entityType: "User", entityId: created.id, after: { email: created.email, role: created.role, status: created.status, provider: input.provider }, reason: "Verified OAuth email matched BOOTSTRAP_ADMIN_EMAILS", correlationId: randomUUID() },
+                });
+                return created;
+              });
+            } catch (error) {
+              if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
+                const racedUser = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true, name: true, email: true, role: true, status: true } });
+                if (racedUser) return racedUser;
+              }
+              throw error;
+            }
+          },
+        },
+      );
 
-      if (!verified || !approved || approved.status !== "ACTIVE") {
+      if (!approved) {
         await prisma.auditEvent.create({
-          data: { action: "LOGIN_REJECTED", entityType: "User", entityId: email || "unknown", after: { provider: account?.provider ?? "unknown" }, correlationId: randomUUID() },
+          data: { action: "LOGIN_REJECTED", entityType: "User", entityId: email || "unknown", after: { provider }, correlationId: randomUUID() },
         });
         return false;
       }
@@ -52,7 +76,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       (user as typeof user & { role: string }).role = approved.role;
       await prisma.$transaction([
         prisma.user.update({ where: { id: approved.id }, data: { lastLoginAt: new Date() } }),
-        prisma.auditEvent.create({ data: { actorId: approved.id, action: "LOGIN_SUCCEEDED", entityType: "User", entityId: approved.id, after: { provider: account?.provider ?? "unknown" }, correlationId: randomUUID() } }),
+        prisma.auditEvent.create({ data: { actorId: approved.id, action: "LOGIN_SUCCEEDED", entityType: "User", entityId: approved.id, after: { provider }, correlationId: randomUUID() } }),
       ]);
       return true;
     },
