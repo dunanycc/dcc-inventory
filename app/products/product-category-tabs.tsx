@@ -8,17 +8,19 @@ export type ProductRow = { id: string; name: string; categoryId: string; package
 export type ProductCategoryRow = { id: string; name: string; displayOrder: number; active: boolean; products: ProductRow[] };
 
 function ProductFields({ product, categories, defaultCategoryId }: { product?: ProductRow; categories: ProductCategoryRow[]; defaultCategoryId: string }) {
+  const [allowFractionalStock, setAllowFractionalStock] = useState(product?.allowFractionalStock ?? false);
+  const [quantityScale, setQuantityScale] = useState(product?.quantityScale ?? 0);
   return <div className="product-form-grid">
     {product && <input name="productId" type="hidden" value={product.id}/>}
     <label>Name<input defaultValue={product?.name ?? ""} maxLength={160} name="name" required/></label>
     <label>Category<select defaultValue={product?.categoryId ?? defaultCategoryId} name="categoryId">{categories.map((category) => <option key={category.id} value={category.id}>{category.name}{category.active ? "" : " (inactive)"}</option>)}</select></label>
     <label>Counted as<select defaultValue={product?.stockUnit ?? "EACH"} name="stockUnit">{STOCK_UNITS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
     <label>Other unit name<input defaultValue={product?.stockUnitLabel ?? ""} maxLength={80} name="stockUnitLabel" placeholder="Only needed for OTHER"/></label>
-    <label>Decimal places for partial quantities<input defaultValue={product?.quantityScale ?? 0} max={6} min={0} name="quantityScale" required type="number"/><small>Use 0 for whole cans, bottles, packages, and other whole units.</small></label>
+    <label>Decimal places for partial quantities<input max={6} min={allowFractionalStock ? 1 : 0} name="quantityScale" onChange={(event) => setQuantityScale(Number(event.target.value))} readOnly={!allowFractionalStock} required type="number" value={quantityScale}/><small>{allowFractionalStock ? "Use 1–6 decimal places for partial quantities." : "Whole units use 0 decimal places."}</small></label>
     <label>Package size<input defaultValue={product?.packageSize ?? ""} maxLength={120} name="packageSize" placeholder="e.g. 355 mL"/></label>
     <label>Purchased by<input defaultValue={product?.purchaseUnit ?? ""} maxLength={80} name="purchaseUnit" placeholder="e.g. CASE"/></label>
     <label>Units in one case/package<input defaultValue={product?.unitsPerPurchaseUnit ?? ""} min="0.001" name="unitsPerPurchaseUnit" step="0.001" type="number"/></label>
-    <label className="product-check"><input defaultChecked={product?.allowFractionalStock ?? false} name="allowFractionalStock" type="checkbox"/><span>Allow partial quantities<small>Useful for Products counted by part of a keg or package.</small></span></label>
+    <label className="product-check"><input checked={allowFractionalStock} name="allowFractionalStock" onChange={(event) => { const checked = event.target.checked; setAllowFractionalStock(checked); setQuantityScale(checked ? Math.max(1, quantityScale) : 0); }} type="checkbox"/><span>Allow partial quantities<small>Useful for Products counted by part of a keg or package.</small></span></label>
     <label className="product-check"><input defaultChecked={product?.starterShackRequestEligible ?? false} name="starterShackRequestEligible" type="checkbox"/><span>Available to Starter Shack<small>Allow Starter Shack staff to request this Product from the Bar.</small></span></label>
   </div>;
 }

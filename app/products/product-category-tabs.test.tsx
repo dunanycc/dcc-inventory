@@ -34,6 +34,13 @@ describe("ProductCategoryTabs", () => {
     expect(screen.getByLabelText("Counted as")).toBeInTheDocument();
     expect(screen.getByLabelText(/Available to Starter Shack/)).toBeInTheDocument();
     expect(screen.getByText(/request this Product from the Bar/)).toBeInTheDocument();
+    const partial = screen.getByLabelText(/Allow partial quantities/);
+    const scale = screen.getByLabelText(/Decimal places for partial quantities/);
+    expect(scale).toHaveValue(0);
+    fireEvent.click(partial);
+    expect(scale).toHaveValue(1);
+    fireEvent.click(partial);
+    expect(scale).toHaveValue(0);
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("heading", { name: "Edit Club Lager" })).toBeInTheDocument();
   });
