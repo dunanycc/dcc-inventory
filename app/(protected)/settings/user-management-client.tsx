@@ -6,7 +6,7 @@ import { ROLES, type AppRole } from "@/lib/authorization";
 const roleLabels: Record<AppRole, string> = {
   ADMINISTRATOR: "Administrator",
   INVENTORY_MANAGER: "Inventory Manager",
-  INVENTORY_USER: "Inventory User",
+  INVENTORY_USER: "Starter Shack Staff",
   READ_ONLY: "Read Only",
 };
 

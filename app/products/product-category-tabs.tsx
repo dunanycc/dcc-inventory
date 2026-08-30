@@ -31,7 +31,7 @@ export function ProductCategoryTabs({ categories, locations = [], canManageCatal
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const selected = useMemo(() => categories.find((category) => category.id === selectedId) ?? categories[0], [categories, selectedId]);
-  if (!selected) return <section className="empty-panel"><h2>No categories yet</h2><p>Create a Category in Settings before adding Products.</p></section>;
+  if (!selected) return <section className="empty-panel"><h2>No categories yet</h2><p>Create or import a Category in Admin before adding Products.</p></section>;
   return <section className="catalog-panel">
     <div className="category-tabs" role="tablist" aria-label="Product categories">{categories.map((category) => <button key={category.id} role="tab" aria-selected={selected.id === category.id} className={selected.id === category.id ? "active" : ""} onClick={() => { setSelectedId(category.id); setEditingId(null); setCreating(false); }}>{category.name}{!category.active && <small>Inactive</small>}</button>)}</div>
     <div className="table-toolbar"><div><h2>{selected.name}</h2><p>{selected.products.length} product{selected.products.length === 1 ? "" : "s"} · order {selected.displayOrder}</p></div><div className="product-toolbar-actions"><span className={`status-pill ${selected.active ? "" : "muted-pill"}`}>{selected.active ? "Active category" : "Inactive category"}</span>{canManageCatalog && <button className="admin-primary" onClick={() => setCreating((value) => !value)} type="button">{creating ? "Cancel" : "Add Product"}</button>}</div></div>

@@ -53,10 +53,10 @@ async function runMutation(work: (actor: NonNullable<Awaited<ReturnType<typeof c
     if (!actor) throw new UserManagementError("FORBIDDEN");
     await work(actor);
     revalidatePath("/settings");
-    destination = `/settings?success=${encodeURIComponent(success)}`;
+    destination = `/settings?tab=users&success=${encodeURIComponent(success)}`;
   } catch (error) {
     const code = errorCode(error);
-    destination = `/settings?error=${encodeURIComponent(messages[code] ?? messages.FAILED)}`;
+    destination = `/settings?tab=users&error=${encodeURIComponent(messages[code] ?? messages.FAILED)}`;
   }
   redirect(destination);
 }
@@ -82,7 +82,7 @@ export async function changeUserRoleAction(formData: FormData) {
 export async function setUserStatusAction(formData: FormData) {
   const status = String(formData.get("status") ?? "");
   if (status !== "ACTIVE" && status !== "DISABLED") {
-    redirect(`/settings?error=${encodeURIComponent(messages.INVALID_INPUT)}`);
+    redirect(`/settings?tab=users&error=${encodeURIComponent(messages.INVALID_INPUT)}`);
   }
   await runMutation(
     (actor) => setUserStatus(actor, String(formData.get("userId") ?? ""), status, repository),

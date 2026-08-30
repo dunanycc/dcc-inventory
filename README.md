@@ -48,3 +48,5 @@ Master-data safety, migration identity, Starter Shack availability, and disposab
 ## Product and stock foundation
 
 The current foundation establishes secure access, Product/Category/Location setup, immutable stock-change history, opening quantities, calculated Location balances, and lightweight Starter Shack request fulfillment. Vendor receiving and physical counts are implemented in focused phases. DCC Inventory is not a billing, accounting, POS, or generalized procurement platform.
+
+Administrators and Inventory Managers can use **Admin → Imports** to preview and atomically import Categories and Products from the provided CSV template or the current DCC Inventory Tracker CSV export. Product imports are repeatable by `source_id`/`ID`; opening counts and consumed quantities are deliberately ignored and no inventory movements are created.

@@ -26,6 +26,8 @@ Confidently reconstructed legacy movements may provide a unique `(sourceSystem, 
 
 Category, Product, and ProductLocation each store an optional `(sourceSystem, sourceId)` pair protected by a composite unique constraint. Both values are required together. Migration tooling must call the existing domain create/configure functions with `source`, so normalization, unit validation, authorization, review state, and auditing remain in force. Mutable names are never source identity. Product retains `legacyProductId` for compatibility, but new repeatable migration work should use the common source pair.
 
+The Admin Product CSV import uses `DCC_PRODUCT_CSV` with the required `source_id` column. A repeated Product identity is skipped rather than updated, protecting reviewed master data and any later stock history. The import creates only Categories, Products, and requested ProductLocation relationships; opening quantities remain a separate, explicit operation.
+
 ## Category ordering
 
 Database order is authoritative: `displayOrder`, then stable Category `id`. Screens must use `CATEGORY_ORDER_BY` and must not introduce name/collation-dependent sorting. Administrators should assign explicit display orders when meaningful placement is required.

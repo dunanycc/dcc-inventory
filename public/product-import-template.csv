@@ -1,0 +1,3 @@
+source_id,category,product,stock_unit,stock_unit_label,package_size,bar,starter_shack
+example-lager-473,Beer,Example Lager,CAN,,473 mL,yes,yes
+example-wine-750,Wine,Example Red Wine,BOTTLE,,750 mL,yes,no
