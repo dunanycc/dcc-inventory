@@ -47,4 +47,4 @@ Master-data safety, migration identity, Starter Shack availability, and disposab
 
 ## Product and stock foundation
 
-The current foundation establishes secure access and Product, Category, and Location setup. Operational stock quantities, vendor receiving, Bar-to-Starter-Shack transfers, physical counts, and stock history are implemented in focused phases. DCC Inventory is not a billing, accounting, POS, or generalized procurement platform.
+The current foundation establishes secure access, Product/Category/Location setup, immutable stock-change history, opening quantities, and calculated Location balances. Vendor receiving, Bar-to-Starter-Shack transfers, and physical counts are implemented in focused phases. DCC Inventory is not a billing, accounting, POS, or generalized procurement platform.

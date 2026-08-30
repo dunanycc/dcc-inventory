@@ -40,6 +40,7 @@ export type ProductTransaction = {
   findActorById(id: string): Promise<ProductActor | null>;
   categoryExists(id: string): Promise<boolean>;
   findProductById(id: string): Promise<ManagedProduct | null>;
+  hasInventoryMovements(productId: string): Promise<boolean>;
   createProduct(input: Omit<ManagedProduct, "id"> & { sourceSystem?: string; sourceId?: string }): Promise<ManagedProduct>;
   updateProduct(id: string, input: Partial<Omit<ManagedProduct, "id">>): Promise<ManagedProduct>;
   createAudit(input: ProductAudit): Promise<unknown>;
@@ -47,7 +48,7 @@ export type ProductTransaction = {
 export type ProductRepository = { transaction<T>(work: (transaction: ProductTransaction) => Promise<T>): Promise<T> };
 
 export class ProductManagementError extends Error {
-  constructor(public code: "FORBIDDEN" | "INVALID_INPUT" | "CATEGORY_NOT_FOUND" | "PRODUCT_NOT_FOUND" | "NO_CHANGE") { super(code); }
+  constructor(public code: "FORBIDDEN" | "INVALID_INPUT" | "CATEGORY_NOT_FOUND" | "PRODUCT_NOT_FOUND" | "UNIT_CONFIGURATION_LOCKED" | "NO_CHANGE") { super(code); }
 }
 
 function cleanOptional(value: string | null | undefined, maximum: number) {
@@ -144,9 +145,7 @@ export async function updateProduct(actor: ProductActor, productId: string, inpu
     const generalChanged = changed(generalSnapshot(product), generalSnapshot(proposed));
     const categoryChanged = product.categoryId !== proposed.categoryId;
     const unitsChanged = changed(unitSnapshot(product), unitSnapshot(proposed));
-    // Future ledger integration point: while holding the same Serializable transaction,
-    // query whether this Product has ledger entries and reject when
-    // accountingUnitChangeAllowed(hasLedgerEntries, product, proposed) is false.
+    if (!accountingUnitChangeAllowed(await transaction.hasInventoryMovements(product.id), product, proposed)) throw new ProductManagementError("UNIT_CONFIGURATION_LOCKED");
     if (!generalChanged && !categoryChanged && !unitsChanged) throw new ProductManagementError("NO_CHANGE");
     const updated = await transaction.updateProduct(product.id, productData);
     const correlationId = randomUUID();

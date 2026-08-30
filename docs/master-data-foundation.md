@@ -10,6 +10,14 @@ Changing tracked stock at a Location requires an active Product, an active Locat
 
 All inventory quantities use the Product stock unit. `stockUnit`, `stockUnitLabel`, `allowFractionalStock`, and `quantityScale` determine how tracked quantities are interpreted. The stock-history phase must query for existing Product movements inside the Product update transaction and call `accountingUnitChangeAllowed`; once a movement exists, those fields cannot change. Purchase-unit conversions remain editable because Orders will preserve the conversion used and stock movements will use stock units.
 
+## Stock history and balances
+
+`InventoryMovement` is the internal history of tracked stock changes, not an accounting ledger. It supports only OPENING, RECEIPT, TRANSFER, and COUNT_ADJUSTMENT. Quantities are stored in the Product's counted-as unit. Current stock is calculated as movements into a Location minus movements out; Product and ProductLocation never store a mutable current quantity.
+
+Opening quantities can be set once per Product and Location by an Administrator or Inventory Manager. Later corrections belong to an accepted physical count rather than replacing history. Every movement records its poster and occurrence time and has restrictive Product, Location, and User foreign keys.
+
+Confidently reconstructed legacy movements may provide a unique `(sourceSystem, sourceId)` pair for repeatable 2026 migration. These fields are optional: historical or reference-only records that cannot be reconstructed confidently are not forced into InventoryMovement. Migration tooling must use the same posting service so Product units and ProductLocation eligibility are enforced.
+
 ## Migration source identity
 
 Category, Product, and ProductLocation each store an optional `(sourceSystem, sourceId)` pair protected by a composite unique constraint. Both values are required together. Migration tooling must call the existing domain create/configure functions with `source`, so normalization, unit validation, authorization, review state, and auditing remain in force. Mutable names are never source identity. Product retains `legacyProductId` for compatibility, but new repeatable migration work should use the common source pair.

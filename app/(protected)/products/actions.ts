@@ -23,6 +23,7 @@ const repository: ProductRepository = {
       const product = await transaction.product.findUnique({ where: { id }, select: productSelect });
       return product ? managedProduct(product) : null;
     },
+    hasInventoryMovements: async (productId) => Boolean(await transaction.inventoryMovement.findFirst({ where: { productId }, select: { id: true } })),
     createProduct: async (input) => managedProduct(await transaction.product.create({ data: input, select: productSelect })),
     updateProduct: async (id, input) => managedProduct(await transaction.product.update({ where: { id }, data: input, select: productSelect })),
     createAudit: (input) => transaction.auditEvent.create({ data: input }),
@@ -34,6 +35,7 @@ const messages: Record<string, string> = {
   INVALID_INPUT: "Review the Product name, category, stock unit, scale, and purchasing conversion.",
   CATEGORY_NOT_FOUND: "The selected category no longer exists.",
   PRODUCT_NOT_FOUND: "The selected Product no longer exists.",
+  UNIT_CONFIGURATION_LOCKED: "How this Product is counted cannot change after stock history exists. Purchasing details may still be updated.",
   NO_CHANGE: "No Product change was made.",
   CONFLICT: "Product data changed at the same time. Review it and try again.",
   FAILED: "The Product change could not be completed.",

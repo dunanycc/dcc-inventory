@@ -13,6 +13,7 @@ function repository(initial = product) {
     findActorById: vi.fn(async (id) => [admin, manager, reader].find((actor) => actor.id === id) ?? null),
     categoryExists: vi.fn(async (id) => ["beer", "wine"].includes(id)),
     findProductById: vi.fn(async (id) => id === state.id ? { ...state } : null),
+    hasInventoryMovements: vi.fn(async () => false),
     createProduct: vi.fn(async (input) => { state = { id: "created", ...input }; return { ...state }; }),
     updateProduct: vi.fn(async (_id, input) => { state = { ...state, ...input }; return { ...state }; }),
     createAudit: vi.fn(async (audit) => { audits.push(audit); }),
@@ -64,13 +65,27 @@ describe("Product administration", () => {
     expect(normalizeProductInput(input({ stockUnit: "OTHER", stockUnitLabel: "Review required", purchaseUnit: null, unitsPerPurchaseUnit: null, active: false }))).toMatchObject({ stockUnit: "OTHER", stockUnitLabel: "Review required", active: false, unitsPerPurchaseUnit: null });
   });
 
-  it("defines the future post-ledger accounting-unit freeze without freezing purchase conversions", () => {
+  it("defines the stock-history unit freeze without freezing purchase conversions", () => {
     const stockUnitChange = { ...product, stockUnit: "BOTTLE" as const };
     const purchaseConversionChange = { ...product, unitsPerPurchaseUnit: 12 };
     expect(accountingUnitConfigurationChanged(product, stockUnitChange)).toBe(true);
     expect(accountingUnitChangeAllowed(false, product, stockUnitChange)).toBe(true);
     expect(accountingUnitChangeAllowed(true, product, stockUnitChange)).toBe(false);
     expect(accountingUnitChangeAllowed(true, product, purchaseConversionChange)).toBe(true);
+  });
+
+  it("blocks accounting-significant unit changes after stock history exists", async () => {
+    const store = repository();
+    vi.mocked(store.transaction.hasInventoryMovements).mockResolvedValue(true);
+    await expect(updateProduct(admin, product.id, input({ stockUnit: "BOTTLE" }), store.repository)).rejects.toMatchObject({ code: "UNIT_CONFIGURATION_LOCKED" });
+    expect(store.transaction.updateProduct).not.toHaveBeenCalled();
+  });
+
+  it("allows purchase conversion edits after stock history exists", async () => {
+    const store = repository();
+    vi.mocked(store.transaction.hasInventoryMovements).mockResolvedValue(true);
+    await updateProduct(admin, product.id, input({ purchaseUnit: "TRAY", unitsPerPurchaseUnit: 12 }), store.repository);
+    expect(store.state).toMatchObject({ purchaseUnit: "TRAY", unitsPerPurchaseUnit: 12 });
   });
 
   it("keeps Starter Shack request eligibility independent from inventory-location configuration", () => {
