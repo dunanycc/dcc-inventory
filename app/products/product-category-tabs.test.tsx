@@ -34,6 +34,9 @@ describe("ProductCategoryTabs", () => {
     expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add Product" }));
     expect(screen.getByRole("heading", { name: "New Product" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Counted as")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Available to Starter Shack/)).toBeInTheDocument();
+    expect(screen.getByText(/does not mean stock is currently there/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("heading", { name: "Edit Club Lager" })).toBeInTheDocument();
   });

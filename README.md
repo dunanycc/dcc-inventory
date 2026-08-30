@@ -1,6 +1,6 @@
 # DCC Inventory
 
-Standalone inventory application for Dunany Country Club. Phase 1 establishes the product catalogue, location structure, authentication and role boundaries, audit records, and the application navigation shell.
+Standalone stock-tracking application for Dunany Country Club volunteers. It is focused on Products, vendor receiving, Bar-to-Starter-Shack transfers, physical counts, and a clear history of stock changes.
 
 ## Technology
 
@@ -43,8 +43,8 @@ The fixed Phase 1 roles are Administrator, Inventory Manager, Inventory User, an
 
 Run `npm test`, `npm run lint`, and `npm run build` before committing. Database changes must also pass `npx prisma migrate status` against the intended environment.
 
-Master-data accounting, migration identity, Starter Shack request eligibility, and disposable PostgreSQL rehearsal contracts are documented in `docs/master-data-foundation.md`. Run `npm run test:postgres` only with a separately named disposable `TEST_DATABASE_URL`; the harness refuses application database URLs and database names that do not clearly identify themselves as tests.
+Master-data safety, migration identity, Starter Shack availability, and disposable PostgreSQL rehearsal contracts are documented in `docs/master-data-foundation.md`. Run `npm run test:postgres` only with a separately named disposable `TEST_DATABASE_URL`; the harness refuses application database URLs and database names that do not clearly identify themselves as tests.
 
-## Phase 1 limits
+## Product and stock foundation
 
-This foundation intentionally excludes live Google Sheet imports, purchasing, POS posting, Starter Shack fulfillment workflows, inventory ledger posting, cutover balances, production deployment, and Pricing beyond structural product fields.
+The current foundation establishes secure access and Product, Category, and Location setup. Operational stock quantities, vendor receiving, Bar-to-Starter-Shack transfers, physical counts, and stock history are implemented in focused phases. DCC Inventory is not a billing, accounting, POS, or generalized procurement platform.

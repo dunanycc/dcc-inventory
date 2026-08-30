@@ -2,13 +2,13 @@
 
 ## Starter Shack requests versus stocked Locations
 
-`Product.starterShackRequestEligible` controls whether an active Product may appear on the future Starter Shack request form. A request does not change inventory. The flag is deliberately independent of ProductLocation: a request-eligible Product may have no Starter Shack ProductLocation yet.
+`Product.starterShackRequestEligible` controls whether an active Product may appear on the future Bar-to-Starter-Shack transfer list. The flag is deliberately independent of ProductLocation: an eligible Product may have no Starter Shack ProductLocation yet.
 
-Actual inventory posting at a Location requires an active Product, an active Location, an existing active ProductLocation, and `reviewRequired = false`. The reusable `inventoryPostingEligibility` domain rule is the authority future ledger postings, counts, receipts, transfers, and request fulfillment must call. Fulfillment will be a Bar-to-Starter-Shack transfer and must satisfy this rule before posting.
+Changing tracked stock at a Location requires an active Product, an active Location, an existing active ProductLocation, and `reviewRequired = false`. The reusable `inventoryPostingEligibility` domain rule is the authority future opening quantities, receipts, transfers, and counts must call.
 
 ## Product units
 
-All inventory quantities use the Product stock unit. `stockUnit`, `stockUnitLabel`, `allowFractionalStock`, and `quantityScale` are accounting-significant. The next ledger phase must query for existing Product ledger entries inside the Product update transaction and call `accountingUnitChangeAllowed`; once an entry exists, those fields cannot change. Purchase-unit conversions remain editable because source purchasing records will snapshot their conversion and ledger quantities will be stored in stock units.
+All inventory quantities use the Product stock unit. `stockUnit`, `stockUnitLabel`, `allowFractionalStock`, and `quantityScale` determine how tracked quantities are interpreted. The stock-history phase must query for existing Product movements inside the Product update transaction and call `accountingUnitChangeAllowed`; once a movement exists, those fields cannot change. Purchase-unit conversions remain editable because Orders will preserve the conversion used and stock movements will use stock units.
 
 ## Migration source identity
 
@@ -22,4 +22,4 @@ Database order is authoritative: `displayOrder`, then stable Category `id`. Scre
 
 `npm run test:postgres` destructively rebuilds only a disposable database supplied as `TEST_DATABASE_URL`. As a safety guard, the database name must contain `test`, `ci`, `disposable`, or `temporary`, and it must not equal `DATABASE_URL` or `DATABASE_URL_UNPOOLED`.
 
-The harness applies every migration in order, inserts Phase 1-shaped data before the hardening migration, and verifies upgrade preservation, CHECK constraints, normalized uniqueness, source/composite uniqueness, and the Starter Shack value-preserving rename. Never point it at production.
+The harness applies every migration in order, inserts Phase 1-shaped data before the pending migrations, and verifies upgrade preservation, CHECK constraints, normalized uniqueness, source/composite uniqueness, and the Starter Shack value-preserving rename. Never point it at production.

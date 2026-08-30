@@ -25,5 +25,5 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     })),
   }));
   const message = await searchParams;
-  return <><PageHeading eyebrow="Catalog" title="Products" description="Maintain authoritative stock units, purchasing conversions, and stocking Locations in a category-driven grid."/>{message.success && <p className="notice success" role="status">{message.success}</p>}{message.error && <p className="notice error" role="alert">{message.error}</p>}<ProductCategoryTabs canManageCatalog={hasPermission(actor.role, "catalog:manage")} categories={rows} locations={locations}/></>;
+  return <><PageHeading eyebrow="Product setup" title="Products" description="Manage Products by Category, including how they are counted, purchased, and stocked at each Location."/>{message.success && <p className="notice success" role="status">{message.success}</p>}{message.error && <p className="notice error" role="alert">{message.error}</p>}<ProductCategoryTabs canManageCatalog={hasPermission(actor.role, "catalog:manage")} categories={rows} locations={locations}/></>;
 }

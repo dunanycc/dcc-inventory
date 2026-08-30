@@ -1,2 +1,5 @@
-import { PageHeading } from "@/app/components/page-heading";
-export default function DashboardPage(){return <><PageHeading eyebrow="Phase 1 foundation" title="Dashboard" description="Actionable inventory exceptions will appear here as operational phases are enabled."/><div className="dashboard-grid">{[["Catalog","Categories and products will be imported from the approved worksheet migration."],["Locations","Bar and Starter Shack are configured as separate stock locations."],["Next milestone","Phase 2 adds the immutable inventory ledger, counts, transfers and activity history."]].map(([title,body])=><section className="summary-card" key={title}><p className="eyebrow">Status</p><h2>{title}</h2><p>{body}</p></section>)}</div></>}
+import { redirect } from "next/navigation";
+
+export default function DashboardPage() {
+  redirect("/inventory");
+}

@@ -8,9 +8,11 @@
 .product-editor h3 { margin: 0 0 .8rem; }
 .product-form-grid { display: grid; gap: .7rem; grid-template-columns: repeat(4, minmax(150px, 1fr)); }
 .product-form-grid label { color: #445149; display: grid; font-size: .75rem; font-weight: 750; gap: .3rem; }
+.product-form-grid label small { color: var(--muted); font-size: .67rem; font-weight: 500; line-height: 1.35; }
 .product-form-grid input, .product-form-grid select { background: #fff; border: 1px solid #b8c4bc; border-radius: 8px; min-height: 40px; padding: .5rem .6rem; }
 .product-form-grid .product-check { align-items: center; display: flex; gap: .45rem; padding-top: 1.25rem; }
 .product-form-grid .product-check input { min-height: auto; }
+.product-form-grid .product-check span { display: grid; gap: .15rem; }
 .product-editor-actions { justify-content: flex-end; margin-top: .8rem; }
 .product-edit-row td { padding: 0; }
 @media (max-width: 1050px) { .product-form-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); } }

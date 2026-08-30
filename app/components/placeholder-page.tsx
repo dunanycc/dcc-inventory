@@ -1,2 +1,4 @@
 import { PageHeading } from "./page-heading";
-export function PlaceholderPage({title,description,phase}:{title:string;description:string;phase:string}) { return <><PageHeading eyebrow={phase} title={title} description={description}/><section className="empty-panel"><span className="status-pill">Foundation ready</span><h2>This workspace is intentionally empty.</h2><p>Its operational workflow belongs to a later approved phase. No simulated records or actions are shown.</p></section></>; }
+export function PlaceholderPage({ title, description, heading, detail }: { title: string; description: string; heading: string; detail: string }) {
+  return <><PageHeading eyebrow="DCC Inventory" title={title} description={description}/><section className="empty-panel"><span className="status-pill">Coming next</span><h2>{heading}</h2><p>{detail}</p></section></>;
+}
