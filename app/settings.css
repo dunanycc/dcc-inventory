@@ -53,6 +53,9 @@
 .import-preview { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .import-preview > header { background: var(--green-100); display: flex; gap: .75rem; justify-content: space-between; padding: .7rem .8rem; }
 .import-errors { color: #923f35; margin: 0; padding: .9rem 2rem; }
+.import-warnings { background: #fff8e8; border-top: 1px solid #ead8aa; color: #6f5315; padding: .7rem .8rem; }
+.import-warnings summary { cursor: pointer; font-weight: 750; }
+.import-warnings ul { margin-bottom: .2rem; }
 .import-preview-table { border-collapse: collapse; width: 100%; }
 .import-preview-table th, .import-preview-table td { border-top: 1px solid #edf0ee; padding: .6rem .75rem; text-align: left; }
 .import-preview-table th { color: var(--muted); font-size: .7rem; text-transform: uppercase; }

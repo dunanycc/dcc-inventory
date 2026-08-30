@@ -33,7 +33,7 @@ export type ProductImportRow = {
   starterShack: boolean;
 };
 
-export type ProductImportPreview = { rows: ProductImportRow[]; errors: string[] };
+export type ProductImportPreview = { rows: ProductImportRow[]; errors: string[]; warnings: string[] };
 
 function csvRecords(text: string) {
   const records: string[][] = [];
@@ -66,10 +66,11 @@ function booleanValue(value: string, line: number, column: string, errors: strin
 
 export function parseProductImportCsv(text: string): ProductImportPreview {
   const errors: string[] = [];
+  const warnings: string[] = [];
   let records: string[][];
   try { records = csvRecords(text.replace(/^\uFEFF/, "")); }
-  catch (error) { return { rows: [], errors: [error instanceof Error ? error.message : "The CSV could not be read."] }; }
-  if (!records.length) return { rows: [], errors: ["The CSV is empty."] };
+  catch (error) { return { rows: [], errors: [error instanceof Error ? error.message : "The CSV could not be read."], warnings }; }
+  if (!records.length) return { rows: [], errors: ["The CSV is empty."], warnings };
   const headers = records[0].map((value) => {
     const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
     return HEADER_ALIASES[normalized] ?? normalized;
@@ -79,8 +80,8 @@ export function parseProductImportCsv(text: string): ProductImportPreview {
   const unexpected = headers.filter((header) => header && !(PRODUCT_IMPORT_HEADERS as readonly string[]).includes(header) && !IGNORED_WORKSHEET_HEADERS.has(header));
   if (unexpected.length) errors.push(`Unexpected column${unexpected.length === 1 ? "" : "s"}: ${unexpected.join(", ")}.`);
   if (new Set(headers).size !== headers.length) errors.push("Column names must be unique.");
-  if (errors.length) return { rows: [], errors };
-  if (records.length > 1001) return { rows: [], errors: ["A single import may contain at most 1,000 Products."] };
+  if (errors.length) return { rows: [], errors, warnings };
+  if (records.length > 1001) return { rows: [], errors: ["A single import may contain at most 1,000 Products."], warnings };
 
   const column = (name: string) => headers.indexOf(name);
   const value = (record: string[], name: string) => column(name) < 0 ? "" : (record[column(name)] ?? "").trim();
@@ -90,9 +91,30 @@ export function parseProductImportCsv(text: string): ProductImportPreview {
     const sourceId = value(record, "source_id");
     const category = value(record, "category").replace(/\s+/g, " ");
     const product = value(record, "product").replace(/\s+/g, " ");
-    const stockUnit = value(record, "stock_unit").toUpperCase();
+    const requestedStockUnit = value(record, "stock_unit");
+    const requestedPackageSize = value(record, "package_size");
+    let stockUnit = requestedStockUnit.toUpperCase();
+    let packageSize = requestedPackageSize || null;
+    if (stockUnit === "SLIM CAN") {
+      stockUnit = "CAN";
+      warnings.push(`Line ${line}: Slim Can was imported as CAN.`);
+    } else if (!stockUnit) {
+      stockUnit = "EACH";
+      warnings.push(`Line ${line}: blank Unit Format was imported as EACH; review this Product before entering inventory.`);
+    } else if (!STOCK_UNITS.has(stockUnit)) {
+      const adjacentUnit = requestedPackageSize.trim().toUpperCase();
+      const adjacentMapping: Record<string, ProductImportRow["stockUnit"]> = { CAN: "CAN", "SLIM CAN": "CAN", BOTTLE: "BOTTLE", BAG: "PACKAGE" };
+      if (adjacentMapping[adjacentUnit]) {
+        stockUnit = adjacentMapping[adjacentUnit];
+        packageSize = requestedStockUnit;
+        warnings.push(`Line ${line}: Unit Format and Unit Measurement appeared reversed; imported as ${stockUnit}.`);
+      } else if (category.toLowerCase() === "hard liquor" && /^\d+(?:\.\d+)?\s*(?:ml|l)?$/i.test(requestedStockUnit)) {
+        stockUnit = "BOTTLE";
+        packageSize = /[a-z]/i.test(requestedStockUnit) ? requestedStockUnit : `${requestedStockUnit} mL`;
+        warnings.push(`Line ${line}: Hard Liquor volume was imported as BOTTLE.`);
+      }
+    }
     const stockUnitLabel = value(record, "stock_unit_label") || null;
-    const packageSize = value(record, "package_size") || null;
     if (!sourceId || sourceId.length > 180) errors.push(`Line ${line}: source_id is required and may contain at most 180 characters.`);
     else if (seen.has(sourceId)) errors.push(`Line ${line}: duplicate source_id ${sourceId}.`);
     else seen.add(sourceId);
@@ -110,5 +132,5 @@ export function parseProductImportCsv(text: string): ProductImportPreview {
     return { line, sourceId, category, product, stockUnit: stockUnit as ProductImportRow["stockUnit"], stockUnitLabel, packageSize, bar, starterShack };
   }).filter((row): row is ProductImportRow => row !== null);
   if (!rows.length && !errors.length) errors.push("The CSV does not contain any Product rows.");
-  return { rows, errors };
+  return { rows, errors, warnings };
 }

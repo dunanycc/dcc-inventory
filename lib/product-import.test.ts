@@ -32,4 +32,18 @@ describe("Product CSV import", () => {
     expect(result.errors).toEqual([]);
     expect(result.rows[0]).toMatchObject({ sourceId: "legacy-31", category: "Beer", product: "Sapporo", stockUnit: "CAN", packageSize: "500ml", bar: true, starterShack: true });
   });
+
+  it("recovers the worksheet's reversed, descriptive, and blank unit values with warnings", () => {
+    const csv = "ID,Category,Description,Unit Format,Unit Measurement,Order Unit,Visible,Opening Count,Consumed,StarterShack\nslim,Non-alcohol Beer,Carlsberg 0%,Slim Can,330ml,24,,0,0,FALSE\nchips,Food,Chips,75gm,bag,30,,0,0,\nmixer,Mixers & Misc,Coke,,,,,0,0,\nliquor,Hard Liquor,Fireball,750,,,,0,0,FALSE\nclaw,Mixed Drinks,White Claw,355ml,can,24,,0,0,TRUE";
+    const result = parseProductImportCsv(csv);
+    expect(result.errors).toEqual([]);
+    expect(result.rows.map((row) => [row.sourceId, row.stockUnit, row.packageSize])).toEqual([
+      ["slim", "CAN", "330ml"],
+      ["chips", "PACKAGE", "75gm"],
+      ["mixer", "EACH", null],
+      ["liquor", "BOTTLE", "750 mL"],
+      ["claw", "CAN", "355ml"],
+    ]);
+    expect(result.warnings).toHaveLength(5);
+  });
 });
