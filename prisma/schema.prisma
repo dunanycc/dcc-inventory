@@ -36,6 +36,17 @@ enum InventoryMovementType {
   COUNT_ADJUSTMENT
 }
 
+enum StockRequestStatus {
+  SUBMITTED
+  PARTIALLY_GIVEN
+  GIVEN
+  CANCELLED
+}
+
+enum TransferStatus {
+  COMPLETED
+}
+
 model User {
   id                 String              @id @default(uuid()) @db.Uuid
   email              String              @unique
@@ -48,6 +59,8 @@ model User {
   updatedAt          DateTime            @updatedAt
   auditEvents        AuditEvent[]        @relation("AuditActor")
   inventoryMovements InventoryMovement[] @relation("InventoryMovementPoster")
+  stockRequests      StockRequest[]      @relation("StockRequestRequester")
+  transfersPosted    Transfer[]          @relation("TransferPoster")
 
   @@index([status, role])
 }
@@ -89,6 +102,8 @@ model Product {
   category                    Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   productLocations            ProductLocation[]
   inventoryMovements          InventoryMovement[]
+  stockRequestLines           StockRequestLine[]
+  transferLines               TransferLine[]
 
   @@unique([sourceSystem, sourceId])
   @@index([categoryId, active, name])
@@ -104,6 +119,8 @@ model Location {
   productLocations  ProductLocation[]
   outgoingMovements InventoryMovement[] @relation("InventoryMovementSource")
   incomingMovements InventoryMovement[] @relation("InventoryMovementDestination")
+  outgoingTransfers Transfer[]          @relation("TransferSource")
+  incomingTransfers Transfer[]          @relation("TransferDestination")
 
   @@index([active, name])
 }
@@ -147,6 +164,7 @@ model InventoryMovement {
   sourceLocation        Location?             @relation("InventoryMovementSource", fields: [sourceLocationId], references: [id], onDelete: Restrict)
   destinationLocation   Location?             @relation("InventoryMovementDestination", fields: [destinationLocationId], references: [id], onDelete: Restrict)
   postedBy              User                  @relation("InventoryMovementPoster", fields: [postedById], references: [id], onDelete: Restrict)
+  transferLine          TransferLine?         @relation(fields: [transferLineId], references: [id], onDelete: Restrict)
 
   @@unique([sourceSystem, sourceId])
   @@index([productId])
@@ -154,6 +172,80 @@ model InventoryMovement {
   @@index([sourceLocationId, productId])
   @@index([occurredAt, id])
   @@index([postedById, occurredAt])
+}
+
+model StockRequest {
+  id            String             @id @default(uuid()) @db.Uuid
+  requestedAt   DateTime           @default(now())
+  status        StockRequestStatus @default(SUBMITTED)
+  notes         String?
+  requestedById String             @db.Uuid
+  createdAt     DateTime           @default(now())
+  completedAt   DateTime?
+  sourceSystem  String?
+  sourceId      String?
+  requestedBy   User               @relation("StockRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  lines         StockRequestLine[]
+  transfers     Transfer[]
+
+  @@unique([sourceSystem, sourceId])
+  @@index([requestedById, requestedAt])
+  @@index([status, requestedAt])
+}
+
+model StockRequestLine {
+  id                String         @id @default(uuid()) @db.Uuid
+  stockRequestId    String         @db.Uuid
+  productId         String         @db.Uuid
+  requestedQuantity Decimal        @db.Decimal(18, 6)
+  quantityGiven     Decimal        @default(0) @db.Decimal(18, 6)
+  sourceSystem      String?
+  sourceId          String?
+  stockRequest      StockRequest   @relation(fields: [stockRequestId], references: [id], onDelete: Restrict)
+  product           Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  transferLines     TransferLine[]
+
+  @@unique([stockRequestId, productId])
+  @@unique([sourceSystem, sourceId])
+  @@index([productId])
+}
+
+model Transfer {
+  id                    String         @id @default(uuid()) @db.Uuid
+  stockRequestId        String         @db.Uuid
+  sourceLocationId      String         @db.Uuid
+  destinationLocationId String         @db.Uuid
+  status                TransferStatus @default(COMPLETED)
+  occurredAt            DateTime
+  postedById            String         @db.Uuid
+  notes                 String?
+  completedAt           DateTime
+  createdAt             DateTime       @default(now())
+  stockRequest          StockRequest   @relation(fields: [stockRequestId], references: [id], onDelete: Restrict)
+  sourceLocation        Location       @relation("TransferSource", fields: [sourceLocationId], references: [id], onDelete: Restrict)
+  destinationLocation   Location       @relation("TransferDestination", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  postedBy              User           @relation("TransferPoster", fields: [postedById], references: [id], onDelete: Restrict)
+  lines                 TransferLine[]
+
+  @@index([stockRequestId, occurredAt])
+  @@index([sourceLocationId, destinationLocationId, occurredAt])
+  @@index([postedById, occurredAt])
+}
+
+model TransferLine {
+  id                 String             @id @default(uuid()) @db.Uuid
+  transferId         String             @db.Uuid
+  stockRequestLineId String             @db.Uuid
+  productId          String             @db.Uuid
+  quantity           Decimal            @db.Decimal(18, 6)
+  transfer           Transfer           @relation(fields: [transferId], references: [id], onDelete: Restrict)
+  stockRequestLine   StockRequestLine   @relation(fields: [stockRequestLineId], references: [id], onDelete: Restrict)
+  product            Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  inventoryMovement  InventoryMovement?
+
+  @@unique([transferId, stockRequestLineId])
+  @@index([stockRequestLineId])
+  @@index([productId])
 }
 
 model AuditEvent {

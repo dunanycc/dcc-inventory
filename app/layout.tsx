@@ -5,6 +5,7 @@ import "./provider-buttons.css";
 import "./settings.css";
 import "./product-admin.css";
 import "./inventory.css";
+import "./requests.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 

@@ -40,7 +40,7 @@ export type ProductTransaction = {
   findActorById(id: string): Promise<ProductActor | null>;
   categoryExists(id: string): Promise<boolean>;
   findProductById(id: string): Promise<ManagedProduct | null>;
-  hasInventoryMovements(productId: string): Promise<boolean>;
+  hasStockUnitActivity(productId: string): Promise<boolean>;
   createProduct(input: Omit<ManagedProduct, "id"> & { sourceSystem?: string; sourceId?: string }): Promise<ManagedProduct>;
   updateProduct(id: string, input: Partial<Omit<ManagedProduct, "id">>): Promise<ManagedProduct>;
   createAudit(input: ProductAudit): Promise<unknown>;
@@ -145,7 +145,7 @@ export async function updateProduct(actor: ProductActor, productId: string, inpu
     const generalChanged = changed(generalSnapshot(product), generalSnapshot(proposed));
     const categoryChanged = product.categoryId !== proposed.categoryId;
     const unitsChanged = changed(unitSnapshot(product), unitSnapshot(proposed));
-    if (!accountingUnitChangeAllowed(await transaction.hasInventoryMovements(product.id), product, proposed)) throw new ProductManagementError("UNIT_CONFIGURATION_LOCKED");
+    if (!accountingUnitChangeAllowed(await transaction.hasStockUnitActivity(product.id), product, proposed)) throw new ProductManagementError("UNIT_CONFIGURATION_LOCKED");
     if (!generalChanged && !categoryChanged && !unitsChanged) throw new ProductManagementError("NO_CHANGE");
     const updated = await transaction.updateProduct(product.id, productData);
     const correlationId = randomUUID();

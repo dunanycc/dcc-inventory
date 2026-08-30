@@ -13,7 +13,7 @@ function repository(initial = product) {
     findActorById: vi.fn(async (id) => [admin, manager, reader].find((actor) => actor.id === id) ?? null),
     categoryExists: vi.fn(async (id) => ["beer", "wine"].includes(id)),
     findProductById: vi.fn(async (id) => id === state.id ? { ...state } : null),
-    hasInventoryMovements: vi.fn(async () => false),
+    hasStockUnitActivity: vi.fn(async () => false),
     createProduct: vi.fn(async (input) => { state = { id: "created", ...input }; return { ...state }; }),
     updateProduct: vi.fn(async (_id, input) => { state = { ...state, ...input }; return { ...state }; }),
     createAudit: vi.fn(async (audit) => { audits.push(audit); }),
@@ -76,14 +76,14 @@ describe("Product administration", () => {
 
   it("blocks accounting-significant unit changes after stock history exists", async () => {
     const store = repository();
-    vi.mocked(store.transaction.hasInventoryMovements).mockResolvedValue(true);
+    vi.mocked(store.transaction.hasStockUnitActivity).mockResolvedValue(true);
     await expect(updateProduct(admin, product.id, input({ stockUnit: "BOTTLE" }), store.repository)).rejects.toMatchObject({ code: "UNIT_CONFIGURATION_LOCKED" });
     expect(store.transaction.updateProduct).not.toHaveBeenCalled();
   });
 
   it("allows purchase conversion edits after stock history exists", async () => {
     const store = repository();
-    vi.mocked(store.transaction.hasInventoryMovements).mockResolvedValue(true);
+    vi.mocked(store.transaction.hasStockUnitActivity).mockResolvedValue(true);
     await updateProduct(admin, product.id, input({ purchaseUnit: "TRAY", unitsPerPurchaseUnit: 12 }), store.repository);
     expect(store.state).toMatchObject({ purchaseUnit: "TRAY", unitsPerPurchaseUnit: 12 });
   });

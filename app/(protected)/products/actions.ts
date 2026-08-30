@@ -23,7 +23,13 @@ const repository: ProductRepository = {
       const product = await transaction.product.findUnique({ where: { id }, select: productSelect });
       return product ? managedProduct(product) : null;
     },
-    hasInventoryMovements: async (productId) => Boolean(await transaction.inventoryMovement.findFirst({ where: { productId }, select: { id: true } })),
+    hasStockUnitActivity: async (productId) => {
+      const [movement, requestLine] = await Promise.all([
+        transaction.inventoryMovement.findFirst({ where: { productId }, select: { id: true } }),
+        transaction.stockRequestLine.findFirst({ where: { productId }, select: { id: true } }),
+      ]);
+      return Boolean(movement || requestLine);
+    },
     createProduct: async (input) => managedProduct(await transaction.product.create({ data: input, select: productSelect })),
     updateProduct: async (id, input) => managedProduct(await transaction.product.update({ where: { id }, data: input, select: productSelect })),
     createAudit: (input) => transaction.auditEvent.create({ data: input }),

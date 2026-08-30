@@ -65,6 +65,35 @@ async function main() {
   await expectConstraint(`INSERT INTO "InventoryMovement" (id,type,"productId",quantity,"destinationLocationId","occurredAt","postedById","sourceSystem") VALUES (gen_random_uuid(),'RECEIPT','00000000-0000-0000-0000-000000000003',1,'00000000-0000-0000-0000-000000000004',now(),'00000000-0000-0000-0000-000000000001','legacy-2026')`);
   await expectConstraint(`INSERT INTO "InventoryMovement" (id,type,"productId",quantity,"destinationLocationId","occurredAt","postedById","sourceSystem","sourceId") VALUES (gen_random_uuid(),'RECEIPT','00000000-0000-0000-0000-000000000003',1,'00000000-0000-0000-0000-000000000004',now(),'00000000-0000-0000-0000-000000000001','legacy-2026','bar-lager-opening')`);
 
+  await pool.query(`INSERT INTO "Location" (id,code,name,"updatedAt") VALUES ('00000000-0000-0000-0000-000000000006','STARTER_SHACK','Starter Shack',now())`);
+  await pool.query(`INSERT INTO "ProductLocation" ("productId","locationId",active,"reviewRequired","updatedAt") VALUES ('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000006',true,false,now())`);
+  await pool.query(`INSERT INTO "StockRequest" (id,"requestedById","sourceSystem","sourceId") VALUES ('00000000-0000-0000-0000-000000000007','00000000-0000-0000-0000-000000000001','legacy-2026','request-1')`);
+  await pool.query(`INSERT INTO "StockRequestLine" (id,"stockRequestId","productId","requestedQuantity","sourceSystem","sourceId") VALUES ('00000000-0000-0000-0000-000000000008','00000000-0000-0000-0000-000000000007','00000000-0000-0000-0000-000000000003',20,'legacy-2026','request-1-lager')`);
+  await expectConstraint(`INSERT INTO "StockRequestLine" (id,"stockRequestId","productId","requestedQuantity") VALUES (gen_random_uuid(),'00000000-0000-0000-0000-000000000007','00000000-0000-0000-0000-000000000003',1)`);
+  await expectConstraint(`UPDATE "StockRequestLine" SET "quantityGiven" = 21 WHERE id = '00000000-0000-0000-0000-000000000008'`);
+  await expectConstraint(`INSERT INTO "StockRequest" (id,"requestedById","sourceSystem") VALUES (gen_random_uuid(),'00000000-0000-0000-0000-000000000001','legacy-2026')`);
+  await pool.query(`INSERT INTO "Transfer" (id,"stockRequestId","sourceLocationId","destinationLocationId","occurredAt","postedById","completedAt") VALUES ('00000000-0000-0000-0000-000000000009','00000000-0000-0000-0000-000000000007','00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000006',now(),'00000000-0000-0000-0000-000000000001',now())`);
+  await pool.query(`INSERT INTO "TransferLine" (id,"transferId","stockRequestLineId","productId",quantity) VALUES ('00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000009','00000000-0000-0000-0000-000000000008','00000000-0000-0000-0000-000000000003',12)`);
+  await pool.query(`INSERT INTO "InventoryMovement" (id,type,"productId",quantity,"sourceLocationId","destinationLocationId","occurredAt","postedById","transferLineId") VALUES (gen_random_uuid(),'TRANSFER','00000000-0000-0000-0000-000000000003',12,'00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000006',now(),'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000010')`);
+  await expectConstraint(`INSERT INTO "InventoryMovement" (id,type,"productId",quantity,"sourceLocationId","destinationLocationId","occurredAt","postedById","transferLineId") VALUES (gen_random_uuid(),'TRANSFER','00000000-0000-0000-0000-000000000003',1,'00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000006',now(),'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000010')`);
+
+  const stockOne = await pool.connect();
+  const stockTwo = await pool.connect();
+  try {
+    await stockOne.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+    await stockTwo.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+    const balanceSql = `SELECT COALESCE(SUM(CASE WHEN "destinationLocationId" = $2 THEN quantity ELSE -quantity END),0) balance FROM "InventoryMovement" WHERE "productId" = $1 AND ("sourceLocationId" = $2 OR "destinationLocationId" = $2)`;
+    await stockOne.query(balanceSql, ['00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004']);
+    await stockTwo.query(balanceSql, ['00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004']);
+    const movementSql = `INSERT INTO "InventoryMovement" (id,type,"productId",quantity,"sourceLocationId","destinationLocationId","occurredAt","postedById") VALUES (gen_random_uuid(),'TRANSFER',$1,8,$2,$3,now(),$4)`;
+    await stockOne.query(movementSql, ['00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001']);
+    await stockTwo.query(movementSql, ['00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001']);
+    const stockCommits = await Promise.allSettled([stockOne.query("COMMIT"), stockTwo.query("COMMIT")]);
+    if (stockCommits.filter((result) => result.status === "rejected").length !== 1) throw new Error("Expected Serializable isolation to abort one concurrent stock-out transaction");
+  } finally {
+    await stockOne.query("ROLLBACK").catch(() => undefined); await stockTwo.query("ROLLBACK").catch(() => undefined); stockOne.release(); stockTwo.release();
+  }
+
   const duplicateResults = await Promise.allSettled([
     pool.query(`INSERT INTO "Category" (id,name,"nameNormalized","displayOrder","updatedAt") VALUES (gen_random_uuid(),'Concurrent','concurrent',3,now())`),
     pool.query(`INSERT INTO "Category" (id,name,"nameNormalized","displayOrder","updatedAt") VALUES (gen_random_uuid(),' concurrent ','concurrent',4,now())`),
