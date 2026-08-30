@@ -19,7 +19,7 @@ export type OAuthIdentity = {
 };
 
 export function normalizeEmail(email: string | null | undefined) {
-  return String(email ?? "").trim().toLocaleLowerCase("en-CA");
+  return String(email ?? "").replace(/^[ \t\r\n\f\v]+|[ \t\r\n\f\v]+$/g, "").toLowerCase();
 }
 
 export function bootstrapAdminEmails(value = process.env.BOOTSTRAP_ADMIN_EMAILS) {

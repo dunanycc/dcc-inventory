@@ -1,5 +1,29 @@
 import { connection } from "next/server";
 import { PageHeading } from "@/app/components/page-heading";
-import { ProductCategoryTabs } from "@/app/products/product-category-tabs";
+import { ProductCategoryTabs, type ProductCategoryRow } from "@/app/products/product-category-tabs";
+import { hasPermission } from "@/lib/authorization";
+import { CATEGORY_ORDER_BY } from "@/lib/category-management";
 import { prisma } from "@/lib/prisma";
-export default async function ProductsPage(){await connection();const categories=await prisma.category.findMany({orderBy:[{displayOrder:"asc"},{name:"asc"}],include:{products:{orderBy:{name:"asc"},include:{productLocations:{include:{location:true}}}}}});const rows=categories.map(c=>({id:c.id,name:c.name,displayOrder:c.displayOrder,active:c.active,products:c.products.map(p=>({id:p.id,name:p.name,packageSize:p.packageSize,stockUnit:p.stockUnitLabel||p.stockUnit,purchaseUnit:p.purchaseUnit,unitsPerPurchaseUnit:p.unitsPerPurchaseUnit?.toString()??null,active:p.active,starterShackEligible:p.starterShackEligible,locations:p.productLocations.filter(i=>i.active).map(i=>i.location.name)}))}));return <><PageHeading eyebrow="Catalog" title="Products" description="Work by category in a fully expanded, spreadsheet-like product view."/><ProductCategoryTabs categories={rows}/></>}
+import { requireCurrentUser } from "@/lib/session";
+
+export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
+  await connection();
+  const actor = await requireCurrentUser();
+  const [categories, locations] = await Promise.all([
+    prisma.category.findMany({ orderBy: CATEGORY_ORDER_BY, include: { products: { orderBy: [{ name: "asc" }, { id: "asc" }], include: { productLocations: true } } } }),
+    prisma.location.findMany({ orderBy: [{ name: "asc" }, { id: "asc" }], select: { id: true, code: true, name: true, active: true } }),
+  ]);
+  const rows: ProductCategoryRow[] = categories.map((category) => ({
+    id: category.id, name: category.name, displayOrder: category.displayOrder, active: category.active,
+    products: category.products.map((product) => ({
+      id: product.id, name: product.name, categoryId: product.categoryId, packageSize: product.packageSize,
+      stockUnit: product.stockUnit, stockUnitLabel: product.stockUnitLabel, allowFractionalStock: product.allowFractionalStock,
+      quantityScale: product.quantityScale, purchaseUnit: product.purchaseUnit,
+      unitsPerPurchaseUnit: product.unitsPerPurchaseUnit?.toString() ?? null, active: product.active,
+      starterShackRequestEligible: product.starterShackRequestEligible,
+      productLocations: product.productLocations.map((item) => ({ locationId: item.locationId, active: item.active, reviewRequired: item.reviewRequired })),
+    })),
+  }));
+  const message = await searchParams;
+  return <><PageHeading eyebrow="Catalog" title="Products" description="Maintain authoritative stock units, purchasing conversions, and stocking Locations in a category-driven grid."/>{message.success && <p className="notice success" role="status">{message.success}</p>}{message.error && <p className="notice error" role="alert">{message.error}</p>}<ProductCategoryTabs canManageCatalog={hasPermission(actor.role, "catalog:manage")} categories={rows} locations={locations}/></>;
+}

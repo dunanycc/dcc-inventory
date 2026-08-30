@@ -3,7 +3,7 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import { Yahoo } from "@/lib/yahoo-provider";
-import { authorizeOAuthIdentity } from "@/lib/oauth-authorization";
+import { authorizeOAuthIdentity, normalizeEmail } from "@/lib/oauth-authorization";
 
 const providers: NextAuthConfig["providers"] = [];
 
@@ -34,17 +34,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   callbacks: {
     async signIn({ user, profile, account }) {
-      const email = String(profile?.email ?? user.email ?? "").trim().toLocaleLowerCase("en-CA");
+      const email = normalizeEmail(String(profile?.email ?? user.email ?? ""));
       const provider = account?.provider ?? "unknown";
       const approved = await authorizeOAuthIdentity(
         { email, emailVerified: profile?.email_verified === true, name: profile?.name ?? user.name, provider },
         {
-          findUserByEmail: (normalizedEmail) => prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true, name: true, email: true, role: true, status: true } }),
+          findUserByEmail: (normalizedEmail) => prisma.user.findUnique({ where: { emailNormalized: normalizedEmail }, select: { id: true, name: true, email: true, role: true, status: true } }),
           async createBootstrapAdministrator(input) {
             try {
               return await prisma.$transaction(async (transaction) => {
                 const created = await transaction.user.create({
-                  data: { email: input.email, name: input.name, role: "ADMINISTRATOR", status: "ACTIVE" },
+                  data: { email: input.email, emailNormalized: input.email, name: input.name, role: "ADMINISTRATOR", status: "ACTIVE" },
                   select: { id: true, name: true, email: true, role: true, status: true },
                 });
                 await transaction.auditEvent.create({
@@ -54,7 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               });
             } catch (error) {
               if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
-                const racedUser = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true, name: true, email: true, role: true, status: true } });
+                const racedUser = await prisma.user.findUnique({ where: { emailNormalized: input.email }, select: { id: true, name: true, email: true, role: true, status: true } });
                 if (racedUser) return racedUser;
               }
               throw error;

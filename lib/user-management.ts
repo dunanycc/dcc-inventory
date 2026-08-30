@@ -25,7 +25,7 @@ export type UserManagementTransaction = {
   findUserByEmail(email: string): Promise<ManagedUser | null>;
   findUserById(id: string): Promise<ManagedUser | null>;
   countActiveAdministrators(): Promise<number>;
-  createUser(input: { email: string; name: string | null; role: AppRole }): Promise<ManagedUser>;
+  createUser(input: { email: string; emailNormalized: string; name: string | null; role: AppRole }): Promise<ManagedUser>;
   updateUser(id: string, data: { role?: AppRole; status?: "ACTIVE" | "DISABLED" }): Promise<ManagedUser>;
   createAudit(input: UserAudit): Promise<unknown>;
 };
@@ -73,7 +73,7 @@ export async function preauthorizeUser(
     if (!currentActor) throw new UserManagementError("FORBIDDEN");
     assertAdministrator(currentActor);
     if (await transaction.findUserByEmail(email)) throw new UserManagementError("DUPLICATE_EMAIL");
-    const created = await transaction.createUser({ email, name, role });
+    const created = await transaction.createUser({ email, emailNormalized: email, name, role });
     await transaction.createAudit({
       actorId: currentActor.id,
       action: "USER_PREAUTHORIZED",

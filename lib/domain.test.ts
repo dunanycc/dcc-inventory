@@ -23,5 +23,6 @@ describe("product unit relationships", () => {
 
   it("keeps integer products at scale zero", () => {
     expect(validateProductUnits({ purchaseUnit:null,unitsPerPurchaseUnit:null,allowFractionalStock:false,quantityScale:3 })).toMatch(/scale 0/);
+    expect(validateProductUnits({ purchaseUnit:null,unitsPerPurchaseUnit:null,allowFractionalStock:true,quantityScale:0 })).toMatch(/positive quantity scale/);
   });
 });

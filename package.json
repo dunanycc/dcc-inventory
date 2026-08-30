@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:postgres": "tsx scripts/postgres-integration.ts",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
