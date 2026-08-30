@@ -42,13 +42,14 @@ export type ProductTransaction = {
   findProductById(id: string): Promise<ManagedProduct | null>;
   hasStockUnitActivity(productId: string): Promise<boolean>;
   createProduct(input: Omit<ManagedProduct, "id"> & { sourceSystem?: string; sourceId?: string }): Promise<ManagedProduct>;
+  configureAvailability(productId: string, starterShackEligible: boolean): Promise<boolean>;
   updateProduct(id: string, input: Partial<Omit<ManagedProduct, "id">>): Promise<ManagedProduct>;
   createAudit(input: ProductAudit): Promise<unknown>;
 };
 export type ProductRepository = { transaction<T>(work: (transaction: ProductTransaction) => Promise<T>): Promise<T> };
 
 export class ProductManagementError extends Error {
-  constructor(public code: "FORBIDDEN" | "INVALID_INPUT" | "CATEGORY_NOT_FOUND" | "PRODUCT_NOT_FOUND" | "UNIT_CONFIGURATION_LOCKED" | "NO_CHANGE") { super(code); }
+  constructor(public code: "FORBIDDEN" | "INVALID_INPUT" | "CATEGORY_NOT_FOUND" | "PRODUCT_NOT_FOUND" | "REQUIRED_LOCATION_UNAVAILABLE" | "UNIT_CONFIGURATION_LOCKED" | "NO_CHANGE") { super(code); }
 }
 
 function cleanOptional(value: string | null | undefined, maximum: number) {
@@ -128,6 +129,7 @@ export async function createProduct(actor: ProductActor, input: ProductInput, re
     const currentActor = await requireCatalogManager(transaction, actor.id);
     if (!await transaction.categoryExists(productData.categoryId)) throw new ProductManagementError("CATEGORY_NOT_FOUND");
     const created = await transaction.createProduct({ ...productData, ...(source ? { sourceSystem: source.system, sourceId: source.id } : {}) });
+    if (!await transaction.configureAvailability(created.id, created.starterShackRequestEligible)) throw new ProductManagementError("REQUIRED_LOCATION_UNAVAILABLE");
     await transaction.createAudit({ actorId: currentActor.id, action: "PRODUCT_CREATED", entityType: "Product", entityId: created.id, after: { ...snapshot(created), ...(source ? { source } : {}) }, reason: source ? `Created from ${source.system}` : undefined, correlationId: randomUUID() });
     return created;
   });
@@ -148,6 +150,7 @@ export async function updateProduct(actor: ProductActor, productId: string, inpu
     if (!accountingUnitChangeAllowed(await transaction.hasStockUnitActivity(product.id), product, proposed)) throw new ProductManagementError("UNIT_CONFIGURATION_LOCKED");
     if (!generalChanged && !categoryChanged && !unitsChanged) throw new ProductManagementError("NO_CHANGE");
     const updated = await transaction.updateProduct(product.id, productData);
+    if (!await transaction.configureAvailability(updated.id, updated.starterShackRequestEligible)) throw new ProductManagementError("REQUIRED_LOCATION_UNAVAILABLE");
     const correlationId = randomUUID();
     if (generalChanged) await transaction.createAudit({ actorId: currentActor.id, action: "PRODUCT_UPDATED", entityType: "Product", entityId: product.id, before: generalSnapshot(product), after: generalSnapshot(updated), correlationId });
     if (categoryChanged) await transaction.createAudit({ actorId: currentActor.id, action: "PRODUCT_CATEGORY_CHANGED", entityType: "Product", entityId: product.id, before: { categoryId: product.categoryId }, after: { categoryId: updated.categoryId }, correlationId });

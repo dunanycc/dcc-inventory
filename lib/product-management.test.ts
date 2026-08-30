@@ -15,6 +15,7 @@ function repository(initial = product) {
     findProductById: vi.fn(async (id) => id === state.id ? { ...state } : null),
     hasStockUnitActivity: vi.fn(async () => false),
     createProduct: vi.fn(async (input) => { state = { id: "created", ...input }; return { ...state }; }),
+    configureAvailability: vi.fn(async () => true),
     updateProduct: vi.fn(async (_id, input) => { state = { ...state, ...input }; return { ...state }; }),
     createAudit: vi.fn(async (audit) => { audits.push(audit); }),
   };
@@ -86,6 +87,18 @@ describe("Product administration", () => {
     vi.mocked(store.transaction.hasStockUnitActivity).mockResolvedValue(true);
     await updateProduct(admin, product.id, input({ purchaseUnit: "TRAY", unitsPerPurchaseUnit: 12 }), store.repository);
     expect(store.state).toMatchObject({ purchaseUnit: "TRAY", unitsPerPurchaseUnit: 12 });
+  });
+
+  it("configures every newly created Product at the Bar", async () => {
+    const store = repository();
+    await createProduct(admin, input(), store.repository);
+    expect(store.transaction.configureAvailability).toHaveBeenCalledWith("created", true);
+  });
+
+  it("synchronizes Starter Shack availability when a Product is edited", async () => {
+    const store = repository();
+    await updateProduct(admin, product.id, input({ starterShackRequestEligible: false }), store.repository);
+    expect(store.transaction.configureAvailability).toHaveBeenCalledWith(product.id, false);
   });
 
   it("keeps Starter Shack request eligibility independent from inventory-location configuration", () => {

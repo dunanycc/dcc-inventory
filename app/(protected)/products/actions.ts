@@ -31,6 +31,20 @@ const repository: ProductRepository = {
       return Boolean(movement || requestLine);
     },
     createProduct: async (input) => managedProduct(await transaction.product.create({ data: input, select: productSelect })),
+    configureAvailability: async (productId, starterShackEligible) => {
+      const [bar, shack] = await Promise.all([
+        transaction.location.findUnique({ where: { code: "BAR" }, select: { id: true, active: true } }),
+        transaction.location.findUnique({ where: { code: "STARTER_SHACK" }, select: { id: true, active: true } }),
+      ]);
+      if (!bar?.active) return false;
+      if (starterShackEligible && !shack?.active) return false;
+      await transaction.productLocation.upsert({ where: { productId_locationId: { productId, locationId: bar.id } }, create: { productId, locationId: bar.id, active: true, reviewRequired: false }, update: { active: true, reviewRequired: false } });
+      if (shack) {
+        if (starterShackEligible) await transaction.productLocation.upsert({ where: { productId_locationId: { productId, locationId: shack.id } }, create: { productId, locationId: shack.id, active: true, reviewRequired: false }, update: { active: true, reviewRequired: false } });
+        else await transaction.productLocation.updateMany({ where: { productId, locationId: shack.id }, data: { active: false, reviewRequired: false } });
+      }
+      return true;
+    },
     updateProduct: async (id, input) => managedProduct(await transaction.product.update({ where: { id }, data: input, select: productSelect })),
     createAudit: (input) => transaction.auditEvent.create({ data: input }),
   }), { isolationLevel: "Serializable" }),
@@ -41,6 +55,7 @@ const messages: Record<string, string> = {
   INVALID_INPUT: "Review the Product name, category, stock unit, scale, and purchasing conversion.",
   CATEGORY_NOT_FOUND: "The selected category no longer exists.",
   PRODUCT_NOT_FOUND: "The selected Product no longer exists.",
+  REQUIRED_LOCATION_UNAVAILABLE: "The Bar and any selected Starter Shack Location must be active.",
   UNIT_CONFIGURATION_LOCKED: "How this Product is counted cannot change after stock history exists. Purchasing details may still be updated.",
   NO_CHANGE: "No Product change was made.",
   CONFLICT: "Product data changed at the same time. Review it and try again.",

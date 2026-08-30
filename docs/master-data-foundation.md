@@ -2,7 +2,7 @@
 
 ## Starter Shack requests versus stocked Locations
 
-`Product.starterShackRequestEligible` controls whether an active Product may appear on the future Bar-to-Starter-Shack transfer list. The flag is deliberately independent of ProductLocation: an eligible Product may have no Starter Shack ProductLocation yet.
+`Product.starterShackRequestEligible` controls whether an active Product may be requested by Starter Shack staff. Routine Product create/edit keeps the underlying relationships simple: every Product is active at Bar by default, and selecting Starter Shack availability activates the Starter Shack relationship in the same transaction. The Product screen exposes only that request choice, not the internal ProductLocation records.
 
 Changing tracked stock at a Location requires an active Product, an active Location, an existing active ProductLocation, and `reviewRequired = false`. The reusable `inventoryPostingEligibility` domain rule is the authority future opening quantities, receipts, transfers, and counts must call.
 
