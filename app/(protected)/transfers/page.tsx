@@ -1,3 +1,3 @@
 import { redirect } from "next/navigation";
 
-export default function Page() { redirect("/requests?tab=fulfill"); }
+export default function Page() { redirect("/requests"); }

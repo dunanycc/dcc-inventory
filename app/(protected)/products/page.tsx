@@ -4,11 +4,11 @@ import { ProductCategoryTabs, type ProductCategoryRow } from "@/app/products/pro
 import { hasPermission } from "@/lib/authorization";
 import { CATEGORY_ORDER_BY } from "@/lib/category-management";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/session";
+import { requireInventoryWorkspaceUser } from "@/lib/session";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
   await connection();
-  const actor = await requireCurrentUser();
+  const actor = await requireInventoryWorkspaceUser();
   const [categories, locations] = await Promise.all([
     prisma.category.findMany({ orderBy: CATEGORY_ORDER_BY, include: { products: { orderBy: [{ name: "asc" }, { id: "asc" }], include: { productLocations: true } } } }),
     prisma.location.findMany({ orderBy: [{ name: "asc" }, { id: "asc" }], select: { id: true, code: true, name: true, active: true } }),

@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isStarterShackStaff } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 
 export const currentUser = cache(async () => {
@@ -15,5 +16,11 @@ export const currentUser = cache(async () => {
 export async function requireCurrentUser() {
   const user = await currentUser();
   if (!user || user.status !== "ACTIVE") redirect("/sign-in");
+  return user;
+}
+
+export async function requireInventoryWorkspaceUser() {
+  const user = await requireCurrentUser();
+  if (isStarterShackStaff(user.role)) redirect("/requests");
   return user;
 }

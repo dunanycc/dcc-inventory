@@ -5,11 +5,11 @@ import { hasPermission } from "@/lib/authorization";
 import { CATEGORY_ORDER_BY } from "@/lib/category-management";
 import { formatStockQuantity, inventoryBalancesForLocation } from "@/lib/inventory-balances";
 import { prisma } from "@/lib/prisma";
-import { requireCurrentUser } from "@/lib/session";
+import { requireInventoryWorkspaceUser } from "@/lib/session";
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ location?: string; success?: string; error?: string }> }) {
   await connection();
-  const actor = await requireCurrentUser();
+  const actor = await requireInventoryWorkspaceUser();
   const parameters = await searchParams;
   const locations = await prisma.location.findMany({ where: { active: true }, orderBy: [{ code: "asc" }, { id: "asc" }], select: { id: true, code: true, name: true } });
   const selectedLocation = locations.find((location) => location.code === parameters.location) ?? locations.find((location) => location.code === "BAR") ?? locations[0];

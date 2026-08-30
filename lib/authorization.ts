@@ -37,3 +37,11 @@ export function hasPermission(role: AppRole, permission: Permission) {
 export function requirePermission(role: AppRole, permission: Permission) {
   if (!hasPermission(role, permission)) throw new Error("FORBIDDEN");
 }
+
+export function isStarterShackStaff(role: AppRole) {
+  return role === "INVENTORY_USER";
+}
+
+export function landingPathForRole(role: AppRole) {
+  return isStarterShackStaff(role) ? "/requests" : "/inventory";
+}
