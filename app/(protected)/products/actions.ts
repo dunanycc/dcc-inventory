@@ -74,14 +74,18 @@ function optionalNumber(value: FormDataEntryValue | null) {
   return text ? Number(text) : null;
 }
 
-function productInput(formData: FormData): ProductInput {
+async function productInput(formData: FormData): Promise<ProductInput> {
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const category = await prisma.category.findUnique({ where: { id: categoryId }, select: { name: true } });
+  const isHardLiquor = category?.name.trim().toLowerCase() === "hard liquor";
+  const allowFractionalStock = isHardLiquor && formData.get("allowFractionalStock") === "on";
   return {
     name: String(formData.get("name") ?? ""),
-    categoryId: String(formData.get("categoryId") ?? ""),
+    categoryId,
     stockUnit: String(formData.get("stockUnit") ?? "") as ProductStockUnit,
     stockUnitLabel: String(formData.get("stockUnitLabel") ?? ""),
-    allowFractionalStock: formData.get("allowFractionalStock") === "on",
-    quantityScale: Number(formData.get("quantityScale")),
+    allowFractionalStock,
+    quantityScale: allowFractionalStock ? 2 : 0,
     packageSize: String(formData.get("packageSize") ?? ""),
     purchaseUnit: String(formData.get("purchaseUnit") ?? ""),
     unitsPerPurchaseUnit: optionalNumber(formData.get("unitsPerPurchaseUnit")),
@@ -106,11 +110,11 @@ async function runProductMutation(work: (actor: NonNullable<Awaited<ReturnType<t
 }
 
 export async function createProductAction(formData: FormData) {
-  await runProductMutation((actor) => createProduct(actor, productInput(formData), repository), "Product created.");
+  await runProductMutation(async (actor) => createProduct(actor, await productInput(formData), repository), "Product created.");
 }
 
 export async function updateProductAction(formData: FormData) {
-  await runProductMutation((actor) => updateProduct(actor, String(formData.get("productId") ?? ""), productInput(formData), repository), "Product updated.");
+  await runProductMutation(async (actor) => updateProduct(actor, String(formData.get("productId") ?? ""), await productInput(formData), repository), "Product updated.");
 }
 
 export async function setProductActiveAction(formData: FormData) {

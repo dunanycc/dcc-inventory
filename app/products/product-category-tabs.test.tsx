@@ -28,20 +28,27 @@ describe("ProductCategoryTabs", () => {
     expect(screen.getByRole("tab", { name: "Beer" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Inactive")).toBeInTheDocument();
     expect(screen.queryByText(/^ID /)).not.toBeInTheDocument();
-    expect(screen.getByText("Bar only")).toBeInTheDocument();
+    expect(screen.queryByText("Bar only")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add Product" }));
     expect(screen.getByRole("heading", { name: "New Product" })).toBeInTheDocument();
     expect(screen.getByLabelText("Counted as")).toBeInTheDocument();
     expect(screen.getByLabelText(/Available to Starter Shack/)).toBeInTheDocument();
     expect(screen.getByText(/request this Product from the Bar/)).toBeInTheDocument();
-    const partial = screen.getByLabelText(/Allow partial quantities/);
-    const scale = screen.getByLabelText(/Decimal places for partial quantities/);
-    expect(scale).toHaveValue(0);
-    fireEvent.click(partial);
-    expect(scale).toHaveValue(1);
-    fireEvent.click(partial);
-    expect(scale).toHaveValue(0);
+    expect(screen.queryByLabelText(/Allow partial quantities/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Edit Club Lager" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Unhide" })).toBeInTheDocument();
+  });
+
+  it("offers fixed two-decimal partial quantities only for Hard Liquor", () => {
+    render(<ProductCategoryTabs canManageCatalog categories={[{ id:"liquor",name:"Hard Liquor",displayOrder:1,active:true,products:[] }]}/>);
+    fireEvent.click(screen.getByRole("button", { name: "Add Product" }));
+    const partial = screen.getByLabelText(/Allow partial quantities/);
+    const scale = document.querySelector('input[name="quantityScale"]');
+    expect(scale).toHaveAttribute("value", "0");
+    fireEvent.click(partial);
+    expect(scale).toHaveAttribute("value", "2");
+    expect(screen.getByText(/use 2 decimal places/)).toBeInTheDocument();
   });
 });
