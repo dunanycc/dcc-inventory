@@ -64,3 +64,6 @@
 .import-form > .admin-primary { justify-self: start; }
 .import-form > .admin-primary:disabled { cursor: not-allowed; opacity: .5; }
 @media (max-width: 700px) { .import-heading { display: grid; } .admin-tabs { overflow-x: auto; } }
+.vendor-create-form { align-items:end; display:grid; gap:.6rem; grid-template-columns:180px 260px auto; }
+.vendor-create-form label { display:grid; gap:.35rem; font-size:.77rem; font-weight:750; }
+.vendor-create-form input { border:1px solid #b8c4bc; border-radius:8px; min-height:42px; padding:.55rem .65rem; }

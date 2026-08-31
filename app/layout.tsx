@@ -4,6 +4,7 @@ import "./globals.css";
 import "./provider-buttons.css";
 import "./settings.css";
 import "./product-admin.css";
+import "./deliveries.css";
 import "./inventory.css";
 import "./requests.css";
 
