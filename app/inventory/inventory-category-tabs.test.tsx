@@ -15,11 +15,16 @@ describe("InventoryCategoryTabs", () => {
   it("shows Location selection, category tabs, and real tracked balances", () => {
     render(<InventoryCategoryTabs canSetOpening={false} categories={categories} locations={locations} selectedLocation={locations[0]}/>);
     expect(screen.getByRole("link", { name: "Bar" })).toHaveClass("active");
-    expect(screen.getByRole("link", { name: "Starter Shack" })).toHaveAttribute("href", "/inventory?location=STARTER_SHACK");
+    expect(screen.getByRole("link", { name: "Starter Shack" })).toHaveAttribute("href", "/inventory?location=STARTER_SHACK&category=beer");
     expect(screen.getByText("Club Lager")).toBeInTheDocument();
     expect(screen.getByText("19")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Wine" }));
     expect(screen.getByText("House Red")).toBeInTheDocument();
+  });
+
+  it("restores the selected category supplied after a server action", () => {
+    render(<InventoryCategoryTabs canSetOpening={false} categories={categories} initialCategoryId="wine" locations={locations} selectedLocation={locations[0]}/>);
+    expect(screen.getByRole("tab", { name: "Wine" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("allows authorized users to enter opening quantities with explicit confirmation", () => {

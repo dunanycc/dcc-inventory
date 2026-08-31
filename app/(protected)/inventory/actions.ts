@@ -45,6 +45,8 @@ function errorCode(error: unknown) {
 export async function setOpeningInventoryAction(formData: FormData) {
   const locationId = String(formData.get("locationId") ?? "");
   const locationCode = String(formData.get("locationCode") ?? "");
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const returnContext = `location=${encodeURIComponent(locationCode)}&category=${encodeURIComponent(categoryId)}`;
   let destination: string;
   try {
     const actor = await currentUser();
@@ -56,10 +58,10 @@ export async function setOpeningInventoryAction(formData: FormData) {
     await postOpeningInventory(actor, { locationId, entries, occurredAt: new Date(), notes: String(formData.get("notes") ?? "") }, repository);
     revalidatePath("/inventory");
     revalidatePath("/products");
-    destination = `/inventory?location=${encodeURIComponent(locationCode)}&success=${encodeURIComponent("Opening inventory saved.")}`;
+    destination = `/inventory?${returnContext}&success=${encodeURIComponent("Opening inventory saved.")}`;
   } catch (error) {
     const code = errorCode(error);
-    destination = `/inventory?location=${encodeURIComponent(locationCode)}&error=${encodeURIComponent(messages[code] ?? messages.FAILED)}`;
+    destination = `/inventory?${returnContext}&error=${encodeURIComponent(messages[code] ?? messages.FAILED)}`;
   }
   redirect(destination);
 }

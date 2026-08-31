@@ -49,7 +49,7 @@ export type ProductTransaction = {
 export type ProductRepository = { transaction<T>(work: (transaction: ProductTransaction) => Promise<T>): Promise<T> };
 
 export class ProductManagementError extends Error {
-  constructor(public code: "FORBIDDEN" | "INVALID_INPUT" | "CATEGORY_NOT_FOUND" | "PRODUCT_NOT_FOUND" | "REQUIRED_LOCATION_UNAVAILABLE" | "UNIT_CONFIGURATION_LOCKED" | "NO_CHANGE") { super(code); }
+  constructor(public code: "FORBIDDEN" | "INVALID_INPUT" | "PURCHASING_CONVERSION_REQUIRED" | "CATEGORY_NOT_FOUND" | "PRODUCT_NOT_FOUND" | "REQUIRED_LOCATION_UNAVAILABLE" | "UNIT_CONFIGURATION_LOCKED" | "NO_CHANGE") { super(code); }
 }
 
 function cleanOptional(value: string | null | undefined, maximum: number) {

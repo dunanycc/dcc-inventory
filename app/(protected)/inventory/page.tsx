@@ -7,7 +7,7 @@ import { formatStockQuantity, inventoryBalancesForLocation } from "@/lib/invento
 import { prisma } from "@/lib/prisma";
 import { requireInventoryWorkspaceUser } from "@/lib/session";
 
-export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ location?: string; success?: string; error?: string }> }) {
+export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ location?: string; category?: string; success?: string; error?: string }> }) {
   await connection();
   const actor = await requireInventoryWorkspaceUser();
   const parameters = await searchParams;
@@ -47,5 +47,5 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
     })),
   }));
 
-  return <><PageHeading eyebrow="Inventory" title="Inventory" description="View tracked stock at the Bar and Starter Shack by Category."/>{parameters.success && <p className="notice success" role="status">{parameters.success}</p>}{parameters.error && <p className="notice error" role="alert">{parameters.error}</p>}<InventoryCategoryTabs canSetOpening={hasPermission(actor.role, "operations:post")} categories={rows} locations={locations} selectedLocation={selectedLocation}/></>;
+  return <><PageHeading eyebrow="Inventory" title="Inventory" description="View tracked stock at the Bar and Starter Shack by Category."/>{parameters.success && <p className="notice success" role="status">{parameters.success}</p>}{parameters.error && <p className="notice error" role="alert">{parameters.error}</p>}<InventoryCategoryTabs canSetOpening={hasPermission(actor.role, "operations:post")} categories={rows} initialCategoryId={parameters.category} locations={locations} selectedLocation={selectedLocation}/></>;
 }

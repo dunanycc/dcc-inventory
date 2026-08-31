@@ -61,6 +61,7 @@ model User {
   inventoryMovements InventoryMovement[] @relation("InventoryMovementPoster")
   stockRequests      StockRequest[]      @relation("StockRequestRequester")
   transfersPosted    Transfer[]          @relation("TransferPoster")
+  productNotes       ProductNote[]       @relation("ProductNoteAuthor")
 
   @@index([status, role])
 }
@@ -104,9 +105,23 @@ model Product {
   inventoryMovements          InventoryMovement[]
   stockRequestLines           StockRequestLine[]
   transferLines               TransferLine[]
+  notes                       ProductNote[]
 
   @@unique([sourceSystem, sourceId])
   @@index([categoryId, active, name])
+}
+
+model ProductNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  authorId  String   @db.Uuid
+  body      String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  author    User     @relation("ProductNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([authorId, createdAt])
 }
 
 model Location {

@@ -4,6 +4,8 @@ import { ProductCategoryTabs } from "./product-category-tabs";
 
 vi.mock("@/app/(protected)/products/actions", () => ({
   createProductAction: vi.fn(),
+  addProductNoteAction: vi.fn(),
+  deleteProductNoteAction: vi.fn(),
   updateProductAction: vi.fn(),
   setProductActiveAction: vi.fn(),
 }));
@@ -26,6 +28,8 @@ describe("ProductCategoryTabs", () => {
       { id:"beer",name:"Beer",displayOrder:1,active:true,products:[{id:"can",name:"Club Lager",categoryId:"beer",packageSize:"355 mL",stockUnit:"CAN",stockUnitLabel:null,allowFractionalStock:false,quantityScale:0,purchaseUnit:"CASE",unitsPerPurchaseUnit:"24",active:false,starterShackRequestEligible:false}] },
     ]}/>);
     expect(screen.getByRole("tab", { name: "Beer" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Beer" })).toHaveTextContent("1");
+    expect(screen.queryByText(/order 1/)).not.toBeInTheDocument();
     expect(screen.getByText("Inactive")).toBeInTheDocument();
     expect(screen.queryByText(/^ID /)).not.toBeInTheDocument();
     expect(screen.queryByText("Bar only")).not.toBeInTheDocument();
@@ -50,5 +54,33 @@ describe("ProductCategoryTabs", () => {
     fireEvent.click(partial);
     expect(scale).toHaveAttribute("value", "2");
     expect(screen.getByText(/use 2 decimal places/)).toBeInTheDocument();
+  });
+
+  it("indicates notes and opens newest-first note history with add and delete controls", () => {
+    render(<ProductCategoryTabs canManageCatalog categories={[{ id:"beer",name:"Beer",displayOrder:1,active:true,products:[{id:"can",name:"Club Lager",categoryId:"beer",packageSize:"355 mL",stockUnit:"CAN",stockUnitLabel:null,allowFractionalStock:false,quantityScale:0,purchaseUnit:"CASE",unitsPerPurchaseUnit:"24",active:true,starterShackRequestEligible:true,notes:[{id:"new",body:"Newest note",createdAt:"2026-08-30T20:00:00.000Z",author:"Alex"},{id:"old",body:"Older note",createdAt:"2026-08-29T20:00:00.000Z",author:"Sam"}]}] }]}/>);
+    const notesButton = screen.getByRole("button", { name: "Notes (2)" });
+    expect(notesButton).toHaveClass("has-notes");
+    fireEvent.click(notesButton);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Note" })).toBeInTheDocument();
+    expect(screen.getAllByRole("article").map((note) => note.textContent)).toEqual([expect.stringContaining("Newest note"), expect.stringContaining("Older note")]);
+    expect(screen.getByRole("button", { name: "Delete note from Alex" })).toBeInTheDocument();
+  });
+
+  it("opens the category supplied after a server-action redirect", () => {
+    render(<ProductCategoryTabs initialCategoryId="beer" categories={[{ id:"wine",name:"Wine",displayOrder:1,active:true,products:[] },{ id:"beer",name:"Beer",displayOrder:2,active:true,products:[] }]}/>);
+    expect(screen.getByRole("tab", { name: "Beer" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("offers controlled purchasing units and requires the matching conversion", () => {
+    render(<ProductCategoryTabs canManageCatalog categories={[{ id:"beer",name:"Beer",displayOrder:1,active:true,products:[] }]}/>);
+    fireEvent.click(screen.getByRole("button", { name: "Add Product" }));
+    const purchasedBy = screen.getByLabelText("Purchased by");
+    const conversion = screen.getByLabelText(/Units in one case\/package/);
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(expect.arrayContaining(["Not specified", "CASE", "BOTTLE", "BOX", "OTHER"]));
+    expect(conversion).toBeDisabled();
+    fireEvent.change(purchasedBy, { target: { value: "BOX" } });
+    expect(conversion).toBeEnabled();
+    expect(conversion).toBeRequired();
   });
 });
