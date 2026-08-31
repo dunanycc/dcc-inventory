@@ -7,6 +7,14 @@
 .inactive-row { background: #f4f5f3; color: #687169; }
 .product-row-actions form { display: inline-flex; }
 .compact-action { min-height: 32px; padding: .35rem .65rem; }
+.reorder-column { padding-left: .45rem !important; padding-right: .2rem !important; text-align: center !important; width: 42px; }
+.drag-handle { align-items: center; background: transparent; border: 0; border-radius: 6px; color: #718078; cursor: grab; display: inline-flex; height: 30px; justify-content: center; padding: 4px; width: 30px; }
+.drag-handle:hover, .drag-handle:focus-visible { background: var(--green-100); color: var(--green-800); outline: none; }
+.drag-handle:active { cursor: grabbing; }
+.drag-handle svg { fill: none; height: 18px; stroke: currentColor; stroke-linecap: round; stroke-width: 1.8; width: 18px; }
+.dragging-row { opacity: .45; }
+.product-order-status { color: var(--muted); display: block; font-size: .72rem; min-height: 1em; }
+.sr-only { height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .notes-button.has-notes { background: var(--green-100); border-color: #9ebbac; color: var(--green-800); font-weight: 750; }
 .product-editor { background: #f5f8f6; border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); padding: 1rem 1.25rem; }
 .product-editor h3 { margin: 0 0 .8rem; }

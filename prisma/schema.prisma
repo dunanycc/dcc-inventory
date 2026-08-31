@@ -88,6 +88,7 @@ model Product {
   legacyProductId             String?             @unique
   name                        String
   categoryId                  String              @db.Uuid
+  displayOrder               Int                 @default(0)
   stockUnit                   StockUnit
   stockUnitLabel              String?
   allowFractionalStock        Boolean             @default(false)
@@ -110,7 +111,7 @@ model Product {
   deliveryLines               DeliveryLine[]
 
   @@unique([sourceSystem, sourceId])
-  @@index([categoryId, active, name])
+  @@index([categoryId, active, displayOrder])
 }
 
 model ProductNote {

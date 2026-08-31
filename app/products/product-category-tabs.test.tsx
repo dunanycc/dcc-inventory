@@ -8,6 +8,7 @@ vi.mock("@/app/(protected)/products/actions", () => ({
   deleteProductNoteAction: vi.fn(),
   updateProductAction: vi.fn(),
   setProductActiveAction: vi.fn(),
+  reorderProductsAction: vi.fn().mockResolvedValue({ ok: true, message: "Product order saved." }),
 }));
 afterEach(cleanup);
 
@@ -82,5 +83,14 @@ describe("ProductCategoryTabs", () => {
     fireEvent.change(purchasedBy, { target: { value: "BOX" } });
     expect(conversion).toBeEnabled();
     expect(conversion).toBeRequired();
+  });
+
+  it("reorders products with accessible drag handles", () => {
+    render(<ProductCategoryTabs canManageCatalog categories={[{ id:"beer",name:"Beer",displayOrder:1,active:true,products:[
+      {id:"first",name:"First",categoryId:"beer",packageSize:null,stockUnit:"CAN",stockUnitLabel:null,allowFractionalStock:false,quantityScale:0,purchaseUnit:null,unitsPerPurchaseUnit:null,active:true,starterShackRequestEligible:false},
+      {id:"second",name:"Second",categoryId:"beer",packageSize:null,stockUnit:"CAN",stockUnitLabel:null,allowFractionalStock:false,quantityScale:0,purchaseUnit:null,unitsPerPurchaseUnit:null,active:true,starterShackRequestEligible:false},
+    ] }]}/>);
+    fireEvent.keyDown(screen.getByRole("button", { name: /Reorder Second/ }), { key: "ArrowUp" });
+    expect(screen.getAllByRole("row").slice(1).map((row) => row.textContent)).toEqual([expect.stringContaining("Second"), expect.stringContaining("First")]);
   });
 });

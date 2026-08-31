@@ -31,7 +31,10 @@ const repository: ProductRepository = {
       ]);
       return Boolean(movement || requestLine);
     },
-    createProduct: async (input) => managedProduct(await transaction.product.create({ data: input, select: productSelect })),
+    createProduct: async (input) => {
+      const last = await transaction.product.aggregate({ where: { categoryId: input.categoryId }, _max: { displayOrder: true } });
+      return managedProduct(await transaction.product.create({ data: { ...input, displayOrder: (last._max.displayOrder ?? -1) + 1 }, select: productSelect }));
+    },
     configureAvailability: async (productId, starterShackEligible) => {
       const [bar, shack] = await Promise.all([
         transaction.location.findUnique({ where: { code: "BAR" }, select: { id: true, active: true } }),
@@ -154,4 +157,32 @@ export async function deleteProductNoteAction(formData: FormData) {
     if (!note) throw new ProductManagementError("NO_CHANGE");
     await prisma.productNote.delete({ where: { id: note.id } });
   }, "Note deleted.", String(formData.get("categoryId") ?? ""));
+}
+
+export async function reorderProductsAction(formData: FormData) {
+  const actor = await currentUser();
+  if (!actor) return { ok: false, message: messages.FORBIDDEN };
+  const categoryId = String(formData.get("categoryId") ?? "");
+  let productIds: string[];
+  try {
+    const value = JSON.parse(String(formData.get("productIds") ?? "[]"));
+    if (!Array.isArray(value) || value.some((id) => typeof id !== "string") || new Set(value).size !== value.length) throw new Error("Invalid order");
+    productIds = value;
+  } catch {
+    return { ok: false, message: messages.INVALID_INPUT };
+  }
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const freshActor = await transaction.user.findUnique({ where: { id: actor.id }, select: actorSelect });
+      if (!freshActor || freshActor.status !== "ACTIVE" || !hasPermission(freshActor.role, "catalog:manage")) throw new ProductManagementError("FORBIDDEN");
+      const products = await transaction.product.findMany({ where: { categoryId }, select: { id: true } });
+      if (products.length !== productIds.length || products.some((product) => !productIds.includes(product.id))) throw new ProductManagementError("INVALID_INPUT");
+      for (const [displayOrder, id] of productIds.entries()) await transaction.product.update({ where: { id }, data: { displayOrder } });
+    }, { isolationLevel: "Serializable" });
+    ["/products", "/inventory", "/deliveries", "/requests"].forEach((path) => revalidatePath(path));
+    return { ok: true, message: "Product order saved." };
+  } catch (error) {
+    const code = errorCode(error);
+    return { ok: false, message: messages[code] ?? messages.FAILED };
+  }
 }

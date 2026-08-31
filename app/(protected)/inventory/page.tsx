@@ -5,6 +5,7 @@ import { hasPermission } from "@/lib/authorization";
 import { CATEGORY_ORDER_BY } from "@/lib/category-management";
 import { formatStockQuantity, inventoryBalancesForLocation } from "@/lib/inventory-balances";
 import { prisma } from "@/lib/prisma";
+import { PRODUCT_ORDER_BY } from "@/lib/product-order";
 import { requireInventoryWorkspaceUser } from "@/lib/session";
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ location?: string; category?: string; success?: string; error?: string }> }) {
@@ -25,7 +26,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
         name: true,
         products: {
           where: { active: true, productLocations: { some: { locationId: selectedLocation.id, active: true, reviewRequired: false } } },
-          orderBy: [{ name: "asc" }, { id: "asc" }],
+          orderBy: PRODUCT_ORDER_BY,
           select: { id: true, name: true, packageSize: true, stockUnit: true, stockUnitLabel: true, quantityScale: true, inventoryMovements: { where: { type: "OPENING", destinationLocationId: selectedLocation.id }, take: 1, select: { id: true } } },
         },
       },

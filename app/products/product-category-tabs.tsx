@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { addProductNoteAction, createProductAction, deleteProductNoteAction, setProductActiveAction, updateProductAction } from "@/app/(protected)/products/actions";
+import { useMemo, useState, useTransition, type DragEvent } from "react";
+import { addProductNoteAction, createProductAction, deleteProductNoteAction, reorderProductsAction, setProductActiveAction, updateProductAction } from "@/app/(protected)/products/actions";
 import { STOCK_UNITS, type ProductStockUnit } from "@/lib/product-management";
 
-export type ProductRow = { id: string; name: string; categoryId: string; packageSize: string | null; stockUnit: ProductStockUnit; stockUnitLabel: string | null; allowFractionalStock: boolean; quantityScale: number; purchaseUnit: string | null; unitsPerPurchaseUnit: string | null; active: boolean; starterShackRequestEligible: boolean; notes?: Array<{ id: string; body: string; createdAt: string; author: string }> };
+export type ProductRow = { id: string; name: string; categoryId: string; displayOrder?: number; packageSize: string | null; stockUnit: ProductStockUnit; stockUnitLabel: string | null; allowFractionalStock: boolean; quantityScale: number; purchaseUnit: string | null; unitsPerPurchaseUnit: string | null; active: boolean; starterShackRequestEligible: boolean; notes?: Array<{ id: string; body: string; createdAt: string; author: string }> };
 export type ProductCategoryRow = { id: string; name: string; displayOrder: number; active: boolean; products: ProductRow[] };
 
 function ProductFields({ product, categories, defaultCategoryId }: { product?: ProductRow; categories: ProductCategoryRow[]; defaultCategoryId: string }) {
@@ -33,22 +33,56 @@ export function ProductCategoryTabs({ categories, canManageCatalog = false, init
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notesId, setNotesId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [productOrders, setProductOrders] = useState<Record<string, ProductRow[]>>(() => Object.fromEntries(categories.map((category) => [category.id, category.products])));
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [orderMessage, setOrderMessage] = useState("");
+  const [isSavingOrder, startSavingOrder] = useTransition();
   const selected = useMemo(() => categories.find((category) => category.id === selectedId) ?? categories[0], [categories, selectedId]);
+  const selectedProducts = selected ? productOrders[selected.id] ?? selected.products : [];
+  function saveOrder(products: ProductRow[]) {
+    if (!selected) return;
+    setProductOrders((current) => ({ ...current, [selected.id]: products }));
+    setOrderMessage("Saving order…");
+    const formData = new FormData();
+    formData.set("categoryId", selected.id);
+    formData.set("productIds", JSON.stringify(products.map((product) => product.id)));
+    startSavingOrder(async () => {
+      const result = await reorderProductsAction(formData);
+      if (!result.ok) setProductOrders((current) => ({ ...current, [selected.id]: selectedProducts }));
+      setOrderMessage(result.message);
+    });
+  }
+  function moveProduct(productId: string, targetId: string) {
+    if (productId === targetId) return;
+    const next = [...selectedProducts];
+    const from = next.findIndex((product) => product.id === productId);
+    const to = next.findIndex((product) => product.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    saveOrder(next);
+  }
+  function moveProductBy(productId: string, offset: number) {
+    const index = selectedProducts.findIndex((product) => product.id === productId);
+    const target = selectedProducts[index + offset];
+    if (target) moveProduct(productId, target.id);
+  }
   if (!selected) return <section className="empty-panel"><h2>No categories yet</h2><p>Create or import a Category in Admin before adding Products.</p></section>;
   return <section className="catalog-panel">
     <div className="category-tabs" role="tablist" aria-label="Product categories">{categories.map((category) => <button key={category.id} role="tab" aria-selected={selected.id === category.id} className={selected.id === category.id ? "active" : ""} onClick={() => { setSelectedId(category.id); setEditingId(null); setCreating(false); }}>{category.name}<span aria-hidden="true" className="category-count">{category.products.length}</span>{!category.active && <small>Inactive</small>}</button>)}</div>
-    <div className="table-toolbar"><div><h2>{selected.name}</h2></div><div className="product-toolbar-actions"><span className={`status-pill ${selected.active ? "" : "muted-pill"}`}>{selected.active ? "Active category" : "Inactive category"}</span>{canManageCatalog && <button className="admin-primary" onClick={() => setCreating((value) => !value)} type="button">{creating ? "Cancel" : "Add Product"}</button>}</div></div>
+    <div className="table-toolbar"><div><h2>{selected.name}</h2>{canManageCatalog && <small aria-live="polite" className="product-order-status">{isSavingOrder ? "Saving order…" : orderMessage}</small>}</div><div className="product-toolbar-actions"><span className={`status-pill ${selected.active ? "" : "muted-pill"}`}>{selected.active ? "Active category" : "Inactive category"}</span>{canManageCatalog && <button className="admin-primary" onClick={() => setCreating((value) => !value)} type="button">{creating ? "Cancel" : "Add Product"}</button>}</div></div>
     {creating && <form action={createProductAction} className="product-editor"><h3>New Product</h3><ProductFields categories={categories} defaultCategoryId={selected.id}/><div className="product-editor-actions"><button className="admin-primary" type="submit">Create Product</button></div></form>}
-    {selected.products.length === 0 ? <div className="empty-inline">No Products in this category.</div> : <div className="table-scroll"><table className="product-table product-admin-table"><thead><tr><th>Product</th><th>Starter Shack</th><th>Status</th>{canManageCatalog && <th>Actions</th>}</tr></thead><tbody>{selected.products.map((product) => <ProductTableRow key={product.id} product={product} canManageCatalog={canManageCatalog} onEdit={() => setEditingId(product.id)} onNotes={() => setNotesId(product.id)}/>)}</tbody></table></div>}
-    {editingId && <ProductEditDialog categories={categories} product={selected.products.find((product) => product.id === editingId)} onClose={() => setEditingId(null)}/>}
-    {notesId && <ProductNotesDialog product={selected.products.find((product) => product.id === notesId)} onClose={() => setNotesId(null)}/>}
+    {selectedProducts.length === 0 ? <div className="empty-inline">No Products in this category.</div> : <div className="table-scroll"><table className="product-table product-admin-table"><thead><tr>{canManageCatalog && <th className="reorder-column"><span className="sr-only">Order</span></th>}<th>Product</th><th>Starter Shack</th><th>Status</th>{canManageCatalog && <th>Actions</th>}</tr></thead><tbody>{selectedProducts.map((product) => <ProductTableRow dragging={draggingId === product.id} key={product.id} product={product} canManageCatalog={canManageCatalog} onDragEnd={() => setDraggingId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggingId) moveProduct(draggingId, product.id); setDraggingId(null); }} onEdit={() => setEditingId(product.id)} onMove={(offset) => moveProductBy(product.id, offset)} onNotes={() => setNotesId(product.id)} onDragStart={() => setDraggingId(product.id)}/>)}</tbody></table></div>}
+    {editingId && <ProductEditDialog categories={categories} product={selectedProducts.find((product) => product.id === editingId)} onClose={() => setEditingId(null)}/>}
+    {notesId && <ProductNotesDialog product={selectedProducts.find((product) => product.id === notesId)} onClose={() => setNotesId(null)}/>}
   </section>;
 }
 
-function ProductTableRow({ product, canManageCatalog, onEdit, onNotes }: { product: ProductRow; canManageCatalog: boolean; onEdit(): void; onNotes(): void }) {
+function ProductTableRow({ product, canManageCatalog, dragging, onDragEnd, onDragOver, onDragStart, onDrop, onEdit, onMove, onNotes }: { product: ProductRow; canManageCatalog: boolean; dragging: boolean; onDragEnd(): void; onDragOver(event: DragEvent): void; onDragStart(): void; onDrop(): void; onEdit(): void; onMove(offset: number): void; onNotes(): void }) {
   const unitLabel = product.stockUnit === "OTHER" ? product.stockUnitLabel : product.stockUnit;
   const details = [unitLabel, product.packageSize, product.purchaseUnit && product.unitsPerPurchaseUnit ? `${product.unitsPerPurchaseUnit} per ${product.purchaseUnit}` : null, product.allowFractionalStock ? `${product.quantityScale} decimal places` : null].filter(Boolean).join(" · ");
-  return <tr className={product.active ? "" : "inactive-row"}>
+  return <tr className={`${product.active ? "" : "inactive-row"} ${dragging ? "dragging-row" : ""}`} onDragOver={onDragOver} onDrop={onDrop}>
+    {canManageCatalog && <td className="reorder-column"><button aria-label={`Reorder ${product.name}. Use arrow keys or drag.`} className="drag-handle" draggable onDragEnd={onDragEnd} onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; onDragStart(); }} onKeyDown={(event) => { if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); onMove(event.key === "ArrowUp" ? -1 : 1); } }} title="Drag to reorder"><svg aria-hidden="true" viewBox="0 0 18 18"><path d="M4 5h10M4 9h10M4 13h10"/></svg></button></td>}
     <td><strong>{product.name}</strong>{details && <span className="product-inline-details">{details}</span>}</td><td>{product.starterShackRequestEligible ? <span className="availability-pill available">Available</span> : null}</td><td><span className={`status-dot ${product.active ? "on" : ""}`}/>{product.active ? "Active" : "Inactive"}</td>
     {canManageCatalog && <td><div className="product-row-actions"><button className="admin-secondary compact-action" onClick={onEdit} type="button">Edit</button><button className={`admin-secondary compact-action notes-button ${product.notes?.length ? "has-notes" : ""}`} onClick={onNotes} type="button">Notes{product.notes?.length ? ` (${product.notes.length})` : ""}</button></div></td>}
   </tr>;
