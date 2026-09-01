@@ -13,20 +13,28 @@ describe("DeliveryHistory", () => {
       <DeliveryHistory
         canEdit
         vendors={[{ id: "vendor", name: "Molson" }]}
-        products={[
+        categories={[
           {
-            id: "guinness",
-            name: "Guinness",
-            purchaseUnit: "CASE",
-            unitsPerPurchaseUnit: "24",
-            unit: "CAN",
-          },
-          {
-            id: "harp",
-            name: "Harp",
-            purchaseUnit: null,
-            unitsPerPurchaseUnit: null,
-            unit: "CAN",
+            id: "beer",
+            name: "Beer",
+            products: [
+              {
+                id: "guinness",
+                name: "Guinness",
+                stockUnit: "CAN",
+                quantityScale: 0,
+                purchaseUnit: "CASE",
+                unitsPerPurchaseUnit: "24",
+              },
+              {
+                id: "harp",
+                name: "Harp",
+                stockUnit: "CAN",
+                quantityScale: 0,
+                purchaseUnit: null,
+                unitsPerPurchaseUnit: null,
+              },
+            ],
           },
         ]}
         deliveries={[
@@ -77,5 +85,89 @@ describe("DeliveryHistory", () => {
     expect(
       screen.getByRole("button", { name: "Save Delivery" }),
     ).toBeInTheDocument();
+  });
+
+  it("groups editor products by category and highlights lines with a quantity", () => {
+    render(
+      <DeliveryHistory
+        canEdit
+        vendors={[{ id: "vendor", name: "Molson" }]}
+        categories={[
+          {
+            id: "wine",
+            name: "Wine",
+            products: [
+              {
+                id: "red",
+                name: "Red wine",
+                stockUnit: "BOTTLE",
+                quantityScale: 0,
+                purchaseUnit: null,
+                unitsPerPurchaseUnit: null,
+              },
+            ],
+          },
+          {
+            id: "beer",
+            name: "Beer",
+            products: [
+              {
+                id: "guinness",
+                name: "Guinness",
+                stockUnit: "CAN",
+                quantityScale: 0,
+                purchaseUnit: null,
+                unitsPerPurchaseUnit: null,
+              },
+            ],
+          },
+        ]}
+        deliveries={[
+          {
+            id: "delivery",
+            deliveryDate: "2026-09-01",
+            vendorId: "vendor",
+            vendorName: "Molson",
+            notes: null,
+            recordedBy: "Jayem",
+            recordedAt: "2026-09-01T15:00:00.000Z",
+            lines: [
+              {
+                id: "line",
+                productId: "guinness",
+                productName: "Guinness",
+                entryQuantity: "6",
+                quantity: "6",
+                purchaseUnit: null,
+                unitsPerPurchaseUnit: null,
+                unit: "CAN",
+                active: true,
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit Delivery" }));
+    // Defaults to the category that already has a delivered quantity.
+    expect(
+      screen.getByLabelText("Delivered quantity for Guinness"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Delivered quantity for Red wine"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Delivered quantity for Guinness").closest("label"),
+    ).toHaveClass("has-quantity");
+    fireEvent.click(screen.getByRole("tab", { name: "Wine" }));
+    expect(
+      screen.getByLabelText("Delivered quantity for Red wine"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Delivered quantity for Guinness"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Delivered quantity for Red wine").closest("label"),
+    ).not.toHaveClass("has-quantity");
   });
 });

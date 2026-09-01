@@ -118,15 +118,6 @@ export default async function DeliveriesPage({
     })),
   }));
   const canPost = hasPermission(actor.role, "operations:post");
-  const deliveryProducts = rows.flatMap((category) =>
-    category.products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      unit: product.stockUnit,
-      purchaseUnit: product.purchaseUnit,
-      unitsPerPurchaseUnit: product.unitsPerPurchaseUnit,
-    })),
-  );
   return (
     <>
       <PageHeading
@@ -151,8 +142,8 @@ export default async function DeliveriesPage({
         <h2>Recent Deliveries</h2>
         <DeliveryHistory
           canEdit={canPost}
+          categories={rows}
           deliveries={historyRows}
-          products={deliveryProducts}
           vendors={vendors.map(({ id, name }) => ({ id, name }))}
         />
       </section>

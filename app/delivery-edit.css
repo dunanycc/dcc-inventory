@@ -29,10 +29,13 @@
   min-height: 38px;
   padding: 0.45rem 0.6rem;
 }
-.delivery-edit-lines {
+.delivery-edit-catalog {
   border: 1px solid var(--line);
   border-radius: 9px;
   overflow: hidden;
+}
+.delivery-edit-catalog .category-tabs {
+  border-radius: 9px 9px 0 0;
 }
 .delivery-edit-lines > div,
 .delivery-edit-lines > label {
@@ -50,6 +53,9 @@
 }
 .delivery-edit-lines > label {
   border-top: 1px solid var(--row-border);
+}
+.delivery-edit-lines > label.has-quantity {
+  background: var(--green-100);
 }
 .delivery-edit-lines label > span {
   display: grid;

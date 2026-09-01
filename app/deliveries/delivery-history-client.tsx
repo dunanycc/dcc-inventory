@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateDeliveryAction } from "@/app/(protected)/deliveries/actions";
+import type { DeliveryCategory } from "@/app/deliveries/delivery-client";
 
 export type DeliveryHistoryRow = {
   id: string;
@@ -24,23 +25,15 @@ export type DeliveryHistoryRow = {
   }>;
 };
 
-type DeliveryProduct = {
-  id: string;
-  name: string;
-  purchaseUnit: string | null;
-  unitsPerPurchaseUnit: string | null;
-  unit: string;
-};
-
 export function DeliveryHistory({
   canEdit,
+  categories,
   deliveries,
-  products,
   vendors,
 }: {
   canEdit: boolean;
+  categories: DeliveryCategory[];
   deliveries: DeliveryHistoryRow[];
-  products: DeliveryProduct[];
   vendors: Array<{ id: string; name: string }>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,9 +95,9 @@ export function DeliveryHistory({
       )}
       {delivery && (
         <DeliveryEditDialog
+          categories={categories}
           delivery={delivery}
           onClose={() => setEditingId(null)}
-          products={products}
           vendors={vendors}
         />
       )}
@@ -113,33 +106,45 @@ export function DeliveryHistory({
 }
 
 function DeliveryEditDialog({
+  categories,
   delivery,
   onClose,
-  products,
   vendors,
 }: {
+  categories: DeliveryCategory[];
   delivery: DeliveryHistoryRow;
   onClose(): void;
-  products: DeliveryProduct[];
   vendors: Array<{ id: string; name: string }>;
 }) {
   const existingByProduct = new Map(
     delivery.lines.map((line) => [line.productId, line]),
   );
-  const editorProducts = [
-    ...products,
-    ...delivery.lines
-      .filter(
-        (line) => !products.some((product) => product.id === line.productId),
-      )
-      .map((line) => ({
-        id: line.productId,
-        name: line.productName,
-        purchaseUnit: line.purchaseUnit,
-        unitsPerPurchaseUnit: line.unitsPerPurchaseUnit,
-        unit: line.unit,
-      })),
-  ];
+  const orphanLines = delivery.lines.filter(
+    (line) =>
+      !categories.some((category) =>
+        category.products.some((product) => product.id === line.productId),
+      ),
+  );
+  const editorCategories: DeliveryCategory[] = orphanLines.length
+    ? [
+        ...categories,
+        {
+          id: "__other__",
+          name: "Other",
+          products: orphanLines.map((line) => ({
+            id: line.productId,
+            name: line.productName,
+            stockUnit: line.unit,
+            quantityScale: 0,
+            purchaseUnit: line.purchaseUnit,
+            unitsPerPurchaseUnit: line.unitsPerPurchaseUnit,
+          })),
+        },
+      ]
+    : categories;
+  const editorProducts = editorCategories.flatMap(
+    (category) => category.products,
+  );
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       editorProducts.map((product) => {
@@ -148,6 +153,18 @@ function DeliveryEditDialog({
       }),
     ),
   );
+  const [selectedCategoryId, setSelectedCategoryId] = useState(() => {
+    const withExisting = editorCategories.find((category) =>
+      category.products.some((product) => {
+        const line = existingByProduct.get(product.id);
+        return line?.active && Number(line.entryQuantity) > 0;
+      }),
+    );
+    return (withExisting ?? editorCategories[0])?.id ?? "";
+  });
+  const selectedCategory =
+    editorCategories.find((category) => category.id === selectedCategoryId) ??
+    editorCategories[0];
   const items = editorProducts.map((product) => ({
     productId: product.id,
     quantity: quantities[product.id] ?? "0",
@@ -214,37 +231,67 @@ function DeliveryEditDialog({
               />
             </label>
           </div>
-          <div className="delivery-edit-lines">
-            <div>
-              <span>Product</span>
-              <span>Quantity</span>
+          <div className="delivery-edit-catalog">
+            <div
+              aria-label="Product categories"
+              className="category-tabs"
+              role="tablist"
+            >
+              {editorCategories.map((category) => (
+                <button
+                  aria-selected={selectedCategoryId === category.id}
+                  className={selectedCategoryId === category.id ? "active" : ""}
+                  key={category.id}
+                  onClick={() => setSelectedCategoryId(category.id)}
+                  role="tab"
+                  type="button"
+                >
+                  {category.name}
+                  <span aria-hidden="true" className="category-count">
+                    {category.products.length}
+                  </span>
+                </button>
+              ))}
             </div>
-            {editorProducts.map((product) => (
-              <label key={product.id}>
-                <span>
-                  <strong>{product.name}</strong>
-                  <small>
-                    {product.purchaseUnit ?? product.unit}
-                    {product.unitsPerPurchaseUnit
-                      ? ` · ${product.unitsPerPurchaseUnit} ${product.unit} each`
-                      : ""}
-                  </small>
-                </span>
-                <input
-                  aria-label={`Delivered quantity for ${product.name}`}
-                  min="0"
-                  onChange={(event) =>
-                    setQuantities({
-                      ...quantities,
-                      [product.id]: event.target.value,
-                    })
+            <div className="delivery-edit-lines">
+              <div>
+                <span>Product</span>
+                <span>Quantity</span>
+              </div>
+              {selectedCategory?.products.map((product) => (
+                <label
+                  className={
+                    Number(quantities[product.id] ?? "0") > 0
+                      ? "has-quantity"
+                      : ""
                   }
-                  step="any"
-                  type="number"
-                  value={quantities[product.id] ?? "0"}
-                />
-              </label>
-            ))}
+                  key={product.id}
+                >
+                  <span>
+                    <strong>{product.name}</strong>
+                    <small>
+                      {product.purchaseUnit ?? product.stockUnit}
+                      {product.unitsPerPurchaseUnit
+                        ? ` · ${product.unitsPerPurchaseUnit} ${product.stockUnit} each`
+                        : ""}
+                    </small>
+                  </span>
+                  <input
+                    aria-label={`Delivered quantity for ${product.name}`}
+                    min="0"
+                    onChange={(event) =>
+                      setQuantities({
+                        ...quantities,
+                        [product.id]: event.target.value,
+                      })
+                    }
+                    step="any"
+                    type="number"
+                    value={quantities[product.id] ?? "0"}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         </form>
         <div className="product-dialog-actions">
