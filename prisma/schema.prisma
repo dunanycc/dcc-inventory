@@ -40,6 +40,7 @@ enum StockRequestStatus {
   SUBMITTED
   PARTIALLY_GIVEN
   GIVEN
+  CLOSED
   CANCELLED
 }
 
@@ -250,6 +251,7 @@ model StockRequest {
   requestedAt   DateTime           @default(now())
   status        StockRequestStatus @default(SUBMITTED)
   notes         String?
+  closureComment String?
   requestedById String             @db.Uuid
   createdAt     DateTime           @default(now())
   completedAt   DateTime?
@@ -262,6 +264,13 @@ model StockRequest {
   @@unique([sourceSystem, sourceId])
   @@index([requestedById, requestedAt])
   @@index([status, requestedAt])
+}
+
+model StockRequestNotificationSettings {
+  id                     String   @id @default("default")
+  orderNotificationEmail String?
+  requestorEmail         String?
+  updatedAt              DateTime @updatedAt
 }
 
 model StockRequestLine {

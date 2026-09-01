@@ -61,5 +61,24 @@
 .delivery-summary li small { color: var(--muted); font-size: .78rem; }
 .delivery-remove-item { align-items: center; background: transparent; border: 0; border-radius: 50%; color: #9a3d36; cursor: pointer; display: inline-flex; font-size: 1.25rem; height: 28px; justify-content: center; padding: 0; width: 28px; }
 .delivery-remove-item:hover, .delivery-remove-item:focus-visible { background: #f8e9e7; }
+.request-email-settings { align-items: end; background: #fff; border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr auto; margin-bottom: 12px; padding: 12px 14px; }
+.request-email-settings label { display: grid; font-size: .72rem; font-weight: 750; gap: 4px; }
+.request-email-settings input { border: 1px solid #b8c4bc; border-radius: 7px; min-height: 36px; padding: .4rem .65rem; }
+.request-email-settings > small { color: var(--muted); grid-column: 1 / -1; }
+.fulfillment-toolbar { align-items: center; display: flex; font-size: .82rem; justify-content: space-between; margin: 0 0 10px; }
+.fulfillment-card header { padding-bottom: 9px; padding-top: 9px; }
+.fulfillment-card .request-table th, .fulfillment-card .request-table td { padding-bottom: 7px; padding-top: 7px; }
+.fulfillment-card-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 12px; }
+.request-action-button { background: var(--green-800); border: 1px solid var(--green-800); border-radius: 7px; color: #fff; cursor: pointer; font-weight: 750; min-height: 38px; min-width: 112px; padding: 8px 12px; }
+.request-action-button:hover, .request-action-button:focus-visible { background: var(--green-950); border-color: var(--green-950); }
+.request-action-button:disabled { cursor: default; opacity: .5; }
+.request-status.closed, .request-status.cancelled { background: #eef0ee; color: #626963; }
+.completed-request { opacity: .82; }
+.compact-empty { padding: 24px; }
+.request-closure-comment { background: #f4f7f5; border-top: 1px solid var(--line); font-size: .8rem; margin: 0; padding: 10px 12px; }
+.request-closure-dialog-body { padding: 18px 20px; }
+.request-closure-dialog-body label { display: grid; font-size: .8rem; font-weight: 750; gap: 6px; }
+.request-closure-dialog-body textarea { border: 1px solid #b8c4bc; border-radius: 7px; font: inherit; min-height: 76px; padding: 9px 10px; resize: vertical; }
+@media (max-width: 760px) { .request-email-settings { grid-template-columns: 1fr; } .fulfillment-card-actions { align-items: stretch; flex-direction: column; } }
 @media (max-width: 760px) { .product-form-grid > label:not(.product-check), .product-form-grid > label:nth-of-type(n+5):nth-of-type(-n+7) { grid-column: span 6; } }
 @media (max-width: 620px) { .product-form-grid > label:not(.product-check), .product-form-grid > label:nth-of-type(n+5):nth-of-type(-n+7) { grid-column: 1 / -1; } .product-form-options { flex-direction: column; gap: .75rem; } .table-toolbar { align-items: stretch; flex-direction: column; } .product-toolbar-actions { justify-content: space-between; } .product-dialog-actions { align-items: stretch; flex-direction: column-reverse; gap: .75rem; } .product-dialog-actions form, .product-dialog-actions button { width: 100%; } .add-note-form { grid-template-columns: 1fr; } }

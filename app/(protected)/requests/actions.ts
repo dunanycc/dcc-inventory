@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { Prisma } from "@/app/generated/prisma/client";
 import { hasPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { notifyNewStockRequest, notifyStockRequestCompleted } from "@/lib/request-notifications";
 import { currentUser } from "@/lib/session";
 import { deriveRequestStatus, StockRequestError, validateFulfillment, validateRequestSubmission, type RequestProduct } from "@/lib/stock-request";
 
@@ -31,6 +33,8 @@ const messages: Record<string, string> = {
   NOT_FOUND: "The request or request line no longer exists.", NOT_OPEN: "This request is no longer open.", OVER_FULFILLMENT: "A quantity exceeds what remains on the request.",
   INSUFFICIENT_STOCK: "There is not enough tracked Bar inventory to give that quantity.", CONFLICT: "The request changed at the same time. Refresh and try again.", FAILED: "The request could not be saved.",
 };
+
+const optionalEmail = z.union([z.literal(""), z.email().max(320)]);
 
 function errorCode(error: unknown) {
   if (error instanceof StockRequestError) return error.code;
@@ -61,6 +65,8 @@ export async function submitStockRequestAction(formData: FormData) {
       const validated = validateRequestSubmission(freshActor, raw, new Map(freshProducts.map((product) => [product.id, productShape(product)])));
       await transaction.stockRequest.create({ data: { requestedById: freshActor.id, notes: notes || null, lines: { create: validated.map((item) => ({ productId: item.productId, requestedQuantity: item.quantity })) } } });
     }, { isolationLevel: "Serializable" });
+    const settings = await prisma.stockRequestNotificationSettings.findUnique({ where: { id: "default" }, select: { orderNotificationEmail: true } });
+    try { await notifyNewStockRequest(settings?.orderNotificationEmail ?? null, actor.name || actor.email); } catch (error) { console.error("New stock request email failed", error); }
     revalidatePath("/requests");
     target = destination("status", "success", "Request submitted to the Bar.");
   } catch (error) { target = destination("new", "error", messages[errorCode(error)] ?? messages.FAILED); }
@@ -74,7 +80,7 @@ export async function fulfillStockRequestAction(formData: FormData) {
     const actor = await currentUser();
     if (!actor) throw new StockRequestError("FORBIDDEN");
     const raw = parseEntries(formData.get("items"), "lineId").filter((item) => item.quantity && !/^0+(?:\.0+)?$/.test(item.quantity));
-    await prisma.$transaction(async (transaction) => {
+    const finalStatus = await prisma.$transaction(async (transaction) => {
       const freshActor = await transaction.user.findUnique({ where: { id: actor.id }, select: { id: true, role: true, status: true } });
       const request = await transaction.stockRequest.findUnique({ where: { id: requestId }, include: { lines: { include: { product: { include: { productLocations: { include: { location: { select: { code: true, active: true } } } } } } } } } });
       if (!freshActor) throw new StockRequestError("FORBIDDEN");
@@ -104,7 +110,12 @@ export async function fulfillStockRequestAction(formData: FormData) {
       const updated = await transaction.stockRequestLine.findMany({ where: { stockRequestId: request.id }, select: { requestedQuantity: true, quantityGiven: true } });
       const status = deriveRequestStatus(updated.map((line) => ({ requestedQuantity: line.requestedQuantity.toString(), quantityGiven: line.quantityGiven.toString() })));
       await transaction.stockRequest.update({ where: { id: request.id }, data: { status, completedAt: status === "GIVEN" ? now : null } });
+      return status;
     }, { isolationLevel: "Serializable" });
+    if (finalStatus === "GIVEN") {
+      const settings = await prisma.stockRequestNotificationSettings.findUnique({ where: { id: "default" }, select: { requestorEmail: true } });
+      try { await notifyStockRequestCompleted(settings?.requestorEmail ?? null); } catch (error) { console.error("Completed stock request email failed", error); }
+    }
     revalidatePath("/requests"); revalidatePath("/inventory"); revalidatePath("/history");
     target = destination("fulfill", "success", "Stock given and inventory transferred.");
   } catch (error) { target = destination("fulfill", "error", messages[errorCode(error)] ?? messages.FAILED); }
@@ -113,6 +124,7 @@ export async function fulfillStockRequestAction(formData: FormData) {
 
 export async function cancelStockRequestAction(formData: FormData) {
   const requestId = String(formData.get("requestId") ?? "");
+  const closureComment = String(formData.get("closureComment") ?? "").trim();
   let target: string;
   try {
     const actor = await currentUser();
@@ -121,10 +133,55 @@ export async function cancelStockRequestAction(formData: FormData) {
       if (!freshActor || freshActor.status !== "ACTIVE" || !hasPermission(freshActor.role, "operations:post")) throw new StockRequestError("FORBIDDEN");
       const request = await transaction.stockRequest.findUnique({ where: { id: requestId }, select: { status: true } });
       if (!request) throw new StockRequestError("NOT_FOUND");
+      if (!closureComment || closureComment.length > 1000) throw new StockRequestError("INVALID_INPUT");
       if (!["SUBMITTED", "PARTIALLY_GIVEN"].includes(request.status)) throw new StockRequestError("NOT_OPEN");
-      await transaction.stockRequest.update({ where: { id: requestId }, data: { status: "CANCELLED", completedAt: new Date() } });
+      await transaction.stockRequest.update({ where: { id: requestId }, data: { status: "CANCELLED", completedAt: new Date(), closureComment } });
     }, { isolationLevel: "Serializable" });
     revalidatePath("/requests"); target = destination("fulfill", "success", "Request cancelled. Previously given stock was not changed.");
+  } catch (error) { target = destination("fulfill", "error", messages[errorCode(error)] ?? messages.FAILED); }
+  redirect(target);
+}
+
+export async function closeStockRequestAction(formData: FormData) {
+  const requestId = String(formData.get("requestId") ?? "");
+  const closureComment = String(formData.get("closureComment") ?? "").trim();
+  let target: string;
+  try {
+    const actor = await currentUser();
+    await prisma.$transaction(async (transaction) => {
+      const freshActor = actor && await transaction.user.findUnique({ where: { id: actor.id }, select: { id: true, role: true, status: true } });
+      if (!freshActor || freshActor.status !== "ACTIVE" || !hasPermission(freshActor.role, "operations:post")) throw new StockRequestError("FORBIDDEN");
+      const request = await transaction.stockRequest.findUnique({ where: { id: requestId }, select: { status: true } });
+      if (!request) throw new StockRequestError("NOT_FOUND");
+      if (request.status !== "PARTIALLY_GIVEN") throw new StockRequestError("NOT_OPEN");
+      if (!closureComment || closureComment.length > 1000) throw new StockRequestError("INVALID_INPUT");
+      const now = new Date();
+      await transaction.stockRequest.update({ where: { id: requestId }, data: { status: "CLOSED", completedAt: now, closureComment } });
+      await transaction.auditEvent.create({ data: { actorId: freshActor.id, action: "STOCK_REQUEST_CLOSED", entityType: "StockRequest", entityId: requestId, before: { status: request.status }, after: { status: "CLOSED", completedAt: now.toISOString(), closureComment } } });
+    }, { isolationLevel: "Serializable" });
+    revalidatePath("/requests");
+    target = destination("fulfill", "success", "Partially given request closed. Previously given stock was not changed.");
+  } catch (error) { target = destination("fulfill", "error", messages[errorCode(error)] ?? messages.FAILED); }
+  redirect(target);
+}
+
+export async function updateRequestNotificationSettingsAction(formData: FormData) {
+  let target: string;
+  try {
+    const actor = await currentUser();
+    if (!actor || !hasPermission(actor.role, "operations:post")) throw new StockRequestError("FORBIDDEN");
+    const orderNotificationEmail = String(formData.get("orderNotificationEmail") ?? "").trim().toLowerCase();
+    const requestorEmail = String(formData.get("requestorEmail") ?? "").trim().toLowerCase();
+    if (!optionalEmail.safeParse(orderNotificationEmail).success || !optionalEmail.safeParse(requestorEmail).success) throw new StockRequestError("INVALID_INPUT");
+    await prisma.$transaction(async (transaction) => {
+      const freshActor = await transaction.user.findUnique({ where: { id: actor.id }, select: { id: true, role: true, status: true } });
+      if (!freshActor || freshActor.status !== "ACTIVE" || !hasPermission(freshActor.role, "operations:post")) throw new StockRequestError("FORBIDDEN");
+      const before = await transaction.stockRequestNotificationSettings.findUnique({ where: { id: "default" } });
+      const settings = await transaction.stockRequestNotificationSettings.upsert({ where: { id: "default" }, create: { id: "default", orderNotificationEmail: orderNotificationEmail || null, requestorEmail: requestorEmail || null }, update: { orderNotificationEmail: orderNotificationEmail || null, requestorEmail: requestorEmail || null } });
+      await transaction.auditEvent.create({ data: { actorId: freshActor.id, action: "STOCK_REQUEST_NOTIFICATION_SETTINGS_UPDATED", entityType: "StockRequestNotificationSettings", entityId: settings.id, before: before ? { orderNotificationEmail: before.orderNotificationEmail, requestorEmail: before.requestorEmail } : undefined, after: { orderNotificationEmail: settings.orderNotificationEmail, requestorEmail: settings.requestorEmail } } });
+    });
+    revalidatePath("/requests");
+    target = destination("fulfill", "success", "Notification email settings saved.");
   } catch (error) { target = destination("fulfill", "error", messages[errorCode(error)] ?? messages.FAILED); }
   redirect(target);
 }
