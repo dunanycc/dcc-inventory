@@ -50,10 +50,10 @@ async function runCategoryMutation(work: (actor: NonNullable<Awaited<ReturnType<
     await work(actor);
     revalidatePath("/settings");
     revalidatePath("/products");
-    destination = `/settings?tab=imports&success=${encodeURIComponent(success)}`;
+    destination = `/settings?tab=categories&success=${encodeURIComponent(success)}`;
   } catch (error) {
     const code = errorCode(error);
-    destination = `/settings?tab=imports&error=${encodeURIComponent(messages[code] ?? messages.FAILED)}`;
+    destination = `/settings?tab=categories&error=${encodeURIComponent(messages[code] ?? messages.FAILED)}`;
   }
   redirect(destination);
 }
