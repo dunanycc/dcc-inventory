@@ -24,6 +24,16 @@ describe("ProductCategoryTabs", () => {
     expect(screen.getByText("No Products in this category.")).toBeInTheDocument();
   });
 
+  it("does not show deactivated categories", () => {
+    render(<ProductCategoryTabs categories={[
+      { id:"beer",name:"Beer",displayOrder:1,active:true,products:[] },
+      { id:"food",name:"Food",displayOrder:2,active:false,products:[] },
+    ]}/>);
+    expect(screen.getByRole("tab", { name: "Beer" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Food/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Inactive")).not.toBeInTheDocument();
+  });
+
   it("keeps category tabs dominant while exposing compact administration controls", () => {
     render(<ProductCategoryTabs canManageCatalog categories={[
       { id:"beer",name:"Beer",displayOrder:1,active:true,products:[{id:"can",name:"Club Lager",categoryId:"beer",packageSize:"355 mL",stockUnit:"CAN",stockUnitLabel:null,allowFractionalStock:false,quantityScale:0,purchaseUnit:"CASE",unitsPerPurchaseUnit:"24",active:false,starterShackRequestEligible:false}] },

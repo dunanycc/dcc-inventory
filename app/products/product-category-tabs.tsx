@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type DragEvent } from "react";
+import { useState, useTransition, type DragEvent } from "react";
 import { addProductNoteAction, createProductAction, deleteProductNoteAction, reorderProductsAction, setProductActiveAction, updateProductAction } from "@/app/(protected)/products/actions";
 import { STOCK_UNITS, type ProductStockUnit } from "@/lib/product-management";
 
@@ -29,7 +29,8 @@ function ProductFields({ product, categories, defaultCategoryId }: { product?: P
 }
 
 export function ProductCategoryTabs({ categories, canManageCatalog = false, initialCategoryId }: { categories: ProductCategoryRow[]; canManageCatalog?: boolean; initialCategoryId?: string }) {
-  const [selectedId, setSelectedId] = useState(categories.find((category) => category.id === initialCategoryId)?.id ?? categories.find((category) => category.active)?.id ?? categories[0]?.id ?? "");
+  const visibleCategories = categories.filter((category) => category.active);
+  const [selectedId, setSelectedId] = useState(visibleCategories.find((category) => category.id === initialCategoryId)?.id ?? visibleCategories[0]?.id ?? "");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notesId, setNotesId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -37,7 +38,7 @@ export function ProductCategoryTabs({ categories, canManageCatalog = false, init
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [orderMessage, setOrderMessage] = useState("");
   const [isSavingOrder, startSavingOrder] = useTransition();
-  const selected = useMemo(() => categories.find((category) => category.id === selectedId) ?? categories[0], [categories, selectedId]);
+  const selected = visibleCategories.find((category) => category.id === selectedId) ?? visibleCategories[0];
   const selectedProducts = selected ? productOrders[selected.id] ?? selected.products : [];
   function saveOrder(products: ProductRow[]) {
     if (!selected) return;
@@ -69,11 +70,11 @@ export function ProductCategoryTabs({ categories, canManageCatalog = false, init
   }
   if (!selected) return <section className="empty-panel"><h2>No categories yet</h2><p>Create or import a Category in Admin before adding Products.</p></section>;
   return <section className="catalog-panel">
-    <div className="category-tabs" role="tablist" aria-label="Product categories">{categories.map((category) => <button key={category.id} role="tab" aria-selected={selected.id === category.id} className={selected.id === category.id ? "active" : ""} onClick={() => { setSelectedId(category.id); setEditingId(null); setCreating(false); }}>{category.name}<span aria-hidden="true" className="category-count">{category.products.length}</span>{!category.active && <small>Inactive</small>}</button>)}</div>
+    <div className="category-tabs" role="tablist" aria-label="Product categories">{visibleCategories.map((category) => <button key={category.id} role="tab" aria-selected={selected.id === category.id} className={selected.id === category.id ? "active" : ""} onClick={() => { setSelectedId(category.id); setEditingId(null); setCreating(false); }}>{category.name}<span aria-hidden="true" className="category-count">{category.products.length}</span></button>)}</div>
     <div className="table-toolbar"><div><h2>{selected.name}</h2>{canManageCatalog && <small aria-live="polite" className="product-order-status">{isSavingOrder ? "Saving order…" : orderMessage}</small>}</div><div className="product-toolbar-actions"><span className={`status-pill ${selected.active ? "" : "muted-pill"}`}>{selected.active ? "Active category" : "Inactive category"}</span>{canManageCatalog && <button className="admin-primary" onClick={() => setCreating((value) => !value)} type="button">{creating ? "Cancel" : "Add Product"}</button>}</div></div>
-    {creating && <form action={createProductAction} className="product-editor"><h3>New Product</h3><ProductFields categories={categories} defaultCategoryId={selected.id}/><div className="product-editor-actions"><button className="admin-primary" type="submit">Create Product</button></div></form>}
+    {creating && <form action={createProductAction} className="product-editor"><h3>New Product</h3><ProductFields categories={visibleCategories} defaultCategoryId={selected.id}/><div className="product-editor-actions"><button className="admin-primary" type="submit">Create Product</button></div></form>}
     {selectedProducts.length === 0 ? <div className="empty-inline">No Products in this category.</div> : <div className="table-scroll"><table className="product-table product-admin-table"><thead><tr>{canManageCatalog && <th className="reorder-column"><span className="sr-only">Order</span></th>}<th>Product</th><th>Starter Shack</th><th>Status</th>{canManageCatalog && <th>Actions</th>}</tr></thead><tbody>{selectedProducts.map((product) => <ProductTableRow dragging={draggingId === product.id} key={product.id} product={product} canManageCatalog={canManageCatalog} onDragEnd={() => setDraggingId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggingId) moveProduct(draggingId, product.id); setDraggingId(null); }} onEdit={() => setEditingId(product.id)} onMove={(offset) => moveProductBy(product.id, offset)} onNotes={() => setNotesId(product.id)} onDragStart={() => setDraggingId(product.id)}/>)}</tbody></table></div>}
-    {editingId && <ProductEditDialog categories={categories} product={selectedProducts.find((product) => product.id === editingId)} onClose={() => setEditingId(null)}/>}
+    {editingId && <ProductEditDialog categories={visibleCategories} product={selectedProducts.find((product) => product.id === editingId)} onClose={() => setEditingId(null)}/>}
     {notesId && <ProductNotesDialog product={selectedProducts.find((product) => product.id === notesId)} onClose={() => setNotesId(null)}/>}
   </section>;
 }

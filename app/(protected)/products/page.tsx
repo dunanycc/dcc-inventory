@@ -10,7 +10,7 @@ import { requireInventoryWorkspaceUser } from "@/lib/session";
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ category?: string; success?: string; error?: string }> }) {
   await connection();
   const actor = await requireInventoryWorkspaceUser();
-  const categories = await prisma.category.findMany({ orderBy: CATEGORY_ORDER_BY, include: { products: { orderBy: PRODUCT_ORDER_BY, include: { notes: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], include: { author: { select: { name: true, email: true } } } } } } } });
+  const categories = await prisma.category.findMany({ where: { active: true }, orderBy: CATEGORY_ORDER_BY, include: { products: { orderBy: PRODUCT_ORDER_BY, include: { notes: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], include: { author: { select: { name: true, email: true } } } } } } } });
   const rows: ProductCategoryRow[] = categories.map((category) => ({
     id: category.id, name: category.name, displayOrder: category.displayOrder, active: category.active,
     products: category.products.map((product) => ({
