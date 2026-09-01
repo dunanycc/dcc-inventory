@@ -13,7 +13,11 @@ export type ManagedUser = {
 
 export type UserAudit = {
   actorId: string;
-  action: "USER_PREAUTHORIZED" | "USER_ROLE_CHANGED" | "USER_DISABLED" | "USER_ENABLED";
+  action:
+    | "USER_PREAUTHORIZED"
+    | "USER_ROLE_CHANGED"
+    | "USER_DISABLED"
+    | "USER_ENABLED";
   entityType: "User";
   entityId: string;
   before?: object;
@@ -25,17 +29,35 @@ export type UserManagementTransaction = {
   findUserByEmail(email: string): Promise<ManagedUser | null>;
   findUserById(id: string): Promise<ManagedUser | null>;
   countActiveAdministrators(): Promise<number>;
-  createUser(input: { email: string; emailNormalized: string; name: string | null; role: AppRole }): Promise<ManagedUser>;
-  updateUser(id: string, data: { role?: AppRole; status?: "ACTIVE" | "DISABLED" }): Promise<ManagedUser>;
+  createUser(input: {
+    email: string;
+    emailNormalized: string;
+    name: string | null;
+    role: AppRole;
+  }): Promise<ManagedUser>;
+  updateUser(
+    id: string,
+    data: { role?: AppRole; status?: "ACTIVE" | "DISABLED" },
+  ): Promise<ManagedUser>;
   createAudit(input: UserAudit): Promise<unknown>;
 };
 
 export type UserManagementRepository = {
-  transaction<T>(work: (transaction: UserManagementTransaction) => Promise<T>): Promise<T>;
+  transaction<T>(
+    work: (transaction: UserManagementTransaction) => Promise<T>,
+  ): Promise<T>;
 };
 
 export class UserManagementError extends Error {
-  constructor(public code: "FORBIDDEN" | "INVALID_INPUT" | "DUPLICATE_EMAIL" | "USER_NOT_FOUND" | "LAST_ACTIVE_ADMINISTRATOR" | "NO_CHANGE") {
+  constructor(
+    public code:
+      | "FORBIDDEN"
+      | "INVALID_INPUT"
+      | "DUPLICATE_EMAIL"
+      | "USER_NOT_FOUND"
+      | "LAST_ACTIVE_ADMINISTRATOR"
+      | "NO_CHANGE",
+  ) {
     super(code);
   }
 }
@@ -49,12 +71,18 @@ function assertAdministrator(actor: ManagedUser) {
 }
 
 function parseRole(value: string): AppRole {
-  if (!ROLES.includes(value as AppRole)) throw new UserManagementError("INVALID_INPUT");
+  if (!ROLES.includes(value as AppRole))
+    throw new UserManagementError("INVALID_INPUT");
   return value as AppRole;
 }
 
 function snapshot(user: ManagedUser) {
-  return { email: user.email, name: user.name, role: user.role, status: user.status };
+  return {
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+  };
 }
 
 export async function preauthorizeUser(
@@ -63,7 +91,8 @@ export async function preauthorizeUser(
   repository: UserManagementRepository,
 ) {
   const email = normalizeEmail(input.email);
-  if (!emailSchema.safeParse(email).success) throw new UserManagementError("INVALID_INPUT");
+  if (!emailSchema.safeParse(email).success)
+    throw new UserManagementError("INVALID_INPUT");
   const role = parseRole(input.role);
   const name = input.name?.trim() || null;
   if (name && name.length > 160) throw new UserManagementError("INVALID_INPUT");
@@ -72,8 +101,14 @@ export async function preauthorizeUser(
     const currentActor = await transaction.findUserById(actor.id);
     if (!currentActor) throw new UserManagementError("FORBIDDEN");
     assertAdministrator(currentActor);
-    if (await transaction.findUserByEmail(email)) throw new UserManagementError("DUPLICATE_EMAIL");
-    const created = await transaction.createUser({ email, emailNormalized: email, name, role });
+    if (await transaction.findUserByEmail(email))
+      throw new UserManagementError("DUPLICATE_EMAIL");
+    const created = await transaction.createUser({
+      email,
+      emailNormalized: email,
+      name,
+      role,
+    });
     await transaction.createAudit({
       actorId: currentActor.id,
       action: "USER_PREAUTHORIZED",
@@ -100,7 +135,12 @@ export async function changeUserRole(
     const target = await transaction.findUserById(targetId);
     if (!target) throw new UserManagementError("USER_NOT_FOUND");
     if (target.role === role) throw new UserManagementError("NO_CHANGE");
-    if (target.status === "ACTIVE" && target.role === "ADMINISTRATOR" && role !== "ADMINISTRATOR" && await transaction.countActiveAdministrators() <= 1) {
+    if (
+      target.status === "ACTIVE" &&
+      target.role === "ADMINISTRATOR" &&
+      role !== "ADMINISTRATOR" &&
+      (await transaction.countActiveAdministrators()) <= 1
+    ) {
       throw new UserManagementError("LAST_ACTIVE_ADMINISTRATOR");
     }
     const before = snapshot(target);
@@ -130,12 +170,20 @@ export async function setUserStatus(
     assertAdministrator(currentActor);
     const target = await transaction.findUserById(targetId);
     if (!target) throw new UserManagementError("USER_NOT_FOUND");
-    if (target.status === requestedStatus) throw new UserManagementError("NO_CHANGE");
-    if (requestedStatus === "DISABLED" && target.role === "ADMINISTRATOR" && target.status === "ACTIVE" && await transaction.countActiveAdministrators() <= 1) {
+    if (target.status === requestedStatus)
+      throw new UserManagementError("NO_CHANGE");
+    if (
+      requestedStatus === "DISABLED" &&
+      target.role === "ADMINISTRATOR" &&
+      target.status === "ACTIVE" &&
+      (await transaction.countActiveAdministrators()) <= 1
+    ) {
       throw new UserManagementError("LAST_ACTIVE_ADMINISTRATOR");
     }
     const before = snapshot(target);
-    const updated = await transaction.updateUser(target.id, { status: requestedStatus });
+    const updated = await transaction.updateUser(target.id, {
+      status: requestedStatus,
+    });
     await transaction.createAudit({
       actorId: currentActor.id,
       action: requestedStatus === "ACTIVE" ? "USER_ENABLED" : "USER_DISABLED",

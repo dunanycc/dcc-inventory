@@ -4,7 +4,9 @@ export const STRUCTURAL_LOCATIONS = [
 ] as const;
 
 export type LocationSeedRepository = {
-  createMissingLocations(locations: ReadonlyArray<{ code: string; name: string; active: boolean }>): Promise<unknown>;
+  createMissingLocations(
+    locations: ReadonlyArray<{ code: string; name: string; active: boolean }>,
+  ): Promise<unknown>;
 };
 
 /** Inserts structural Locations only; existing operational names and active states are never updated. */

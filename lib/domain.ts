@@ -1,6 +1,11 @@
 import { orderedCategories } from "./category-management";
 
-export type CategorySummary = { id: string; name: string; displayOrder: number; active: boolean };
+export type CategorySummary = {
+  id: string;
+  name: string;
+  displayOrder: number;
+  active: boolean;
+};
 
 export function visibleCategories(categories: readonly CategorySummary[]) {
   return orderedCategories(categories, false);
@@ -23,7 +28,10 @@ export function validateProductUnits(input: {
   allowFractionalStock: boolean;
   quantityScale: number;
 }) {
-  if (input.purchaseUnit && (!input.unitsPerPurchaseUnit || input.unitsPerPurchaseUnit <= 0)) {
+  if (
+    input.purchaseUnit &&
+    (!input.unitsPerPurchaseUnit || input.unitsPerPurchaseUnit <= 0)
+  ) {
     return "A purchase unit requires a positive conversion.";
   }
   if (!input.purchaseUnit && input.unitsPerPurchaseUnit != null) {
@@ -35,6 +43,7 @@ export function validateProductUnits(input: {
   if (input.allowFractionalStock && input.quantityScale === 0) {
     return "Fractional products require a positive quantity scale.";
   }
-  if (input.quantityScale < 0 || input.quantityScale > 6) return "Quantity scale must be between 0 and 6.";
+  if (input.quantityScale < 0 || input.quantityScale > 6)
+    return "Quantity scale must be between 0 and 6.";
   return null;
 }

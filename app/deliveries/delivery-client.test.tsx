@@ -1,3 +1,54 @@
-import {cleanup,fireEvent,render,screen} from "@testing-library/react";import {afterEach,describe,expect,it,vi} from "vitest";import {NewDelivery} from "./delivery-client";
-vi.mock("@/app/(protected)/deliveries/actions",()=>({postDeliveryAction:vi.fn()}));afterEach(cleanup);
-describe("NewDelivery",()=>{it("shows a header, defaults quantity to zero, summarizes purchase conversion, and removes a summary line",()=>{render(<NewDelivery vendors={[{id:"labatt",name:"Labatt"}]} categories={[{id:"beer",name:"Beer",products:[{id:"sapporo",name:"Sapporo",stockUnit:"CAN",quantityScale:0,purchaseUnit:"CASE",unitsPerPurchaseUnit:"24"}]}]}/>);expect(screen.getByText("Format")).toBeInTheDocument();const quantity=screen.getByLabelText("Quantity received for Sapporo");expect(quantity).toHaveValue(0);fireEvent.change(quantity,{target:{value:"2"}});expect(screen.getByText(/2 case × 24 = 48 can/)).toBeInTheDocument();expect(screen.getByRole("button",{name:"Add to Inventory"})).toBeEnabled();fireEvent.click(screen.getByRole("button",{name:"Remove Sapporo from delivery"}));expect(quantity).toHaveValue(0);expect(screen.queryByText(/2 case × 24 = 48 can/)).not.toBeInTheDocument();expect(screen.getByRole("button",{name:"Add to Inventory"})).toBeDisabled();});it("disables posting without lines",()=>{render(<NewDelivery vendors={[]} categories={[]}/>);expect(screen.getByRole("button",{name:"Add to Inventory"})).toBeDisabled();});});
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { NewDelivery } from "./delivery-client";
+vi.mock("@/app/(protected)/deliveries/actions", () => ({
+  postDeliveryAction: vi.fn(),
+}));
+afterEach(cleanup);
+describe("NewDelivery", () => {
+  it("shows a header, defaults quantity to zero, summarizes purchase conversion, and removes a summary line", () => {
+    render(
+      <NewDelivery
+        vendors={[{ id: "labatt", name: "Labatt" }]}
+        categories={[
+          {
+            id: "beer",
+            name: "Beer",
+            products: [
+              {
+                id: "sapporo",
+                name: "Sapporo",
+                stockUnit: "CAN",
+                quantityScale: 0,
+                purchaseUnit: "CASE",
+                unitsPerPurchaseUnit: "24",
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Format")).toBeInTheDocument();
+    const quantity = screen.getByLabelText("Quantity received for Sapporo");
+    expect(quantity).toHaveValue(0);
+    fireEvent.change(quantity, { target: { value: "2" } });
+    expect(screen.getByText(/2 case × 24 = 48 can/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add to Inventory" }),
+    ).toBeEnabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Sapporo from delivery" }),
+    );
+    expect(quantity).toHaveValue(0);
+    expect(screen.queryByText(/2 case × 24 = 48 can/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add to Inventory" }),
+    ).toBeDisabled();
+  });
+  it("disables posting without lines", () => {
+    render(<NewDelivery vendors={[]} categories={[]} />);
+    expect(
+      screen.getByRole("button", { name: "Add to Inventory" }),
+    ).toBeDisabled();
+  });
+});

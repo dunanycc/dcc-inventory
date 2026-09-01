@@ -10,7 +10,10 @@ type YahooProfile = {
   picture?: string;
 };
 
-export function Yahoo(options: { clientId: string; clientSecret: string }): OAuthConfig<YahooProfile> {
+export function Yahoo(options: {
+  clientId: string;
+  clientSecret: string;
+}): OAuthConfig<YahooProfile> {
   return {
     id: "yahoo",
     name: "Yahoo",
@@ -24,7 +27,10 @@ export function Yahoo(options: { clientId: string; clientSecret: string }): OAut
       return {
         id: profile.sub,
         email: profile.email,
-        name: profile.name || [profile.given_name, profile.family_name].filter(Boolean).join(" ") || profile.email,
+        name:
+          profile.name ||
+          [profile.given_name, profile.family_name].filter(Boolean).join(" ") ||
+          profile.email,
         image: profile.picture,
       };
     },

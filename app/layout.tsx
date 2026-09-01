@@ -17,6 +17,12 @@ export const metadata: Metadata = {
   description: "Simple stock tracking for Dunany Country Club",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body className={inter.variable}>{children}</body></html>;
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body className={inter.variable}>{children}</body>
+    </html>
+  );
 }

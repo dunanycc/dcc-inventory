@@ -1,2 +1,31 @@
-import {describe,expect,it} from "vitest";import {calculateDeliveryQuantity} from "./delivery";
-describe("delivery quantity conversion",()=>{it("converts cases to stock units",()=>expect(calculateDeliveryQuantity("2",{allowFractionalStock:false,quantityScale:0,purchaseUnit:"CASE",unitsPerPurchaseUnit:"24"})).toMatchObject({entryQuantity:"2",stockQuantity:"48"}));it("uses stock units when no conversion exists",()=>expect(calculateDeliveryQuantity("7",{allowFractionalStock:false,quantityScale:0,purchaseUnit:null,unitsPerPurchaseUnit:null}).stockQuantity).toBe("7"));it("rejects unknown or invalid quantities",()=>expect(()=>calculateDeliveryQuantity("0",{allowFractionalStock:false,quantityScale:0,purchaseUnit:"CASE",unitsPerPurchaseUnit:"24"})).toThrow());});
+import { describe, expect, it } from "vitest";
+import { calculateDeliveryQuantity } from "./delivery";
+describe("delivery quantity conversion", () => {
+  it("converts cases to stock units", () =>
+    expect(
+      calculateDeliveryQuantity("2", {
+        allowFractionalStock: false,
+        quantityScale: 0,
+        purchaseUnit: "CASE",
+        unitsPerPurchaseUnit: "24",
+      }),
+    ).toMatchObject({ entryQuantity: "2", stockQuantity: "48" }));
+  it("uses stock units when no conversion exists", () =>
+    expect(
+      calculateDeliveryQuantity("7", {
+        allowFractionalStock: false,
+        quantityScale: 0,
+        purchaseUnit: null,
+        unitsPerPurchaseUnit: null,
+      }).stockQuantity,
+    ).toBe("7"));
+  it("rejects unknown or invalid quantities", () =>
+    expect(() =>
+      calculateDeliveryQuantity("0", {
+        allowFractionalStock: false,
+        quantityScale: 0,
+        purchaseUnit: "CASE",
+        unitsPerPurchaseUnit: "24",
+      }),
+    ).toThrow());
+});

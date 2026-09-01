@@ -8,7 +8,11 @@ export type InventoryAuthUser = {
 
 export type OAuthAuthorizationDependencies = {
   findUserByEmail(email: string): Promise<InventoryAuthUser | null>;
-  createBootstrapAdministrator(input: { email: string; name: string | null; provider: string }): Promise<InventoryAuthUser>;
+  createBootstrapAdministrator(input: {
+    email: string;
+    name: string | null;
+    provider: string;
+  }): Promise<InventoryAuthUser>;
 };
 
 export type OAuthIdentity = {
@@ -19,11 +23,20 @@ export type OAuthIdentity = {
 };
 
 export function normalizeEmail(email: string | null | undefined) {
-  return String(email ?? "").replace(/^[ \t\r\n\f\v]+|[ \t\r\n\f\v]+$/g, "").toLowerCase();
+  return String(email ?? "")
+    .replace(/^[ \t\r\n\f\v]+|[ \t\r\n\f\v]+$/g, "")
+    .toLowerCase();
 }
 
-export function bootstrapAdminEmails(value = process.env.BOOTSTRAP_ADMIN_EMAILS) {
-  return new Set(String(value ?? "").split(",").map(normalizeEmail).filter(Boolean));
+export function bootstrapAdminEmails(
+  value = process.env.BOOTSTRAP_ADMIN_EMAILS,
+) {
+  return new Set(
+    String(value ?? "")
+      .split(",")
+      .map(normalizeEmail)
+      .filter(Boolean),
+  );
 }
 
 export async function authorizeOAuthIdentity(

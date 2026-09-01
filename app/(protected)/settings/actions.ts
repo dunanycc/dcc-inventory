@@ -12,17 +12,46 @@ import {
   type UserManagementRepository,
 } from "@/lib/user-management";
 
-const userSelect = { id: true, email: true, name: true, role: true, status: true } as const;
+const userSelect = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  status: true,
+} as const;
 
 const repository: UserManagementRepository = {
-  transaction: (work) => prisma.$transaction(async (transaction) => work({
-    findUserByEmail: (email) => transaction.user.findUnique({ where: { email }, select: userSelect }),
-    findUserById: (id) => transaction.user.findUnique({ where: { id }, select: userSelect }),
-    countActiveAdministrators: () => transaction.user.count({ where: { role: "ADMINISTRATOR", status: "ACTIVE" } }),
-    createUser: (input) => transaction.user.create({ data: { ...input, status: "ACTIVE" }, select: userSelect }),
-    updateUser: (id, data) => transaction.user.update({ where: { id }, data, select: userSelect }),
-    createAudit: (input) => transaction.auditEvent.create({ data: input }),
-  }), { isolationLevel: "Serializable" }),
+  transaction: (work) =>
+    prisma.$transaction(
+      async (transaction) =>
+        work({
+          findUserByEmail: (email) =>
+            transaction.user.findUnique({
+              where: { email },
+              select: userSelect,
+            }),
+          findUserById: (id) =>
+            transaction.user.findUnique({ where: { id }, select: userSelect }),
+          countActiveAdministrators: () =>
+            transaction.user.count({
+              where: { role: "ADMINISTRATOR", status: "ACTIVE" },
+            }),
+          createUser: (input) =>
+            transaction.user.create({
+              data: { ...input, status: "ACTIVE" },
+              select: userSelect,
+            }),
+          updateUser: (id, data) =>
+            transaction.user.update({
+              where: { id },
+              data,
+              select: userSelect,
+            }),
+          createAudit: (input) =>
+            transaction.auditEvent.create({ data: input }),
+        }),
+      { isolationLevel: "Serializable" },
+    ),
 };
 
 const messages: Record<string, string> = {
@@ -30,7 +59,8 @@ const messages: Record<string, string> = {
   INVALID_INPUT: "Enter a valid email, name, and role.",
   DUPLICATE_EMAIL: "That email is already authorized.",
   USER_NOT_FOUND: "The selected user no longer exists.",
-  LAST_ACTIVE_ADMINISTRATOR: "This change would leave DCC Inventory without an active Administrator.",
+  LAST_ACTIVE_ADMINISTRATOR:
+    "This change would leave DCC Inventory without an active Administrator.",
   NO_CHANGE: "No user-management change was made.",
   CONFLICT: "The user list changed at the same time. Review it and try again.",
   FAILED: "The user-management change could not be completed.",
@@ -46,7 +76,12 @@ function errorCode(error: unknown) {
   return "FAILED";
 }
 
-async function runMutation(work: (actor: NonNullable<Awaited<ReturnType<typeof currentUser>>>) => Promise<unknown>, success: string) {
+async function runMutation(
+  work: (
+    actor: NonNullable<Awaited<ReturnType<typeof currentUser>>>,
+  ) => Promise<unknown>,
+  success: string,
+) {
   let destination: string;
   try {
     const actor = await currentUser();
@@ -63,18 +98,29 @@ async function runMutation(work: (actor: NonNullable<Awaited<ReturnType<typeof c
 
 export async function preauthorizeUserAction(formData: FormData) {
   await runMutation(
-    (actor) => preauthorizeUser(actor, {
-      email: String(formData.get("email") ?? ""),
-      name: String(formData.get("name") ?? ""),
-      role: String(formData.get("role") ?? ""),
-    }, repository),
+    (actor) =>
+      preauthorizeUser(
+        actor,
+        {
+          email: String(formData.get("email") ?? ""),
+          name: String(formData.get("name") ?? ""),
+          role: String(formData.get("role") ?? ""),
+        },
+        repository,
+      ),
     "User pre-authorized.",
   );
 }
 
 export async function changeUserRoleAction(formData: FormData) {
   await runMutation(
-    (actor) => changeUserRole(actor, String(formData.get("userId") ?? ""), String(formData.get("role") ?? ""), repository),
+    (actor) =>
+      changeUserRole(
+        actor,
+        String(formData.get("userId") ?? ""),
+        String(formData.get("role") ?? ""),
+        repository,
+      ),
     "User role updated.",
   );
 }
@@ -82,10 +128,18 @@ export async function changeUserRoleAction(formData: FormData) {
 export async function setUserStatusAction(formData: FormData) {
   const status = String(formData.get("status") ?? "");
   if (status !== "ACTIVE" && status !== "DISABLED") {
-    redirect(`/settings?tab=users&error=${encodeURIComponent(messages.INVALID_INPUT)}`);
+    redirect(
+      `/settings?tab=users&error=${encodeURIComponent(messages.INVALID_INPUT)}`,
+    );
   }
   await runMutation(
-    (actor) => setUserStatus(actor, String(formData.get("userId") ?? ""), status, repository),
+    (actor) =>
+      setUserStatus(
+        actor,
+        String(formData.get("userId") ?? ""),
+        status,
+        repository,
+      ),
     status === "ACTIVE" ? "User enabled." : "User disabled.",
   );
 }

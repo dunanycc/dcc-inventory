@@ -19,12 +19,22 @@ export type Permission =
 
 const grants: Record<AppRole, ReadonlySet<Permission>> = {
   ADMINISTRATOR: new Set([
-    "inventory:view", "catalog:manage", "operations:draft", "operations:post",
-    "imports:review", "users:manage", "cutover:approve", "audit:view",
+    "inventory:view",
+    "catalog:manage",
+    "operations:draft",
+    "operations:post",
+    "imports:review",
+    "users:manage",
+    "cutover:approve",
+    "audit:view",
   ]),
   INVENTORY_MANAGER: new Set([
-    "inventory:view", "catalog:manage", "operations:draft", "operations:post",
-    "imports:review", "audit:view",
+    "inventory:view",
+    "catalog:manage",
+    "operations:draft",
+    "operations:post",
+    "imports:review",
+    "audit:view",
   ]),
   INVENTORY_USER: new Set(["inventory:view", "operations:draft"]),
   READ_ONLY: new Set(["inventory:view"]),
