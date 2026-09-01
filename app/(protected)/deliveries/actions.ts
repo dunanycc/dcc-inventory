@@ -1,6 +1,8 @@
 "use server";
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Prisma } from "@/app/generated/prisma/client";
 import { hasPermission } from "@/lib/authorization";
 import { calculateDeliveryQuantity } from "@/lib/delivery";
 import { prisma } from "@/lib/prisma";
@@ -24,5 +26,56 @@ export async function postDeliveryAction(formData:FormData) {
     },{isolationLevel:"Serializable"});
     revalidatePath("/deliveries"); revalidatePath("/inventory"); revalidatePath("/history"); target="/deliveries?success="+encodeURIComponent("Delivery added to Bar inventory.");
   } catch(error){console.error("Delivery posting failed",error); target="/deliveries?error="+encodeURIComponent("Delivery could not be posted. Review the Vendor, date, products, and quantities.");}
+  redirect(target);
+}
+
+export async function updateDeliveryAction(formData: FormData) {
+  let target: string;
+  try {
+    const actor = await currentUser();
+    if (!actor || !hasPermission(actor.role, "operations:post")) throw new Error("FORBIDDEN");
+    const deliveryId = String(formData.get("deliveryId") ?? "");
+    const vendorId = String(formData.get("vendorId") ?? "");
+    const date = String(formData.get("deliveryDate") ?? "");
+    const notes = String(formData.get("notes") ?? "").trim();
+    const raw = JSON.parse(String(formData.get("items") ?? "[]")) as Array<{ lineId: string; quantity: string }>;
+    if (!deliveryId || !vendorId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || notes.length > 1000 || !Array.isArray(raw) || !raw.length || new Set(raw.map((item) => item.lineId)).size !== raw.length) throw new Error("INVALID");
+    await prisma.$transaction(async (tx) => {
+      const fresh = await tx.user.findUnique({ where: { id: actor.id }, select: { id: true, role: true, status: true } });
+      if (!fresh || fresh.status !== "ACTIVE" || !hasPermission(fresh.role, "operations:post")) throw new Error("FORBIDDEN");
+      const [vendor, bar, delivery] = await Promise.all([
+        tx.vendor.findUnique({ where: { id: vendorId }, select: { active: true } }),
+        tx.location.findUnique({ where: { code: "BAR" }, select: { id: true, active: true } }),
+        tx.delivery.findUnique({ where: { id: deliveryId }, include: { lines: { include: { product: true } } } }),
+      ]);
+      if (!vendor || (!vendor.active && delivery?.vendorId !== vendorId) || !bar?.active || !delivery || delivery.lines.length !== raw.length || delivery.lines.some((line) => !raw.some((item) => item.lineId === line.id))) throw new Error("INVALID");
+      const before = { vendorId: delivery.vendorId, deliveryDate: delivery.deliveryDate.toISOString(), notes: delivery.notes, lines: delivery.lines.map((line) => ({ id: line.id, entryQuantity: line.entryQuantity.toString(), quantity: line.quantity.toString(), active: line.active })) };
+      const occurredAt = new Date();
+      for (const item of raw) {
+        const line = delivery.lines.find((candidate) => candidate.id === item.lineId)!;
+        if (!/^\d{1,12}(?:\.\d{1,6})?$/.test(item.quantity)) throw new Error("INVALID");
+        const entry = new Prisma.Decimal(item.quantity);
+        const oldQuantity = line.active ? new Prisma.Decimal(line.quantity) : new Prisma.Decimal(0);
+        if (entry.isZero()) {
+          if (line.active) await tx.deliveryLine.update({ where: { id: line.id }, data: { active: false } });
+          if (oldQuantity.isPositive()) await tx.inventoryMovement.create({ data: { type: "COUNT_ADJUSTMENT", productId: line.productId, quantity: oldQuantity, sourceLocationId: bar.id, destinationLocationId: null, occurredAt, postedById: fresh.id, notes: `Delivery ${delivery.id.slice(0, 8)} correction: removed ${line.product.name}` } });
+          continue;
+        }
+        const calculated = calculateDeliveryQuantity(item.quantity, { allowFractionalStock: line.product.allowFractionalStock, quantityScale: line.product.quantityScale, purchaseUnit: line.purchaseUnit, unitsPerPurchaseUnit: line.unitsPerPurchaseUnit });
+        const newQuantity = new Prisma.Decimal(calculated.stockQuantity);
+        const difference = newQuantity.minus(oldQuantity);
+        await tx.deliveryLine.update({ where: { id: line.id }, data: { entryQuantity: calculated.entryQuantity, quantity: calculated.stockQuantity, active: true } });
+        if (!difference.isZero()) await tx.inventoryMovement.create({ data: { type: "COUNT_ADJUSTMENT", productId: line.productId, quantity: difference.abs(), sourceLocationId: difference.isNegative() ? bar.id : null, destinationLocationId: difference.isPositive() ? bar.id : null, occurredAt, postedById: fresh.id, notes: `Delivery ${delivery.id.slice(0, 8)} correction: ${line.product.name}` } });
+      }
+      const deliveryDate = new Date(`${date}T12:00:00.000Z`);
+      await tx.delivery.update({ where: { id: delivery.id }, data: { vendorId, deliveryDate, notes: notes || null } });
+      await tx.auditEvent.create({ data: { actorId: fresh.id, action: "DELIVERY_UPDATED", entityType: "Delivery", entityId: delivery.id, before, after: { vendorId, deliveryDate: deliveryDate.toISOString(), notes: notes || null, lines: raw }, correlationId: randomUUID() } });
+    }, { isolationLevel: "Serializable" });
+    revalidatePath("/deliveries"); revalidatePath("/inventory"); revalidatePath("/history");
+    target = "/deliveries?success=" + encodeURIComponent("Delivery updated and inventory correction recorded.");
+  } catch (error) {
+    console.error("Delivery update failed", error);
+    target = "/deliveries?error=" + encodeURIComponent("Delivery could not be updated. Review the Vendor, date, and quantities.");
+  }
   redirect(target);
 }

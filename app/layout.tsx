@@ -5,8 +5,10 @@ import "./provider-buttons.css";
 import "./settings.css";
 import "./product-admin.css";
 import "./deliveries.css";
+import "./delivery-edit.css";
 import "./inventory.css";
 import "./requests.css";
+import "./table-colors.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 

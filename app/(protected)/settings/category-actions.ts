@@ -1,9 +1,11 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createCategory, CategoryManagementError, renameCategory, reorderCategory, setCategoryActive, type CategoryRepository } from "@/lib/category-management";
 import { prisma } from "@/lib/prisma";
+import { hasPermission } from "@/lib/authorization";
 import { currentUser } from "@/lib/session";
 
 const categorySelect = { id: true, name: true, displayOrder: true, active: true } as const;
@@ -57,8 +59,9 @@ async function runCategoryMutation(work: (actor: NonNullable<Awaited<ReturnType<
 }
 
 export async function createCategoryAction(formData: FormData) {
+  const last = await prisma.category.aggregate({ _max: { displayOrder: true } });
   await runCategoryMutation(
-    (actor) => createCategory(actor, { name: String(formData.get("name") ?? ""), displayOrder: Number(formData.get("displayOrder")) }, repository),
+    (actor) => createCategory(actor, { name: String(formData.get("name") ?? ""), displayOrder: (last._max.displayOrder ?? -1) + 1 }, repository),
     "Category created.",
   );
 }
@@ -75,6 +78,39 @@ export async function reorderCategoryAction(formData: FormData) {
     (actor) => reorderCategory(actor, String(formData.get("categoryId") ?? ""), Number(formData.get("displayOrder")), repository),
     "Category order updated.",
   );
+}
+
+export async function reorderCategoriesAction(formData: FormData) {
+  const actor = await currentUser();
+  if (!actor) return { ok: false, message: messages.FORBIDDEN };
+  let categoryIds: string[];
+  try {
+    const value = JSON.parse(String(formData.get("categoryIds") ?? "[]"));
+    if (!Array.isArray(value) || value.some((id) => typeof id !== "string") || new Set(value).size !== value.length) throw new Error("Invalid order");
+    categoryIds = value;
+  } catch {
+    return { ok: false, message: messages.INVALID_INPUT };
+  }
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const freshActor = await transaction.user.findUnique({ where: { id: actor.id }, select: actorSelect });
+      if (!freshActor || freshActor.status !== "ACTIVE" || !hasPermission(freshActor.role, "catalog:manage")) throw new CategoryManagementError("FORBIDDEN");
+      const categories = await transaction.category.findMany({ select: categorySelect });
+      if (categories.length !== categoryIds.length || categories.some((category) => !categoryIds.includes(category.id))) throw new CategoryManagementError("INVALID_INPUT");
+      const correlationId = randomUUID();
+      for (const [displayOrder, id] of categoryIds.entries()) {
+        const category = categories.find((item) => item.id === id)!;
+        if (category.displayOrder === displayOrder) continue;
+        await transaction.category.update({ where: { id }, data: { displayOrder } });
+        await transaction.auditEvent.create({ data: { actorId: freshActor.id, action: "CATEGORY_REORDERED", entityType: "Category", entityId: id, before: { name: category.name, displayOrder: category.displayOrder, active: category.active }, after: { name: category.name, displayOrder, active: category.active }, correlationId } });
+      }
+    }, { isolationLevel: "Serializable" });
+    ["/settings", "/products", "/inventory", "/requests", "/deliveries"].forEach((path) => revalidatePath(path));
+    return { ok: true, message: "Category order saved." };
+  } catch (error) {
+    const code = errorCode(error);
+    return { ok: false, message: messages[code] ?? messages.FAILED };
+  }
 }
 
 export async function setCategoryActiveAction(formData: FormData) {

@@ -28,7 +28,7 @@
 .category-admin-heading { align-items: end; display: flex; gap: 2rem; justify-content: space-between; padding: 1.4rem; }
 .category-admin-heading h2 { margin: .35rem 0; }
 .category-admin-heading p:last-child { color: var(--muted); margin: 0; }
-.category-create-form { align-items: end; display: grid; gap: .6rem; grid-template-columns: minmax(180px, 1fr) 90px auto; }
+.category-create-form { align-items: end; display: grid; gap: .6rem; grid-template-columns: minmax(180px, 1fr) auto; }
 .category-create-form label { color: #445149; display: grid; font-size: .77rem; font-weight: 750; gap: .35rem; }
 .category-create-form input, .category-inline-form input { border: 1px solid #b8c4bc; border-radius: 8px; min-height: 42px; padding: .55rem .65rem; }
 .category-admin-table { border-collapse: collapse; font-size: .83rem; min-width: 960px; width: 100%; }
@@ -36,6 +36,8 @@
 .category-admin-table td { border-bottom: 1px solid #edf0ee; padding: .75rem .85rem; vertical-align: middle; }
 .category-admin-table td strong, .category-admin-table td small { display: block; }
 .category-admin-table td small { color: var(--muted); margin-top: .2rem; }
+.category-reorder-column { padding-left: .45rem !important; padding-right: .2rem !important; text-align: center !important; width: 42px; }
+.category-order-status { color: var(--muted); display: block; font-size: .72rem; min-height: 1em; margin-top: .3rem; }
 .category-inline-form { align-items: center; display: flex; gap: .4rem; }
 .category-inline-form input[type="number"] { width: 85px; }
 @media (max-width: 850px) { .category-admin-heading { align-items: stretch; flex-direction: column; } }
