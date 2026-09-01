@@ -66,6 +66,14 @@
 .import-form > .admin-primary { justify-self: start; }
 .import-form > .admin-primary:disabled { cursor: not-allowed; opacity: .5; }
 @media (max-width: 700px) { .import-heading { display: grid; } .admin-tabs { overflow-x: auto; } }
-.vendor-create-form { align-items:end; display:grid; gap:.6rem; grid-template-columns:180px 260px auto; }
+.vendor-admin-heading { align-items: center; }
+.vendor-create-form { align-items:end; display:grid; gap:.75rem; grid-template-columns:minmax(160px,1fr) minmax(220px,1.4fr) auto; max-width:650px; width:100%; }
 .vendor-create-form label { display:grid; gap:.35rem; font-size:.77rem; font-weight:750; }
-.vendor-create-form input { border:1px solid #b8c4bc; border-radius:8px; min-height:42px; padding:.55rem .65rem; }
+.vendor-create-form input { border:1px solid #b8c4bc; border-radius:8px; min-height:42px; min-width:0; padding:.55rem .65rem; width:100%; }
+.vendor-row-actions { align-items:center; display:flex; gap:.45rem; }
+.vendor-edit-dialog { width:min(620px,calc(100vw - 32px)); }
+.vendor-edit-fields { display:grid; gap:.85rem; }
+.vendor-edit-fields label { display:grid; font-size:.77rem; font-weight:750; gap:.35rem; }
+.vendor-edit-fields input,.vendor-edit-fields textarea { border:1px solid #b8c4bc; border-radius:8px; padding:.6rem .7rem; resize:vertical; width:100%; }
+@media (max-width:900px) { .vendor-create-form { grid-template-columns:1fr 1.4fr auto; max-width:none; } }
+@media (max-width:650px) { .vendor-create-form { grid-template-columns:1fr; } }

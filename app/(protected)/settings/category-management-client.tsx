@@ -8,7 +8,6 @@ export type CategoryManagementRow = {
   name: string;
   displayOrder: number;
   active: boolean;
-  productCount: number;
 };
 
 export function CategoryManagementClient({ categories }: { categories: CategoryManagementRow[] }) {
@@ -54,13 +53,12 @@ export function CategoryManagementClient({ categories }: { categories: CategoryM
       </div>
       <div className="table-scroll">
         <table className="category-admin-table">
-          <thead><tr><th className="category-reorder-column"><span className="sr-only">Order</span></th><th>Category</th><th>Status</th><th>Products</th><th>Rename</th><th>Availability</th></tr></thead>
+          <thead><tr><th className="category-reorder-column"><span className="sr-only">Order</span></th><th>Category</th><th>Status</th><th>Rename</th><th>Availability</th></tr></thead>
           <tbody>{orderedCategories.map((category) => (
             <tr className={draggingId === category.id ? "dragging-row" : ""} key={category.id} onDragOver={(event: DragEvent) => event.preventDefault()} onDrop={() => { if (draggingId) moveCategory(draggingId, category.id); setDraggingId(null); }}>
               <td className="category-reorder-column"><button aria-label={`Reorder ${category.name}. Use arrow keys or drag.`} className="drag-handle" draggable onDragEnd={() => setDraggingId(null)} onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; setDraggingId(category.id); }} onKeyDown={(event) => { if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); moveCategoryBy(category.id, event.key === "ArrowUp" ? -1 : 1); } }} title="Drag to reorder"><svg aria-hidden="true" viewBox="0 0 18 18"><path d="M4 5h10M4 9h10M4 13h10"/></svg></button></td>
-              <td><strong>{category.name}</strong><small>ID {category.id.slice(0, 8)}</small></td>
+              <td><strong>{category.name}</strong></td>
               <td><span className={`status-pill ${category.active ? "" : "muted-pill"}`}>{category.active ? "Active" : "Inactive"}</span></td>
-              <td>{category.productCount}</td>
               <td><form action={renameCategoryAction} className="category-inline-form" onSubmit={(event) => { if (!window.confirm(`Rename ${category.name}?`)) event.preventDefault(); }}><input name="categoryId" type="hidden" value={category.id}/><input aria-label={`New name for ${category.name}`} defaultValue={category.name} maxLength={120} name="name" required/><button className="admin-secondary" type="submit">Rename</button></form></td>
               <td><form action={setCategoryActiveAction} onSubmit={(event) => { if (category.active && !window.confirm(`Deactivate ${category.name}? Its products and history will be preserved.`)) event.preventDefault(); }}><input name="categoryId" type="hidden" value={category.id}/><input name="active" type="hidden" value={category.active ? "false" : "true"}/><button className={category.active ? "admin-danger" : "admin-secondary"} type="submit">{category.active ? "Deactivate" : "Reactivate"}</button></form></td>
             </tr>

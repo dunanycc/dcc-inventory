@@ -24,8 +24,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   const [users, categories, vendors] = await Promise.all([
     tab === "users" ? prisma.user.findMany({ orderBy: [{ status: "asc" }, { name: "asc" }, { email: "asc" }] }) : Promise.resolve([]),
-    tab === "categories" ? prisma.category.findMany({ orderBy: CATEGORY_ORDER_BY, include: { _count: { select: { products: true } } } }) : Promise.resolve([]),
-    tab === "vendors" ? prisma.vendor.findMany({ orderBy: [{ active:"desc" },{ name:"asc" }], include:{ _count:{ select:{ deliveries:true } } } }) : Promise.resolve([]),
+    tab === "categories" ? prisma.category.findMany({ orderBy: CATEGORY_ORDER_BY }) : Promise.resolve([]),
+    tab === "vendors" ? prisma.vendor.findMany({ orderBy: [{ displayOrder: "asc" }, { id: "asc" }], include:{ _count:{ select:{ deliveries:true } } } }) : Promise.resolve([]),
   ]);
   const loginEvents = canManageUsers && users.length ? await prisma.auditEvent.findMany({
     where: { entityType: "User", entityId: { in: users.map((user) => user.id) }, action: "LOGIN_SUCCEEDED" },
@@ -48,8 +48,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     createdAt: formatDate(user.createdAt), lastActivity: user.lastLoginAt ? formatDate(user.lastLoginAt) : null,
   }));
   const categoryRows: CategoryManagementRow[] = categories.map((category) => ({
-    id: category.id, name: category.name, displayOrder: category.displayOrder, active: category.active, productCount: category._count.products,
+    id: category.id, name: category.name, displayOrder: category.displayOrder, active: category.active,
   }));
-  const vendorRows: VendorRow[] = vendors.map(v=>({id:v.id,name:v.name,active:v.active,notes:v.notes,deliveryCount:v._count.deliveries}));
+  const vendorRows: VendorRow[] = vendors.map(v=>({id:v.id,name:v.name,displayOrder:v.displayOrder,active:v.active,notes:v.notes,deliveryCount:v._count.deliveries}));
   return <><PageHeading eyebrow="Administration" title="Admin" description="Manage approved users and controlled master data."/>{message.success && <p className="notice success" role="status">{message.success}</p>}{message.error && <p className="notice error" role="alert">{message.error}</p>}<nav className="admin-tabs" aria-label="Administration">{canManageUsers && <Link className={tab === "users" ? "active" : ""} href="/settings?tab=users">Users</Link>}{canManageCatalog && <Link className={tab === "imports" ? "active" : ""} href="/settings?tab=imports">Imports</Link>}{canManageCatalog && <Link className={tab === "categories" ? "active" : ""} href="/settings?tab=categories">Categories</Link>}{canManageCatalog && <Link className={tab === "vendors" ? "active" : ""} href="/settings?tab=vendors">Vendors</Link>}</nav><div className="settings-sections">{tab === "users" && canManageUsers && <UserManagementClient users={userRows}/>} {tab === "imports" && canManageCatalog && <ProductImportClient/>}{tab === "categories" && canManageCatalog && <CategoryManagementClient categories={categoryRows}/>} {tab === "vendors" && canManageCatalog && <VendorManagementClient vendors={vendorRows}/>}</div></>;
 }

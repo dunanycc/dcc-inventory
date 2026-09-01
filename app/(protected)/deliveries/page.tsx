@@ -14,7 +14,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
   const query = await searchParams;
   const bar = await prisma.location.findUnique({ where: { code: "BAR" }, select: { id: true } });
   const [vendors, categories, history] = await Promise.all([
-    prisma.vendor.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }], select: { id: true, name: true, active: true } }),
+    prisma.vendor.findMany({ orderBy: [{ displayOrder: "asc" }, { id: "asc" }], select: { id: true, name: true, active: true } }),
     bar ? prisma.category.findMany({ where: { active: true }, orderBy: CATEGORY_ORDER_BY, select: { id: true, name: true, products: { where: { active: true, productLocations: { some: { locationId: bar.id, active: true, reviewRequired: false } } }, orderBy: PRODUCT_ORDER_BY, select: { id: true, name: true, stockUnit: true, stockUnitLabel: true, quantityScale: true, purchaseUnit: true, unitsPerPurchaseUnit: true } } } }) : Promise.resolve([]),
     prisma.delivery.findMany({ take: 30, orderBy: [{ deliveryDate: "desc" }, { recordedAt: "desc" }], include: { vendor: true, recordedBy: { select: { name: true, email: true } }, lines: { orderBy: [{ product: { displayOrder: "asc" } }, { product: { name: "asc" } }], include: { product: { select: { name: true, stockUnit: true, stockUnitLabel: true } } } } } }),
   ]);
