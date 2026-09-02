@@ -156,7 +156,7 @@ export function normalizeStockQuantity(
   };
 }
 
-async function requirePoster(
+export async function requirePoster(
   transaction: MovementTransaction,
   actorId: string,
 ) {
@@ -210,7 +210,7 @@ function validateReferences(
   return references;
 }
 
-async function createValidatedMovement(
+export async function createValidatedMovement(
   transaction: MovementTransaction,
   actor: MovementActor,
   input: InventoryMovementInput,

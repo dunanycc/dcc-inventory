@@ -2,85 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { currentUser } from "@/lib/session";
 import {
   InventoryMovementError,
   postOpeningInventory,
-  type MovementRecord,
-  type MovementRepository,
 } from "@/lib/inventory-movement";
-
-function movementRecord(
-  record: Omit<MovementRecord, "quantity"> & {
-    quantity: { toString(): string } | string;
-  },
-): MovementRecord {
-  return { ...record, quantity: record.quantity.toString() };
-}
-
-const repository: MovementRepository = {
-  transaction: (work) =>
-    prisma.$transaction(
-      async (transaction) =>
-        work({
-          findActorById: (id) =>
-            transaction.user.findUnique({
-              where: { id },
-              select: { id: true, role: true, status: true },
-            }),
-          findProductById: (id) =>
-            transaction.product.findUnique({
-              where: { id },
-              select: {
-                id: true,
-                active: true,
-                allowFractionalStock: true,
-                quantityScale: true,
-              },
-            }),
-          findLocationById: (id) =>
-            transaction.location.findUnique({
-              where: { id },
-              select: { id: true, active: true },
-            }),
-          findProductLocation: (productId, locationId) =>
-            transaction.productLocation.findUnique({
-              where: { productId_locationId: { productId, locationId } },
-              select: { active: true, reviewRequired: true },
-            }),
-          hasOpeningMovement: async (productId, locationId) =>
-            Boolean(
-              await transaction.inventoryMovement.findFirst({
-                where: {
-                  type: "OPENING",
-                  productId,
-                  destinationLocationId: locationId,
-                },
-                select: { id: true },
-              }),
-            ),
-          createMovement: async (input) =>
-            movementRecord(
-              await transaction.inventoryMovement.create({
-                data: input,
-                select: {
-                  id: true,
-                  type: true,
-                  productId: true,
-                  quantity: true,
-                  sourceLocationId: true,
-                  destinationLocationId: true,
-                  occurredAt: true,
-                  postedById: true,
-                  notes: true,
-                },
-              }),
-            ),
-        }),
-      { isolationLevel: "Serializable" },
-    ),
-};
+import { prismaMovementRepository as repository } from "@/lib/prisma-movement-repository";
 
 const messages: Record<string, string> = {
   FORBIDDEN:

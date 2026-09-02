@@ -2,7 +2,7 @@ export type MovementSumRow = { productId: string; quantity: string };
 const ZERO = BigInt(0);
 const MICROS = BigInt(1_000_000);
 
-function decimalToMicros(value: string) {
+export function decimalToMicros(value: string) {
   const match = /^(-?)(\d+)(?:\.(\d{1,6}))?$/.exec(value);
   if (!match) throw new Error("INVALID_MOVEMENT_SUM");
   const magnitude =
@@ -10,7 +10,7 @@ function decimalToMicros(value: string) {
   return match[1] === "-" ? -magnitude : magnitude;
 }
 
-function microsToDecimal(value: bigint) {
+export function microsToDecimal(value: bigint) {
   const negative = value < ZERO;
   const absolute = negative ? -value : value;
   const whole = absolute / MICROS;

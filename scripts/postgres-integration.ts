@@ -124,6 +124,18 @@ async function main() {
     second.release();
   }
 
+  await pool.query(`INSERT INTO "InventoryCount" (id,"locationId","countDate",status,"createdById","sourceSystem","sourceId") VALUES ('00000000-0000-0000-0000-000000000011','00000000-0000-0000-0000-000000000004',now(),'DRAFT','00000000-0000-0000-0000-000000000001','legacy-2026','count-1')`);
+  await pool.query(`INSERT INTO "InventoryCountLine" (id,"inventoryCountId","productId","expectedQuantity") VALUES ('00000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000011','00000000-0000-0000-0000-000000000003',24)`);
+  await expectConstraint(`INSERT INTO "InventoryCount" (id,"locationId","countDate",status,"createdById") VALUES (gen_random_uuid(),'00000000-0000-0000-0000-000000000004',now(),'IN_PROGRESS','00000000-0000-0000-0000-000000000001')`);
+  await expectConstraint(`INSERT INTO "InventoryCountLine" (id,"inventoryCountId","productId","expectedQuantity") VALUES (gen_random_uuid(),'00000000-0000-0000-0000-000000000011','00000000-0000-0000-0000-000000000003',24)`);
+  await expectConstraint(`INSERT INTO "InventoryCount" (id,"locationId","countDate",status,"createdById","sourceSystem","sourceId") VALUES (gen_random_uuid(),'00000000-0000-0000-0000-000000000004',now(),'DRAFT','00000000-0000-0000-0000-000000000001','legacy-2026','count-1')`);
+  await pool.query(`UPDATE "InventoryCountLine" SET "countedQuantity" = 26, difference = 2 WHERE id = '00000000-0000-0000-0000-000000000012'`);
+  await pool.query(`INSERT INTO "InventoryMovement" (id,type,"productId",quantity,"destinationLocationId","occurredAt","postedById","countLineId") VALUES (gen_random_uuid(),'COUNT_ADJUSTMENT','00000000-0000-0000-0000-000000000003',2,'00000000-0000-0000-0000-000000000004',now(),'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000012')`);
+  await expectConstraint(`INSERT INTO "InventoryMovement" (id,type,"productId",quantity,"destinationLocationId","occurredAt","postedById","countLineId") VALUES (gen_random_uuid(),'COUNT_ADJUSTMENT','00000000-0000-0000-0000-000000000003',1,'00000000-0000-0000-0000-000000000004',now(),'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000012')`);
+  await pool.query(`UPDATE "InventoryCount" SET status='ACCEPTED', "acceptedById"='00000000-0000-0000-0000-000000000001', "acceptedAt"=now() WHERE id='00000000-0000-0000-0000-000000000011'`);
+  const acceptedCount = await pool.query(`SELECT status, "acceptedById" FROM "InventoryCount" WHERE id = '00000000-0000-0000-0000-000000000011'`);
+  if (acceptedCount.rows[0]?.status !== 'ACCEPTED' || !acceptedCount.rows[0]?.acceptedById) throw new Error("InventoryCount did not accept correctly");
+
   console.log(`PostgreSQL rehearsal passed (${migrations.length} migrations, Phase 1 upgrade data preserved).`);
 }
 
