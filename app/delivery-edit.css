@@ -8,9 +8,24 @@
 }
 .delivery-edit-dialog {
   width: min(850px, calc(100vw - 32px));
+  height: min(700px, calc(100vh - 2.5rem));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.delivery-edit-dialog > form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.delivery-edit-dialog > .product-dialog-heading,
+.delivery-edit-dialog > .product-dialog-actions {
+  flex-shrink: 0;
 }
 .delivery-edit-meta {
   display: grid;
+  flex-shrink: 0;
   gap: 0.65rem;
   grid-template-columns: 1fr 170px 1.2fr;
   margin-bottom: 1rem;
@@ -32,10 +47,20 @@
 .delivery-edit-catalog {
   border: 1px solid var(--line);
   border-radius: 9px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
 }
 .delivery-edit-catalog .category-tabs {
   border-radius: 9px 9px 0 0;
+  flex-shrink: 0;
+}
+.delivery-edit-lines {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .delivery-edit-lines > div,
 .delivery-edit-lines > label {
@@ -49,7 +74,9 @@
   color: #fff;
   font-size: 0.68rem;
   font-weight: 800;
+  position: sticky;
   text-transform: uppercase;
+  top: 0;
 }
 .delivery-edit-lines > label {
   border-top: 1px solid var(--row-border);
