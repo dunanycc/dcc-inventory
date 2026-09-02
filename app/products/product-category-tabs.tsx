@@ -566,10 +566,7 @@ function ProductNotesDialog({
                 <div>
                   <strong>{note.author}</strong>
                   <time dateTime={note.createdAt}>
-                    {new Date(note.createdAt).toLocaleString("en-CA", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    {new Date(note.createdAt).toLocaleString("en-CA")}
                   </time>
                 </div>
                 <p>{note.body}</p>

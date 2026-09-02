@@ -20,9 +20,7 @@ import {
 } from "./vendor-management-client";
 
 function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("en-CA", { dateStyle: "medium" }).format(
-    value,
-  );
+  return new Intl.DateTimeFormat("en-CA").format(value);
 }
 
 export default async function SettingsPage({

@@ -254,12 +254,7 @@ export default async function RequestsPage({
                 <header>
                   <div>
                     <strong>
-                      {request.requestedAt.toLocaleDateString("en-CA", {
-                        weekday: "short",
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {request.requestedAt.toLocaleDateString("en-CA")}
                     </strong>
                   </div>
                   <span

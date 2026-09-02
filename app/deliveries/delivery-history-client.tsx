@@ -50,97 +50,102 @@ export function DeliveryHistory({
   return (
     <>
       {deliveries.length ? (
-        deliveries.map((item) => {
-          const isVoided = Boolean(item.voidedAt);
-          const displayLines = isVoided
-            ? item.lines
-            : item.lines.filter((line) => line.active);
-          const isViewing = viewingId === item.id;
-          return (
-            <div
-              className={`delivery-card ${isVoided ? "voided-delivery" : ""}`}
-              key={item.id}
-            >
-              <div className="delivery-card-meta">
-                <div>
-                  <strong>
-                    {new Date(
-                      `${item.deliveryDate}T12:00:00`,
-                    ).toLocaleDateString("en-CA", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}{" "}
-                    — {item.vendorName}
-                  </strong>
-                  <span>
-                    {displayLines.length} product
-                    {displayLines.length === 1 ? "" : "s"}
-                    {isVoided && (
-                      <span className="delivery-status">VOIDED</span>
-                    )}
-                  </span>
-                </div>
-                <div className="delivery-card-actions">
-                  <button
-                    className="btn-secondary compact-action"
-                    onClick={() => setViewingId(isViewing ? null : item.id)}
-                    type="button"
-                  >
-                    {isViewing ? "Hide" : "View"}
-                  </button>
-                  {canEdit && !isVoided && (
+        <>
+          <div className="delivery-history-head">
+            <span>Date</span>
+            <span>Vendor</span>
+            <span>Products</span>
+          </div>
+          {deliveries.map((item) => {
+            const isVoided = Boolean(item.voidedAt);
+            const displayLines = isVoided
+              ? item.lines
+              : item.lines.filter((line) => line.active);
+            const isViewing = viewingId === item.id;
+            return (
+              <div
+                className={`delivery-card ${isVoided ? "voided-delivery" : ""}`}
+                key={item.id}
+              >
+                <div className="delivery-card-meta">
+                  <div className="delivery-card-columns">
+                    <span>
+                      {new Date(
+                        `${item.deliveryDate}T12:00:00`,
+                      ).toLocaleDateString("en-CA")}
+                    </span>
+                    <span>
+                      {item.vendorName}
+                      {isVoided && (
+                        <span className="delivery-status">VOIDED</span>
+                      )}
+                    </span>
+                    <span>
+                      {displayLines.length} product
+                      {displayLines.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="delivery-card-actions">
                     <button
                       className="btn-secondary compact-action"
-                      onClick={() => setEditingId(item.id)}
+                      onClick={() => setViewingId(isViewing ? null : item.id)}
                       type="button"
                     >
-                      Edit
+                      {isViewing ? "Hide" : "View"}
                     </button>
-                  )}
-                  {canEdit && !isVoided && (
-                    <button
-                      className="btn-danger compact-action"
-                      onClick={() => setVoidingId(item.id)}
-                      type="button"
-                    >
-                      Delete
-                    </button>
-                  )}
+                    {canEdit && !isVoided && (
+                      <button
+                        className="btn-secondary compact-action"
+                        onClick={() => setEditingId(item.id)}
+                        type="button"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {canEdit && !isVoided && (
+                      <button
+                        className="btn-danger compact-action"
+                        onClick={() => setVoidingId(item.id)}
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              {isViewing && (
-                <>
-                  <p>
-                    Recorded by {item.recordedBy} on{" "}
-                    {new Date(item.recordedAt).toLocaleString("en-CA")}
-                  </p>
-                  {item.notes && <p>{item.notes}</p>}
-                  <ul>
-                    {displayLines.map((line) => (
-                      <li key={line.id}>
-                        <strong>{line.productName}</strong>
-                        <span>
-                          {line.purchaseUnit && line.unitsPerPurchaseUnit
-                            ? `${line.entryQuantity} ${line.purchaseUnit.toLowerCase()} × ${line.unitsPerPurchaseUnit} = `
-                            : ""}
-                          {line.quantity} {line.unit.toLowerCase()}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  {isVoided && (
-                    <p className="delivery-void-comment">
-                      Deleted by {item.voidedBy} on{" "}
-                      {new Date(item.voidedAt!).toLocaleString("en-CA")}:{" "}
-                      {item.voidComment}
+                {isViewing && (
+                  <>
+                    <p>
+                      Recorded by {item.recordedBy} on{" "}
+                      {new Date(item.recordedAt).toLocaleString("en-CA")}
                     </p>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })
+                    {item.notes && <p>{item.notes}</p>}
+                    <ul>
+                      {displayLines.map((line) => (
+                        <li key={line.id}>
+                          <strong>{line.productName}</strong>
+                          <span>
+                            {line.purchaseUnit && line.unitsPerPurchaseUnit
+                              ? `${line.entryQuantity} ${line.purchaseUnit.toLowerCase()} × ${line.unitsPerPurchaseUnit} = `
+                              : ""}
+                            {line.quantity} {line.unit.toLowerCase()}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {isVoided && (
+                      <p className="delivery-void-comment">
+                        Deleted by {item.voidedBy} on{" "}
+                        {new Date(item.voidedAt!).toLocaleString("en-CA")}:{" "}
+                        {item.voidComment}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </>
       ) : (
         <p>No Deliveries have been recorded.</p>
       )}

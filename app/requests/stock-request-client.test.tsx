@@ -120,7 +120,7 @@ describe("FulfillmentQueue", () => {
     );
     expect(screen.getByLabelText("Give Guinness")).toHaveValue(3);
     expect(screen.getByRole("button", { name: "Give Stock" })).toBeEnabled();
-    expect(screen.getAllByText(/Sep 1, 2026/)).toHaveLength(2);
+    expect(screen.getAllByText(/2026-09-01/)).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Close Request" }),
     ).toBeInTheDocument();

@@ -270,19 +270,11 @@ export function NewStockRequest({
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-CA", {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return new Date(value).toLocaleDateString("en-CA");
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-CA", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return new Date(value).toLocaleString("en-CA");
 }
 
 export function FulfillmentQueue({

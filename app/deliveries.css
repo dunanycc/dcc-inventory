@@ -126,6 +126,17 @@
   margin-top: 0.35rem;
   width: 100%;
 }
+.delivery-history-head {
+  color: var(--th-text);
+  display: grid;
+  font-size: 0.67rem;
+  font-weight: 800;
+  gap: 0.75rem;
+  grid-template-columns: 100px minmax(140px, 260px) 90px;
+  letter-spacing: 0.05em;
+  padding: 0 0.75rem 0.4rem;
+  text-transform: uppercase;
+}
 .delivery-card {
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -133,10 +144,23 @@
   padding: 0.65rem 0.75rem;
 }
 .delivery-card.voided-delivery {
-  opacity: 0.75;
+  background: #f4f5f3;
+  color: #687169;
 }
 .delivery-card .delivery-card-meta {
   font-size: 0.86rem;
+}
+.delivery-card-columns {
+  align-items: center;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 100px minmax(140px, 260px) 90px;
+  min-width: 0;
+}
+.delivery-card-columns > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .delivery-card-actions {
   display: flex;
@@ -195,5 +219,9 @@
   }
   .delivery-summary li {
     align-items: start;
+  }
+  .delivery-history-head,
+  .delivery-card-columns {
+    grid-template-columns: 90px 1fr 78px;
   }
 }
