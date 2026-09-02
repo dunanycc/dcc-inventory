@@ -132,16 +132,36 @@
   margin: 0.5rem 0;
   padding: 0.65rem 0.75rem;
 }
-.delivery-card summary {
-  cursor: pointer;
-  display: flex;
+.delivery-card.voided-delivery {
+  opacity: 0.75;
+}
+.delivery-card .delivery-card-meta {
   font-size: 0.86rem;
-  justify-content: space-between;
+}
+.delivery-card-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.4rem;
+}
+.delivery-status {
+  background: #eef0ee;
+  border-radius: 999px;
+  color: #626963;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin-left: 6px;
+  padding: 2px 7px;
+  text-transform: uppercase;
+  vertical-align: middle;
 }
 .delivery-card p {
   color: var(--muted);
   font-size: 0.78rem;
   margin: 0.5rem 0;
+}
+.delivery-void-comment {
+  color: #8a2c25;
 }
 .delivery-card ul {
   margin: 0.4rem 0;

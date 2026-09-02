@@ -69,6 +69,7 @@ export default async function DeliveriesPage({
       include: {
         vendor: true,
         recordedBy: { select: { name: true, email: true } },
+        voidedBy: { select: { name: true, email: true } },
         lines: {
           orderBy: [
             { product: { displayOrder: "asc" } },
@@ -102,6 +103,11 @@ export default async function DeliveriesPage({
     notes: delivery.notes,
     recordedBy: delivery.recordedBy.name || delivery.recordedBy.email,
     recordedAt: delivery.recordedAt.toISOString(),
+    voidedAt: delivery.voidedAt?.toISOString() ?? null,
+    voidedBy: delivery.voidedBy
+      ? delivery.voidedBy.name || delivery.voidedBy.email
+      : null,
+    voidComment: delivery.voidComment,
     lines: delivery.lines.map((line) => ({
       id: line.id,
       productId: line.productId,

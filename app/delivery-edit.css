@@ -3,9 +3,6 @@
   display: flex;
   justify-content: space-between;
 }
-.delivery-card-meta p {
-  margin: 0.5rem 0;
-}
 .delivery-edit-dialog {
   width: min(850px, calc(100vw - 32px));
   height: min(700px, calc(100vh - 2.5rem));

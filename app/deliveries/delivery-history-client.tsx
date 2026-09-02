@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { updateDeliveryAction } from "@/app/(protected)/deliveries/actions";
+import {
+  updateDeliveryAction,
+  voidDeliveryAction,
+} from "@/app/(protected)/deliveries/actions";
 import type { DeliveryCategory } from "@/app/deliveries/delivery-client";
 
 export type DeliveryHistoryRow = {
@@ -12,6 +15,9 @@ export type DeliveryHistoryRow = {
   notes: string | null;
   recordedBy: string;
   recordedAt: string;
+  voidedAt: string | null;
+  voidedBy: string | null;
+  voidComment: string | null;
   lines: Array<{
     id: string;
     productId: string;
@@ -37,57 +43,102 @@ export function DeliveryHistory({
   vendors: Array<{ id: string; name: string }>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [voidingId, setVoidingId] = useState<string | null>(null);
   const delivery = deliveries.find((item) => item.id === editingId);
+  const voiding = deliveries.find((item) => item.id === voidingId);
   return (
     <>
       {deliveries.length ? (
         deliveries.map((item) => {
-          const activeLines = item.lines.filter((line) => line.active);
+          const isVoided = Boolean(item.voidedAt);
+          const displayLines = isVoided
+            ? item.lines
+            : item.lines.filter((line) => line.active);
+          const isViewing = viewingId === item.id;
           return (
-            <details className="delivery-card" key={item.id}>
-              <summary>
-                <strong>
-                  {new Date(`${item.deliveryDate}T12:00:00`).toLocaleDateString(
-                    "en-CA",
-                    { month: "short", day: "numeric", year: "numeric" },
-                  )}{" "}
-                  — {item.vendorName}
-                </strong>
-                <span>
-                  {activeLines.length} product
-                  {activeLines.length === 1 ? "" : "s"}
-                </span>
-              </summary>
+            <div
+              className={`delivery-card ${isVoided ? "voided-delivery" : ""}`}
+              key={item.id}
+            >
               <div className="delivery-card-meta">
-                <p>
-                  Recorded by {item.recordedBy} on{" "}
-                  {new Date(item.recordedAt).toLocaleString("en-CA")}
-                </p>
-                {canEdit && (
+                <div>
+                  <strong>
+                    {new Date(
+                      `${item.deliveryDate}T12:00:00`,
+                    ).toLocaleDateString("en-CA", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    — {item.vendorName}
+                  </strong>
+                  <span>
+                    {displayLines.length} product
+                    {displayLines.length === 1 ? "" : "s"}
+                    {isVoided && (
+                      <span className="delivery-status">VOIDED</span>
+                    )}
+                  </span>
+                </div>
+                <div className="delivery-card-actions">
                   <button
                     className="btn-secondary compact-action"
-                    onClick={() => setEditingId(item.id)}
+                    onClick={() => setViewingId(isViewing ? null : item.id)}
                     type="button"
                   >
-                    Edit Delivery
+                    {isViewing ? "Hide" : "View"}
                   </button>
-                )}
+                  {canEdit && !isVoided && (
+                    <button
+                      className="btn-secondary compact-action"
+                      onClick={() => setEditingId(item.id)}
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {canEdit && !isVoided && (
+                    <button
+                      className="btn-danger compact-action"
+                      onClick={() => setVoidingId(item.id)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
-              {item.notes && <p>{item.notes}</p>}
-              <ul>
-                {activeLines.map((line) => (
-                  <li key={line.id}>
-                    <strong>{line.productName}</strong>
-                    <span>
-                      {line.purchaseUnit && line.unitsPerPurchaseUnit
-                        ? `${line.entryQuantity} ${line.purchaseUnit.toLowerCase()} × ${line.unitsPerPurchaseUnit} = `
-                        : ""}
-                      {line.quantity} {line.unit.toLowerCase()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </details>
+              {isViewing && (
+                <>
+                  <p>
+                    Recorded by {item.recordedBy} on{" "}
+                    {new Date(item.recordedAt).toLocaleString("en-CA")}
+                  </p>
+                  {item.notes && <p>{item.notes}</p>}
+                  <ul>
+                    {displayLines.map((line) => (
+                      <li key={line.id}>
+                        <strong>{line.productName}</strong>
+                        <span>
+                          {line.purchaseUnit && line.unitsPerPurchaseUnit
+                            ? `${line.entryQuantity} ${line.purchaseUnit.toLowerCase()} × ${line.unitsPerPurchaseUnit} = `
+                            : ""}
+                          {line.quantity} {line.unit.toLowerCase()}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {isVoided && (
+                    <p className="delivery-void-comment">
+                      Deleted by {item.voidedBy} on{" "}
+                      {new Date(item.voidedAt!).toLocaleString("en-CA")}:{" "}
+                      {item.voidComment}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           );
         })
       ) : (
@@ -101,7 +152,80 @@ export function DeliveryHistory({
           vendors={vendors}
         />
       )}
+      {voiding && (
+        <DeliveryVoidDialog
+          deliveryId={voiding.id}
+          onClose={() => setVoidingId(null)}
+        />
+      )}
     </>
+  );
+}
+
+function DeliveryVoidDialog({
+  deliveryId,
+  onClose,
+}: {
+  deliveryId: string;
+  onClose(): void;
+}) {
+  return (
+    <div
+      className="request-confirm-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        aria-labelledby="delivery-void-title"
+        aria-modal="true"
+        className="request-confirm-dialog request-closure-dialog"
+        role="dialog"
+      >
+        <header>
+          <div>
+            <h2 id="delivery-void-title">Delete Delivery</h2>
+            <p>
+              Every product in this delivery will be reversed out of Bar
+              inventory as a correction. The delivery stays on record for audit
+              history but will be marked deleted.
+            </p>
+          </div>
+          <button
+            aria-label="Close confirmation dialog"
+            onClick={onClose}
+            type="button"
+          >
+            ×
+          </button>
+        </header>
+        <form action={voidDeliveryAction}>
+          <input name="deliveryId" type="hidden" value={deliveryId} />
+          <div className="request-closure-dialog-body">
+            <label>
+              Comment
+              <textarea
+                aria-label="Deletion comment"
+                autoFocus
+                maxLength={1000}
+                name="voidComment"
+                placeholder="Enter the reason for deleting this delivery"
+                required
+                rows={3}
+              />
+            </label>
+          </div>
+          <footer>
+            <button className="btn-secondary" onClick={onClose} type="button">
+              Cancel
+            </button>
+            <button className="btn-danger" type="submit">
+              Confirm Delete
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
   );
 }
 

@@ -64,6 +64,7 @@ model User {
   transfersPosted    Transfer[]          @relation("TransferPoster")
   productNotes       ProductNote[]       @relation("ProductNoteAuthor")
   deliveriesRecorded Delivery[]          @relation("DeliveryRecorder")
+  deliveriesVoided   Delivery[]          @relation("DeliveryVoider")
 
   @@index([status, role])
 }
@@ -89,7 +90,7 @@ model Product {
   legacyProductId             String?             @unique
   name                        String
   categoryId                  String              @db.Uuid
-  displayOrder               Int                 @default(0)
+  displayOrder                Int                 @default(0)
   stockUnit                   StockUnit
   stockUnitLabel              String?
   allowFractionalStock        Boolean             @default(false)
@@ -217,10 +218,14 @@ model Delivery {
   recordedById String         @db.Uuid
   recordedAt   DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+  voidedAt     DateTime?
+  voidedById   String?        @db.Uuid
+  voidComment  String?
   sourceSystem String?
   sourceId     String?
   vendor       Vendor         @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   recordedBy   User           @relation("DeliveryRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+  voidedBy     User?          @relation("DeliveryVoider", fields: [voidedById], references: [id], onDelete: Restrict)
   lines        DeliveryLine[]
 
   @@unique([sourceSystem, sourceId])
@@ -247,19 +252,19 @@ model DeliveryLine {
 }
 
 model StockRequest {
-  id            String             @id @default(uuid()) @db.Uuid
-  requestedAt   DateTime           @default(now())
-  status        StockRequestStatus @default(SUBMITTED)
-  notes         String?
+  id             String             @id @default(uuid()) @db.Uuid
+  requestedAt    DateTime           @default(now())
+  status         StockRequestStatus @default(SUBMITTED)
+  notes          String?
   closureComment String?
-  requestedById String             @db.Uuid
-  createdAt     DateTime           @default(now())
-  completedAt   DateTime?
-  sourceSystem  String?
-  sourceId      String?
-  requestedBy   User               @relation("StockRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
-  lines         StockRequestLine[]
-  transfers     Transfer[]
+  requestedById  String             @db.Uuid
+  createdAt      DateTime           @default(now())
+  completedAt    DateTime?
+  sourceSystem   String?
+  sourceId       String?
+  requestedBy    User               @relation("StockRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  lines          StockRequestLine[]
+  transfers      Transfer[]
 
   @@unique([sourceSystem, sourceId])
   @@index([requestedById, requestedAt])

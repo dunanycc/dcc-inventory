@@ -179,7 +179,8 @@ export async function updateDeliveryAction(formData: FormData) {
           !vendor ||
           (!vendor.active && delivery?.vendorId !== vendorId) ||
           !bar?.active ||
-          !delivery
+          !delivery ||
+          delivery.voidedAt
         )
           throw new Error("INVALID");
         const products = await tx.product.findMany({
@@ -327,6 +328,100 @@ export async function updateDeliveryAction(formData: FormData) {
       encodeURIComponent(
         "Delivery could not be updated. Review the Vendor, date, and quantities.",
       );
+  }
+  redirect(target);
+}
+
+export async function voidDeliveryAction(formData: FormData) {
+  let target: string;
+  try {
+    const actor = await currentUser();
+    if (!actor || !hasPermission(actor.role, "operations:post"))
+      throw new Error("FORBIDDEN");
+    const deliveryId = String(formData.get("deliveryId") ?? "");
+    const voidComment = String(formData.get("voidComment") ?? "").trim();
+    if (!deliveryId || !voidComment || voidComment.length > 1000)
+      throw new Error("INVALID");
+    await prisma.$transaction(
+      async (tx) => {
+        const fresh = await tx.user.findUnique({
+          where: { id: actor.id },
+          select: { id: true, role: true, status: true },
+        });
+        if (
+          !fresh ||
+          fresh.status !== "ACTIVE" ||
+          !hasPermission(fresh.role, "operations:post")
+        )
+          throw new Error("FORBIDDEN");
+        const [bar, delivery] = await Promise.all([
+          tx.location.findUnique({
+            where: { code: "BAR" },
+            select: { id: true, active: true },
+          }),
+          tx.delivery.findUnique({
+            where: { id: deliveryId },
+            include: { lines: { include: { product: true } } },
+          }),
+        ]);
+        if (!bar?.active || !delivery) throw new Error("INVALID");
+        if (delivery.voidedAt) throw new Error("ALREADY_VOIDED");
+        const occurredAt = new Date();
+        const activeLines = delivery.lines.filter((line) => line.active);
+        for (const line of activeLines) {
+          await tx.deliveryLine.update({
+            where: { id: line.id },
+            data: { active: false },
+          });
+          await tx.inventoryMovement.create({
+            data: {
+              type: "COUNT_ADJUSTMENT",
+              productId: line.productId,
+              quantity: line.quantity,
+              sourceLocationId: bar.id,
+              destinationLocationId: null,
+              occurredAt,
+              postedById: fresh.id,
+              notes: `Delivery ${delivery.id.slice(0, 8)} voided: removed ${line.product.name}`,
+            },
+          });
+        }
+        await tx.delivery.update({
+          where: { id: delivery.id },
+          data: { voidedAt: occurredAt, voidedById: fresh.id, voidComment },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorId: fresh.id,
+            action: "DELIVERY_VOIDED",
+            entityType: "Delivery",
+            entityId: delivery.id,
+            before: {
+              voidedAt: null,
+              lines: activeLines.map((line) => ({
+                id: line.id,
+                productId: line.productId,
+                quantity: line.quantity.toString(),
+              })),
+            },
+            after: { voidedAt: occurredAt.toISOString(), voidComment },
+            correlationId: randomUUID(),
+          },
+        });
+      },
+      { isolationLevel: "Serializable" },
+    );
+    revalidatePath("/deliveries");
+    revalidatePath("/inventory");
+    revalidatePath("/history");
+    target =
+      "/deliveries?success=" +
+      encodeURIComponent("Delivery voided and inventory corrected.");
+  } catch (error) {
+    console.error("Delivery void failed", error);
+    target =
+      "/deliveries?error=" +
+      encodeURIComponent("Delivery could not be voided.");
   }
   redirect(target);
 }
