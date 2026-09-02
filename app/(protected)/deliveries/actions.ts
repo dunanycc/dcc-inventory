@@ -225,7 +225,7 @@ export async function updateDeliveryAction(formData: FormData) {
                 where: { id: line.id },
                 data: { active: false },
               });
-            if (oldQuantity.isPositive())
+            if (!oldQuantity.isZero())
               await tx.inventoryMovement.create({
                 data: {
                   type: "COUNT_ADJUSTMENT",

@@ -17,7 +17,7 @@ export function calculateDeliveryQuantity(
   } catch {
     throw new Error("INVALID_QUANTITY");
   }
-  if (!entry.isPositive()) throw new Error("INVALID_QUANTITY");
+  if (!entry.greaterThan(0)) throw new Error("INVALID_QUANTITY");
   const actual =
     product.purchaseUnit && product.unitsPerPurchaseUnit
       ? entry.mul(product.unitsPerPurchaseUnit.toString())
