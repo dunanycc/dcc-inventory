@@ -256,6 +256,7 @@
 }
 .request-table {
   border-collapse: collapse;
+  table-layout: fixed;
   width: 100%;
 }
 .request-table th,
@@ -268,6 +269,24 @@
   color: var(--muted);
   font-size: 0.7rem;
   text-transform: uppercase;
+}
+.request-table th:nth-child(2),
+.request-table td:nth-child(2),
+.request-table th:nth-child(3),
+.request-table td:nth-child(3) {
+  width: 110px;
+}
+.request-table th:nth-child(4),
+.request-table td:nth-child(4) {
+  width: 130px;
+}
+.fulfillment-table th:nth-child(5),
+.fulfillment-table td:nth-child(5) {
+  width: 100px;
+}
+.fulfillment-table th:nth-child(6),
+.fulfillment-table td:nth-child(6) {
+  width: 140px;
 }
 .request-notes {
   color: var(--muted);

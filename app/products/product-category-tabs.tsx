@@ -287,56 +287,46 @@ export function ProductCategoryTabs({
     );
   return (
     <section className="catalog-panel">
-      <div
-        className="category-tabs"
-        role="tablist"
-        aria-label="Product categories"
-      >
-        {visibleCategories.map((category) => (
-          <button
-            key={category.id}
-            role="tab"
-            aria-selected={selected.id === category.id}
-            className={selected.id === category.id ? "active" : ""}
-            onClick={() => {
-              setSelectedId(category.id);
-              setEditingId(null);
-              setCreating(false);
-            }}
-          >
-            {category.name}
-            <span aria-hidden="true" className="category-count">
-              {category.products.length}
-            </span>
-          </button>
-        ))}
-      </div>
-      <div className="table-toolbar">
-        <div>
-          <h2>{selected.name}</h2>
-          {canManageCatalog && (
-            <small aria-live="polite" className="product-order-status">
-              {isSavingOrder ? "Saving order…" : orderMessage}
-            </small>
-          )}
-        </div>
-        <div className="product-toolbar-actions">
-          <span
-            className={`status-pill ${selected.active ? "" : "muted-pill"}`}
-          >
-            {selected.active ? "Active category" : "Inactive category"}
-          </span>
-          {canManageCatalog && (
+      <div className="category-tabs-row">
+        <div
+          className="category-tabs"
+          role="tablist"
+          aria-label="Product categories"
+        >
+          {visibleCategories.map((category) => (
             <button
-              className="btn-primary"
-              onClick={() => setCreating((value) => !value)}
-              type="button"
+              key={category.id}
+              role="tab"
+              aria-selected={selected.id === category.id}
+              className={selected.id === category.id ? "active" : ""}
+              onClick={() => {
+                setSelectedId(category.id);
+                setEditingId(null);
+                setCreating(false);
+              }}
             >
-              {creating ? "Cancel" : "Add Product"}
+              {category.name}
+              <span aria-hidden="true" className="category-count">
+                {category.products.length}
+              </span>
             </button>
-          )}
+          ))}
         </div>
+        {canManageCatalog && (
+          <button
+            className="btn-primary"
+            onClick={() => setCreating((value) => !value)}
+            type="button"
+          >
+            {creating ? "Cancel" : "Add Product"}
+          </button>
+        )}
       </div>
+      {canManageCatalog && (
+        <small aria-live="polite" className="product-order-status">
+          {isSavingOrder ? "Saving order…" : orderMessage}
+        </small>
+      )}
       {creating && (
         <form action={createProductAction} className="product-editor">
           <h3>New Product</h3>

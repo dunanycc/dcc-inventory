@@ -1,9 +1,30 @@
-.product-toolbar-actions,
 .product-row-actions,
 .product-editor-actions {
   align-items: center;
   display: flex;
   gap: 0.5rem;
+}
+.category-tabs-row {
+  align-items: center;
+  background: #f4f7f5;
+  border-bottom: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.category-tabs-row .category-tabs {
+  background: transparent;
+  border-bottom: 0;
+  border-radius: 0;
+  flex: 1;
+  min-width: 0;
+  position: static;
+}
+.category-tabs-row > .btn-primary {
+  flex: 0 0 auto;
+  margin: 0 14px 8px 0;
 }
 .category-count {
   align-items: center;

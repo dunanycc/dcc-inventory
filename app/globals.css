@@ -245,10 +245,9 @@ button {
   font-weight: 700;
 }
 .category-tabs button.active {
-  color: var(--green-800);
-  background: #fff;
-  border-color: var(--line);
-  transform: translateY(1px);
+  color: #fff;
+  background: var(--green-800);
+  border-color: var(--green-800);
 }
 .category-tabs small {
   padding: 2px 5px;
