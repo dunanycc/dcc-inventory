@@ -10,8 +10,8 @@ import type { DeliveryCategory } from "@/app/deliveries/delivery-client";
 export type DeliveryHistoryRow = {
   id: string;
   deliveryDate: string;
-  vendorId: string;
-  vendorName: string;
+  vendorId: string | null;
+  vendorName: string | null;
   notes: string | null;
   recordedBy: string;
   recordedAt: string;
@@ -75,7 +75,7 @@ export function DeliveryHistory({
                       ).toLocaleDateString("en-CA")}
                     </span>
                     <span>
-                      {item.vendorName}
+                      {item.vendorName ?? "No vendor"}
                       {isVoided && (
                         <span className="delivery-status">VOIDED</span>
                       )}
@@ -334,7 +334,8 @@ function DeliveryEditDialog({
           <div className="delivery-edit-meta">
             <label>
               Vendor
-              <select defaultValue={delivery.vendorId} name="vendorId" required>
+              <select defaultValue={delivery.vendorId ?? ""} name="vendorId">
+                <option value="">No vendor</option>
                 {vendors.map((vendor) => (
                   <option key={vendor.id} value={vendor.id}>
                     {vendor.name}

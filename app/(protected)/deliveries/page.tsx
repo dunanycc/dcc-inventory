@@ -64,7 +64,6 @@ export default async function DeliveriesPage({
         })
       : Promise.resolve([]),
     prisma.delivery.findMany({
-      take: 30,
       orderBy: [{ deliveryDate: "desc" }, { recordedAt: "desc" }],
       include: {
         vendor: true,
@@ -99,7 +98,7 @@ export default async function DeliveriesPage({
     id: delivery.id,
     deliveryDate: delivery.deliveryDate.toISOString().slice(0, 10),
     vendorId: delivery.vendorId,
-    vendorName: delivery.vendor.name,
+    vendorName: delivery.vendor?.name ?? null,
     notes: delivery.notes,
     recordedBy: delivery.recordedBy.name || delivery.recordedBy.email,
     recordedAt: delivery.recordedAt.toISOString(),

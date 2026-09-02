@@ -49,8 +49,8 @@ export function NewDelivery({
       <div className="delivery-meta">
         <label>
           Vendor
-          <select name="vendorId" required>
-            <option value="">Select Vendor</option>
+          <select name="vendorId">
+            <option value="">No vendor</option>
             {vendors.map((vendor) => (
               <option key={vendor.id} value={vendor.id}>
                 {vendor.name}

@@ -212,7 +212,7 @@ model Vendor {
 
 model Delivery {
   id           String         @id @default(uuid()) @db.Uuid
-  vendorId     String         @db.Uuid
+  vendorId     String?        @db.Uuid
   deliveryDate DateTime       @db.Date
   notes        String?
   recordedById String         @db.Uuid
@@ -223,7 +223,7 @@ model Delivery {
   voidComment  String?
   sourceSystem String?
   sourceId     String?
-  vendor       Vendor         @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  vendor       Vendor?        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   recordedBy   User           @relation("DeliveryRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
   voidedBy     User?          @relation("DeliveryVoider", fields: [voidedById], references: [id], onDelete: Restrict)
   lines        DeliveryLine[]

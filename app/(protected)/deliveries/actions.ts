@@ -14,7 +14,7 @@ export async function postDeliveryAction(formData: FormData) {
     const actor = await currentUser();
     if (!actor || !hasPermission(actor.role, "operations:post"))
       throw new Error("FORBIDDEN");
-    const vendorId = String(formData.get("vendorId") ?? "");
+    const vendorId = String(formData.get("vendorId") ?? "") || null;
     const date = String(formData.get("deliveryDate") ?? "");
     const notes = String(formData.get("notes") ?? "").trim();
     const raw = JSON.parse(String(formData.get("items") ?? "[]")) as Array<{
@@ -22,7 +22,6 @@ export async function postDeliveryAction(formData: FormData) {
       quantity: string;
     }>;
     if (
-      !vendorId ||
       !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
       notes.length > 1000 ||
       !Array.isArray(raw) ||
@@ -41,11 +40,13 @@ export async function postDeliveryAction(formData: FormData) {
           !hasPermission(fresh.role, "operations:post")
         )
           throw new Error("FORBIDDEN");
-        const vendor = await tx.vendor.findUnique({
-          where: { id: vendorId },
-          select: { active: true },
-        });
-        if (!vendor?.active) throw new Error("VENDOR");
+        if (vendorId) {
+          const vendor = await tx.vendor.findUnique({
+            where: { id: vendorId },
+            select: { active: true },
+          });
+          if (!vendor?.active) throw new Error("VENDOR");
+        }
         const bar = await tx.location.findUnique({
           where: { code: "BAR" },
           select: { id: true, active: true },
@@ -132,7 +133,7 @@ export async function updateDeliveryAction(formData: FormData) {
     if (!actor || !hasPermission(actor.role, "operations:post"))
       throw new Error("FORBIDDEN");
     const deliveryId = String(formData.get("deliveryId") ?? "");
-    const vendorId = String(formData.get("vendorId") ?? "");
+    const vendorId = String(formData.get("vendorId") ?? "") || null;
     const date = String(formData.get("deliveryDate") ?? "");
     const notes = String(formData.get("notes") ?? "").trim();
     const raw = JSON.parse(String(formData.get("items") ?? "[]")) as Array<{
@@ -141,7 +142,6 @@ export async function updateDeliveryAction(formData: FormData) {
     }>;
     if (
       !deliveryId ||
-      !vendorId ||
       !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
       notes.length > 1000 ||
       !Array.isArray(raw) ||
@@ -162,10 +162,12 @@ export async function updateDeliveryAction(formData: FormData) {
         )
           throw new Error("FORBIDDEN");
         const [vendor, bar, delivery] = await Promise.all([
-          tx.vendor.findUnique({
-            where: { id: vendorId },
-            select: { active: true },
-          }),
+          vendorId
+            ? tx.vendor.findUnique({
+                where: { id: vendorId },
+                select: { active: true },
+              })
+            : Promise.resolve(null),
           tx.location.findUnique({
             where: { code: "BAR" },
             select: { id: true, active: true },
@@ -176,8 +178,7 @@ export async function updateDeliveryAction(formData: FormData) {
           }),
         ]);
         if (
-          !vendor ||
-          (!vendor.active && delivery?.vendorId !== vendorId) ||
+          (vendorId && (!vendor || (!vendor.active && delivery?.vendorId !== vendorId))) ||
           !bar?.active ||
           !delivery ||
           delivery.voidedAt
