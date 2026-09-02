@@ -27,7 +27,7 @@ describe("role permissions", () => {
 
   it("limits Inventory Users to the Starter Shack request workspace", () => {
     expect(isStarterShackStaff("INVENTORY_USER")).toBe(true);
-    expect(landingPathForRole("INVENTORY_USER")).toBe("/requests");
+    expect(landingPathForRole("INVENTORY_USER")).toBe("/starter-shack");
     expect(landingPathForRole("INVENTORY_MANAGER")).toBe("/inventory");
     expect(landingPathForRole("ADMINISTRATOR")).toBe("/inventory");
     expect(landingPathForRole("READ_ONLY")).toBe("/inventory");

@@ -228,6 +228,7 @@ export async function importProductsAction(formData: FormData) {
     revalidatePath("/products");
     revalidatePath("/inventory");
     revalidatePath("/requests");
+    revalidatePath("/starter-shack");
     target = destination(
       "success",
       `Import complete: ${result.productsCreated} Products and ${result.categoriesCreated} Categories created; ${result.productsSkipped} previously imported Products skipped.`,

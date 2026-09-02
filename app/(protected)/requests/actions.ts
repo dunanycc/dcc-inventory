@@ -102,8 +102,9 @@ function errorCode(error: unknown) {
   return "FAILED";
 }
 
-function destination(tab: string, kind: "success" | "error", message: string) {
-  return `/requests?tab=${tab}&${kind}=${encodeURIComponent(message)}`;
+function destination(path: string, kind: "success" | "error", message: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${kind}=${encodeURIComponent(message)}`;
 }
 
 export async function submitStockRequestAction(formData: FormData) {
@@ -178,10 +179,15 @@ export async function submitStockRequestAction(formData: FormData) {
       console.error("New stock request email failed", error);
     }
     revalidatePath("/requests");
-    target = destination("status", "success", "Request submitted to the Bar.");
+    revalidatePath("/starter-shack");
+    target = destination(
+      "/starter-shack?tab=status",
+      "success",
+      "Request submitted to the Bar.",
+    );
   } catch (error) {
     target = destination(
-      "new",
+      "/starter-shack?tab=new",
       "error",
       messages[errorCode(error)] ?? messages.FAILED,
     );
@@ -367,16 +373,17 @@ export async function fulfillStockRequestAction(formData: FormData) {
       }
     }
     revalidatePath("/requests");
+    revalidatePath("/starter-shack");
     revalidatePath("/inventory");
     revalidatePath("/history");
     target = destination(
-      "fulfill",
+      "/requests",
       "success",
       "Stock given and inventory transferred.",
     );
   } catch (error) {
     target = destination(
-      "fulfill",
+      "/requests",
       "error",
       messages[errorCode(error)] ?? messages.FAILED,
     );
@@ -425,14 +432,15 @@ export async function cancelStockRequestAction(formData: FormData) {
       { isolationLevel: "Serializable" },
     );
     revalidatePath("/requests");
+    revalidatePath("/starter-shack");
     target = destination(
-      "fulfill",
+      "/requests",
       "success",
       "Request cancelled. Previously given stock was not changed.",
     );
   } catch (error) {
     target = destination(
-      "fulfill",
+      "/requests",
       "error",
       messages[errorCode(error)] ?? messages.FAILED,
     );
@@ -492,14 +500,15 @@ export async function closeStockRequestAction(formData: FormData) {
       { isolationLevel: "Serializable" },
     );
     revalidatePath("/requests");
+    revalidatePath("/starter-shack");
     target = destination(
-      "fulfill",
+      "/requests",
       "success",
       "Partially given request closed. Previously given stock was not changed.",
     );
   } catch (error) {
     target = destination(
-      "fulfill",
+      "/requests",
       "error",
       messages[errorCode(error)] ?? messages.FAILED,
     );
@@ -577,13 +586,13 @@ export async function updateRequestNotificationSettingsAction(
     });
     revalidatePath("/requests");
     target = destination(
-      "fulfill",
+      "/requests",
       "success",
       "Notification email settings saved.",
     );
   } catch (error) {
     target = destination(
-      "fulfill",
+      "/requests",
       "error",
       messages[errorCode(error)] ?? messages.FAILED,
     );

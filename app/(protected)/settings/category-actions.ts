@@ -214,6 +214,7 @@ export async function reorderCategoriesAction(formData: FormData) {
       "/products",
       "/inventory",
       "/requests",
+      "/starter-shack",
       "/deliveries",
     ].forEach((path) => revalidatePath(path));
     return { ok: true, message: "Category order saved." };

@@ -407,9 +407,13 @@ export async function reorderProductsAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
-    ["/products", "/inventory", "/deliveries", "/requests"].forEach((path) =>
-      revalidatePath(path),
-    );
+    [
+      "/products",
+      "/inventory",
+      "/deliveries",
+      "/requests",
+      "/starter-shack",
+    ].forEach((path) => revalidatePath(path));
     return { ok: true, message: "Product order saved." };
   } catch (error) {
     const code = errorCode(error);

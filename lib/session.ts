@@ -21,6 +21,6 @@ export async function requireCurrentUser() {
 
 export async function requireInventoryWorkspaceUser() {
   const user = await requireCurrentUser();
-  if (isStarterShackStaff(user.role)) redirect("/requests");
+  if (isStarterShackStaff(user.role)) redirect("/starter-shack");
   return user;
 }

@@ -53,5 +53,12 @@ export function isStarterShackStaff(role: AppRole) {
 }
 
 export function landingPathForRole(role: AppRole) {
-  return isStarterShackStaff(role) ? "/requests" : "/inventory";
+  return isStarterShackStaff(role) ? "/starter-shack" : "/inventory";
 }
+
+export const roleLabels: Record<AppRole, string> = {
+  ADMINISTRATOR: "Administrator",
+  INVENTORY_MANAGER: "Inventory Manager",
+  INVENTORY_USER: "Starter Shack Staff",
+  READ_ONLY: "Read Only",
+};

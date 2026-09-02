@@ -2,25 +2,19 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import {
   hasPermission,
-  isStarterShackStaff,
   landingPathForRole,
+  roleLabels,
   type AppRole,
 } from "@/lib/authorization";
 const navigation = [
   ["Inventory", "/inventory"],
   ["Products", "/products"],
   ["Deliveries", "/deliveries"],
-  ["Starter Shack", "/requests"],
+  ["Stock Request", "/requests"],
   ["Counts", "/counts"],
   ["History", "/history"],
   ["Admin", "/settings"],
 ] as const;
-const roleLabels: Record<AppRole, string> = {
-  ADMINISTRATOR: "Administrator",
-  INVENTORY_MANAGER: "Inventory Manager",
-  INVENTORY_USER: "Starter Shack Staff",
-  READ_ONLY: "Read Only",
-};
 export function AppShell({
   user,
   children,
@@ -28,14 +22,12 @@ export function AppShell({
   user: { name: string | null; email: string; role: AppRole };
   children: React.ReactNode;
 }) {
-  const visibleNavigation = isStarterShackStaff(user.role)
-    ? navigation.filter(([label]) => label === "Starter Shack")
-    : navigation.filter(
-        ([label]) =>
-          label !== "Admin" ||
-          hasPermission(user.role, "users:manage") ||
-          hasPermission(user.role, "catalog:manage"),
-      );
+  const visibleNavigation = navigation.filter(
+    ([label]) =>
+      label !== "Admin" ||
+      hasPermission(user.role, "users:manage") ||
+      hasPermission(user.role, "catalog:manage"),
+  );
   return (
     <div className="app-frame">
       <header className="topbar">
