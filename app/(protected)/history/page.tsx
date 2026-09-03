@@ -38,12 +38,11 @@ export default async function HistoryPage() {
       yoyPercent: row.yoyPercent,
     });
   }
-  const products = [...byProduct.values()].sort(
-    (a, b) =>
-      a.categoryName.localeCompare(b.categoryName) ||
-      a.productName.localeCompare(b.productName),
-  );
-  const categories = [...new Set(products.map((p) => p.categoryName))].sort();
+  // getSeasonalConsumptionReport already orders products by the same
+  // Category/Product displayOrder used site-wide — preserve that order
+  // rather than re-sorting alphabetically.
+  const products = [...byProduct.values()];
+  const categories = [...new Set(products.map((p) => p.categoryName))];
 
   return (
     <>
