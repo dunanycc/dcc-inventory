@@ -8,7 +8,7 @@ import { hasPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import {
   notifyNewStockRequest,
-  notifyStockRequestCompleted,
+  notifyStockRequestChanged,
 } from "@/lib/request-notifications";
 import { currentUser } from "@/lib/session";
 import {
@@ -362,14 +362,17 @@ export async function fulfillStockRequestAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
-    if (finalStatus === "GIVEN") {
+    if (finalStatus === "GIVEN" || finalStatus === "PARTIALLY_GIVEN") {
       const settings = await prisma.stockRequestNotificationSettings.findUnique(
         { where: { id: "default" }, select: { requestorEmail: true } },
       );
       try {
-        await notifyStockRequestCompleted(settings?.requestorEmail ?? null);
+        await notifyStockRequestChanged(
+          settings?.requestorEmail ?? null,
+          finalStatus,
+        );
       } catch (error) {
-        console.error("Completed stock request email failed", error);
+        console.error("Stock request update email failed", error);
       }
     }
     revalidatePath("/requests");
@@ -431,6 +434,19 @@ export async function cancelStockRequestAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
+    const settings = await prisma.stockRequestNotificationSettings.findUnique({
+      where: { id: "default" },
+      select: { requestorEmail: true },
+    });
+    try {
+      await notifyStockRequestChanged(
+        settings?.requestorEmail ?? null,
+        "CANCELLED",
+        closureComment,
+      );
+    } catch (error) {
+      console.error("Cancelled stock request email failed", error);
+    }
     revalidatePath("/requests");
     revalidatePath("/starter-shack");
     target = destination(
@@ -499,6 +515,19 @@ export async function closeStockRequestAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
+    const settings = await prisma.stockRequestNotificationSettings.findUnique({
+      where: { id: "default" },
+      select: { requestorEmail: true },
+    });
+    try {
+      await notifyStockRequestChanged(
+        settings?.requestorEmail ?? null,
+        "CLOSED",
+        closureComment,
+      );
+    } catch (error) {
+      console.error("Closed stock request email failed", error);
+    }
     revalidatePath("/requests");
     revalidatePath("/starter-shack");
     target = destination(
