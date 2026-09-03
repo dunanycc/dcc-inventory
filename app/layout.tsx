@@ -10,6 +10,7 @@ import "./inventory.css";
 import "./requests.css";
 import "./counts.css";
 import "./table-colors.css";
+import "./history.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
