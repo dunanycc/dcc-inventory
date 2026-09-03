@@ -90,10 +90,7 @@ describe("FulfillmentQueue", () => {
   it("prefills Giving now with the outstanding requested quantity", () => {
     render(
       <FulfillmentQueue
-        notificationSettings={{
-          orderNotificationEmail: "orders@example.com",
-          requestorEmail: "shack@example.com",
-        }}
+        notificationSettings={{ orderNotificationEmail: "orders@example.com" }}
         requests={[
           {
             id: "request",
@@ -140,10 +137,7 @@ describe("FulfillmentQueue", () => {
   it("hides completed requests until requested", () => {
     render(
       <FulfillmentQueue
-        notificationSettings={{
-          orderNotificationEmail: "",
-          requestorEmail: "",
-        }}
+        notificationSettings={{ orderNotificationEmail: "" }}
         requests={[
           {
             id: "done",

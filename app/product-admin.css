@@ -381,7 +381,7 @@
   border-radius: 12px;
   display: grid;
   gap: 10px;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr auto;
   margin-bottom: 12px;
   padding: 12px 14px;
 }

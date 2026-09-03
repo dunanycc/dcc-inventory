@@ -106,7 +106,6 @@ export default async function RequestsPage({
         notificationSettings={{
           orderNotificationEmail:
             notificationSettings?.orderNotificationEmail ?? "",
-          requestorEmail: notificationSettings?.requestorEmail ?? "",
         }}
         requests={fulfillmentRows}
       />

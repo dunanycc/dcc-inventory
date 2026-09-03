@@ -283,7 +283,6 @@ export function FulfillmentQueue({
 }: {
   notificationSettings: {
     orderNotificationEmail: string;
-    requestorEmail: string;
   };
   requests: RequestView[];
 }) {
@@ -324,22 +323,13 @@ export function FulfillmentQueue({
             type="email"
           />
         </label>
-        <label>
-          Requestor email
-          <input
-            defaultValue={notificationSettings.requestorEmail}
-            maxLength={320}
-            name="requestorEmail"
-            placeholder="startershack@example.com"
-            type="email"
-          />
-        </label>
         <button className="btn-secondary compact-action" type="submit">
-          Save Emails
+          Save Email
         </button>
         <small>
-          Order notifications are sent for new requests; requestor notifications
-          are sent when all requested stock has been given.
+          Order notifications are sent for new requests. The requester is
+          emailed directly at their own account address whenever their request
+          is given, partially given, cancelled, or closed.
         </small>
       </form>
       <div className="fulfillment-toolbar">

@@ -233,7 +233,11 @@ export async function fulfillStockRequestAction(formData: FormData) {
     const raw = parseEntries(formData.get("items"), "lineId").filter(
       (item) => item.quantity && !/^0+(?:\.0+)?$/.test(item.quantity),
     );
-    const { status: finalStatus, givenItems } = await prisma.$transaction(
+    const {
+      status: finalStatus,
+      givenItems,
+      requesterEmail,
+    } = await prisma.$transaction(
       async (transaction) => {
         const freshActor = await transaction.user.findUnique({
           where: { id: actor.id },
@@ -242,6 +246,7 @@ export async function fulfillStockRequestAction(formData: FormData) {
         const request = await transaction.stockRequest.findUnique({
           where: { id: requestId },
           include: {
+            requestedBy: { select: { email: true } },
             lines: {
               include: {
                 product: {
@@ -398,17 +403,18 @@ export async function fulfillStockRequestAction(formData: FormData) {
             quantity: entry.quantity,
           };
         });
-        return { status, givenItems };
+        return {
+          status,
+          givenItems,
+          requesterEmail: request.requestedBy.email,
+        };
       },
       { isolationLevel: "Serializable" },
     );
     if (finalStatus === "GIVEN" || finalStatus === "PARTIALLY_GIVEN") {
-      const settings = await prisma.stockRequestNotificationSettings.findUnique(
-        { where: { id: "default" }, select: { requestorEmail: true } },
-      );
       try {
         await notifyStockRequestChanged(
-          settings?.requestorEmail ?? null,
+          requesterEmail,
           finalStatus,
           requestId,
           { givenItems },
@@ -442,7 +448,7 @@ export async function cancelStockRequestAction(formData: FormData) {
   let target: string;
   try {
     const actor = await currentUser();
-    await prisma.$transaction(
+    const requesterEmail = await prisma.$transaction(
       async (transaction) => {
         const freshActor =
           actor &&
@@ -458,7 +464,7 @@ export async function cancelStockRequestAction(formData: FormData) {
           throw new StockRequestError("FORBIDDEN");
         const request = await transaction.stockRequest.findUnique({
           where: { id: requestId },
-          select: { status: true },
+          select: { status: true, requestedBy: { select: { email: true } } },
         });
         if (!request) throw new StockRequestError("NOT_FOUND");
         if (!closureComment || closureComment.length > 1000)
@@ -473,20 +479,14 @@ export async function cancelStockRequestAction(formData: FormData) {
             closureComment,
           },
         });
+        return request.requestedBy.email;
       },
       { isolationLevel: "Serializable" },
     );
-    const settings = await prisma.stockRequestNotificationSettings.findUnique({
-      where: { id: "default" },
-      select: { requestorEmail: true },
-    });
     try {
-      await notifyStockRequestChanged(
-        settings?.requestorEmail ?? null,
-        "CANCELLED",
-        requestId,
-        { closureComment },
-      );
+      await notifyStockRequestChanged(requesterEmail, "CANCELLED", requestId, {
+        closureComment,
+      });
     } catch (error) {
       console.error("Cancelled stock request email failed", error);
     }
@@ -513,7 +513,7 @@ export async function closeStockRequestAction(formData: FormData) {
   let target: string;
   try {
     const actor = await currentUser();
-    await prisma.$transaction(
+    const requesterEmail = await prisma.$transaction(
       async (transaction) => {
         const freshActor =
           actor &&
@@ -529,7 +529,7 @@ export async function closeStockRequestAction(formData: FormData) {
           throw new StockRequestError("FORBIDDEN");
         const request = await transaction.stockRequest.findUnique({
           where: { id: requestId },
-          select: { status: true },
+          select: { status: true, requestedBy: { select: { email: true } } },
         });
         if (!request) throw new StockRequestError("NOT_FOUND");
         if (request.status !== "PARTIALLY_GIVEN")
@@ -555,20 +555,14 @@ export async function closeStockRequestAction(formData: FormData) {
             },
           },
         });
+        return request.requestedBy.email;
       },
       { isolationLevel: "Serializable" },
     );
-    const settings = await prisma.stockRequestNotificationSettings.findUnique({
-      where: { id: "default" },
-      select: { requestorEmail: true },
-    });
     try {
-      await notifyStockRequestChanged(
-        settings?.requestorEmail ?? null,
-        "CLOSED",
-        requestId,
-        { closureComment },
-      );
+      await notifyStockRequestChanged(requesterEmail, "CLOSED", requestId, {
+        closureComment,
+      });
     } catch (error) {
       console.error("Closed stock request email failed", error);
     }
@@ -602,13 +596,7 @@ export async function updateRequestNotificationSettingsAction(
     )
       .trim()
       .toLowerCase();
-    const requestorEmail = String(formData.get("requestorEmail") ?? "")
-      .trim()
-      .toLowerCase();
-    if (
-      !optionalEmail.safeParse(orderNotificationEmail).success ||
-      !optionalEmail.safeParse(requestorEmail).success
-    )
+    if (!optionalEmail.safeParse(orderNotificationEmail).success)
       throw new StockRequestError("INVALID_INPUT");
     await prisma.$transaction(async (transaction) => {
       const freshActor = await transaction.user.findUnique({
@@ -631,11 +619,9 @@ export async function updateRequestNotificationSettingsAction(
           create: {
             id: "default",
             orderNotificationEmail: orderNotificationEmail || null,
-            requestorEmail: requestorEmail || null,
           },
           update: {
             orderNotificationEmail: orderNotificationEmail || null,
-            requestorEmail: requestorEmail || null,
           },
         });
       await transaction.auditEvent.create({
@@ -645,15 +631,9 @@ export async function updateRequestNotificationSettingsAction(
           entityType: "StockRequestNotificationSettings",
           entityId: settings.id,
           before: before
-            ? {
-                orderNotificationEmail: before.orderNotificationEmail,
-                requestorEmail: before.requestorEmail,
-              }
+            ? { orderNotificationEmail: before.orderNotificationEmail }
             : undefined,
-          after: {
-            orderNotificationEmail: settings.orderNotificationEmail,
-            requestorEmail: settings.requestorEmail,
-          },
+          after: { orderNotificationEmail: settings.orderNotificationEmail },
         },
       });
     });
