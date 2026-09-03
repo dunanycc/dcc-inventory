@@ -89,7 +89,7 @@ export default async function RequestsPage({
     <>
       <PageHeading
         eyebrow="Bar operations"
-        title="Stock Request"
+        title="Starter Shack"
         description="Review and fulfill Starter Shack requests from the Bar."
       />
       {query.success && (

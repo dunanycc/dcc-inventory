@@ -10,7 +10,7 @@ const navigation = [
   ["Inventory", "/inventory"],
   ["Products", "/products"],
   ["Deliveries", "/deliveries"],
-  ["Stock Request", "/requests"],
+  ["Starter Shack", "/requests"],
   ["Counts", "/counts"],
   ["History", "/history"],
   ["Admin", "/settings"],
