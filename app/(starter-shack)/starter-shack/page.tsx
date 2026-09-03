@@ -165,7 +165,11 @@ export default async function StarterShackRequestPage({
             </div>
           ) : (
             ownRequests.map((request) => (
-              <article className="request-card" key={request.id}>
+              <article
+                className="request-card"
+                id={`request-${request.id}`}
+                key={request.id}
+              >
                 <header>
                   <div>
                     <strong>

@@ -43,6 +43,20 @@ function parseEntries(
   });
 }
 
+function unitLabel(product: {
+  stockUnit: string;
+  stockUnitLabel: string | null;
+  packageSize: string | null;
+}) {
+  const unit =
+    product.stockUnit === "OTHER"
+      ? product.stockUnitLabel || "Other"
+      : product.stockUnit
+          .toLowerCase()
+          .replace(/^./, (value) => value.toUpperCase());
+  return product.packageSize ? `${unit} · ${product.packageSize}` : unit;
+}
+
 function productShape(product: {
   id: string;
   active: boolean;
@@ -129,7 +143,7 @@ export async function submitStockRequestAction(formData: FormData) {
     );
     const notes = String(formData.get("notes") ?? "").trim();
     if (notes.length > 1000) throw new StockRequestError("INVALID_INPUT");
-    await prisma.$transaction(
+    const created = await prisma.$transaction(
       async (transaction) => {
         const freshActor = await transaction.user.findUnique({
           where: { id: actor.id },
@@ -151,7 +165,7 @@ export async function submitStockRequestAction(formData: FormData) {
             freshProducts.map((product) => [product.id, productShape(product)]),
           ),
         );
-        await transaction.stockRequest.create({
+        const stockRequest = await transaction.stockRequest.create({
           data: {
             requestedById: freshActor.id,
             notes: notes || null,
@@ -163,6 +177,7 @@ export async function submitStockRequestAction(formData: FormData) {
             },
           },
         });
+        return { id: stockRequest.id, lines: validated };
       },
       { isolationLevel: "Serializable" },
     );
@@ -171,9 +186,23 @@ export async function submitStockRequestAction(formData: FormData) {
       select: { orderNotificationEmail: true },
     });
     try {
+      const productInfo = new Map(
+        products.map((product) => [
+          product.id,
+          { name: product.name, unit: unitLabel(product) },
+        ]),
+      );
+      const items = created.lines.map((line) => ({
+        name: productInfo.get(line.productId)?.name ?? "Product",
+        unit: productInfo.get(line.productId)?.unit ?? "",
+        quantity: line.quantity,
+      }));
       await notifyNewStockRequest(
         settings?.orderNotificationEmail ?? null,
         actor.name || actor.email,
+        created.id,
+        items,
+        notes || null,
       );
     } catch (error) {
       console.error("New stock request email failed", error);
@@ -204,7 +233,7 @@ export async function fulfillStockRequestAction(formData: FormData) {
     const raw = parseEntries(formData.get("items"), "lineId").filter(
       (item) => item.quantity && !/^0+(?:\.0+)?$/.test(item.quantity),
     );
-    const finalStatus = await prisma.$transaction(
+    const { status: finalStatus, givenItems } = await prisma.$transaction(
       async (transaction) => {
         const freshActor = await transaction.user.findUnique({
           where: { id: actor.id },
@@ -358,7 +387,18 @@ export async function fulfillStockRequestAction(formData: FormData) {
           where: { id: request.id },
           data: { status, completedAt: status === "GIVEN" ? now : null },
         });
-        return status;
+        const productById = new Map(
+          request.lines.map((line) => [line.productId, line.product]),
+        );
+        const givenItems = entries.map((entry) => {
+          const product = productById.get(entry.productId);
+          return {
+            name: product?.name ?? "Product",
+            unit: product ? unitLabel(product) : "",
+            quantity: entry.quantity,
+          };
+        });
+        return { status, givenItems };
       },
       { isolationLevel: "Serializable" },
     );
@@ -370,6 +410,8 @@ export async function fulfillStockRequestAction(formData: FormData) {
         await notifyStockRequestChanged(
           settings?.requestorEmail ?? null,
           finalStatus,
+          requestId,
+          { givenItems },
         );
       } catch (error) {
         console.error("Stock request update email failed", error);
@@ -442,7 +484,8 @@ export async function cancelStockRequestAction(formData: FormData) {
       await notifyStockRequestChanged(
         settings?.requestorEmail ?? null,
         "CANCELLED",
-        closureComment,
+        requestId,
+        { closureComment },
       );
     } catch (error) {
       console.error("Cancelled stock request email failed", error);
@@ -523,7 +566,8 @@ export async function closeStockRequestAction(formData: FormData) {
       await notifyStockRequestChanged(
         settings?.requestorEmail ?? null,
         "CLOSED",
-        closureComment,
+        requestId,
+        { closureComment },
       );
     } catch (error) {
       console.error("Closed stock request email failed", error);

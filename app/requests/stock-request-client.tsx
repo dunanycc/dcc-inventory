@@ -378,6 +378,7 @@ export function FulfillmentQueue({
             return (
               <article
                 className={`request-card fulfillment-card ${isOpen ? "" : "completed-request"}`}
+                id={`request-${request.id}`}
                 key={request.id}
               >
                 <header>
