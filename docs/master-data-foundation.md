@@ -37,3 +37,24 @@ Database order is authoritative: `displayOrder`, then stable Category `id`. Scre
 `npm run test:postgres` destructively rebuilds only a disposable database supplied as `TEST_DATABASE_URL`. As a safety guard, the database name must contain `test`, `ci`, `disposable`, or `temporary`, and it must not equal `DATABASE_URL` or `DATABASE_URL_UNPOOLED`.
 
 The harness applies every migration in order, inserts Phase 1-shaped data before the pending migrations, and verifies upgrade preservation, CHECK constraints, normalized uniqueness, source/composite uniqueness, and the Starter Shack value-preserving rename. Never point it at production.
+
+## Approved migration workflow
+
+This project has no separate staging database - `DATABASE_URL` is production in every environment, including local development. Schema work must never run a Prisma command that can write to it outside an explicit, authorized deploy step:
+
+1. Edit `prisma/schema.prisma`.
+2. Hand-author the migration under `prisma/migrations/<timestamp>_<name>/migration.sql` rather than generating it interactively.
+3. `npx prisma validate`.
+4. `npx prisma generate`.
+5. Rehearse against a disposable database with `npm run test:postgres` (a separately named `TEST_DATABASE_URL`, per the guard above).
+6. Apply to production only as an explicit, separately authorized deployment step with `npx prisma migrate deploy`.
+
+Never run `prisma migrate dev` or `prisma migrate reset` against this project. `db:migrate` is deliberately wired to a guard script (`scripts/guard-no-dev-migrate.ts`) that refuses and prints this workflow instead of invoking `prisma migrate dev`.
+
+### Migration workflow incident (2026-09-03)
+
+While hand-authoring an unrelated additive migration, `prisma migrate dev --create-only` was run to generate the new migration file. Unexpectedly, `prisma migrate dev` first applies every already-pending migration before creating anything new - even with `--create-only` - and a previous migration (`20260903190000_remove_stock_request_requestor_email`, dropping `StockRequestNotificationSettings.requestorEmail`) had been hand-authored and intentionally left unapplied pending a separate deploy step. That pending migration was applied to production as an unintended side effect.
+
+Verification afterward (read-only: `_prisma_migrations` inspection, `prisma migrate diff` against the live database, and direct information_schema/pg_catalog queries) confirmed the drop applied exactly once, cleanly, with no other unintended schema drift. The application code matching that schema change was already written, tested, and committed, but had not yet been deployed - so production briefly ran deployed code that still referenced the now-dropped column until that code was deployed.
+
+Lesson: `prisma migrate dev` is unsafe to run at all against a project with no separate staging database, regardless of flags. Use the approved workflow above instead.

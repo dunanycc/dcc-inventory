@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "tsx scripts/guard-no-dev-migrate.ts",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed"
   },
