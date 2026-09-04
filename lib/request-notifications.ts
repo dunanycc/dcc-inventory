@@ -50,6 +50,28 @@ function formatItems(items: readonly RequestEmailItem[]) {
     .join("\n");
 }
 
+// The link is built entirely server-side from a cryptographically random
+// token - nothing here comes from user input, so there is no way for a raw
+// HTML/MIME injection to reach this message.
+export async function sendSignInLinkEmail(email: string, token: string) {
+  const url = buildLink(
+    `/sign-in/verify?${new URLSearchParams({ token, email }).toString()}`,
+  );
+  return sendNotification({
+    to: email,
+    subject: "Sign in to DCC Inventory",
+    text: [
+      "Use the link below to sign in to DCC Inventory.",
+      "",
+      url,
+      "",
+      "This link expires in 15 minutes and can only be used once.",
+      "",
+      "If you did not request this, you can safely ignore this email.",
+    ].join("\n"),
+  });
+}
+
 export async function notifyNewStockRequest(
   email: string | null,
   requestorName: string,

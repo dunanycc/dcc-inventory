@@ -7,7 +7,7 @@ Standalone stock-tracking application for Dunany Country Club volunteers. It is 
 - Next.js App Router, TypeScript, React, and Tailwind CSS
 - PostgreSQL on a dedicated Neon project
 - Prisma ORM with the PostgreSQL driver adapter
-- Auth.js with independently configured Google and/or Yahoo OAuth
+- Auth.js with independently configured Google and/or Yahoo OAuth, plus an SMTP-based email magic-link option for approved Users on neither provider
 - Vitest and Testing Library
 
 ## Local setup
@@ -15,7 +15,7 @@ Standalone stock-tracking application for Dunany Country Club volunteers. It is 
 1. Install dependencies with `npm install`.
 2. Copy `.env.example` to `.env.local` and replace placeholders locally. Never commit `.env.local`.
 3. Generate the Prisma client with `npm run db:generate`.
-4. Apply migrations with `npm run db:deploy` or create a development migration with `npm run db:migrate -- --name <name>`.
+4. Apply migrations with `npm run db:deploy`. This project has no separate staging database, so `prisma migrate dev`/`reset` must never be run against it - `npm run db:migrate` is a guard that refuses and explains the approved hand-author-and-rehearse workflow (see `docs/master-data-foundation.md`).
 5. Seed structural locations with `npm run db:seed`.
 6. Start the application with `npm run dev`. DCC Inventory runs at `http://localhost:3016`.
 
@@ -26,14 +26,16 @@ Standalone stock-tracking application for Dunany Country Club volunteers. It is 
 - `AUTH_SECRET`: a unique Auth.js signing secret for this standalone application.
 - `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`: Google OAuth application credentials.
 - `AUTH_YAHOO_ID` and `AUTH_YAHOO_SECRET`: Yahoo OAuth application credentials.
-- `BOOTSTRAP_ADMIN_EMAILS`: comma-separated emails allowed to create their own initial Administrator row after verified OAuth. Matching is exact after trimming and lowercasing. Existing users are never modified by bootstrap.
+- `BOOTSTRAP_ADMIN_EMAILS`: comma-separated emails allowed to create their own initial Administrator row after verified OAuth or email-link sign-in. Matching is exact after trimming and lowercasing. Existing users are never modified by bootstrap.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `EMAIL_FROM`: shared SMTP configuration (defaults assume Gmail) used both for Starter Shack request notifications and for the email magic-link sign-in provider. Email-link sign-in is only offered when `SMTP_USER`/`SMTP_PASSWORD` are set.
+- `APP_URL`: base URL used to build absolute links in outgoing emails, including sign-in links.
 
 Configure the same variables in `.env.local` for local development and in the appropriate Vercel environments. Never commit their values. Register these local OAuth callbacks:
 
 - Google: `http://localhost:3016/api/auth/callback/google`
 - Yahoo: `http://localhost:3016/api/auth/callback/yahoo`
 
-Register the corresponding HTTPS callbacks for each deployed Vercel domain (for example, `https://your-domain/api/auth/callback/google` and `/api/auth/callback/yahoo`). At least one OAuth provider must be configured before interactive sign-in is available. Apart from the narrowly configured bootstrap path, signing in requires a matching active `User` record; no Barsheet user table or authentication configuration is shared.
+Register the corresponding HTTPS callbacks for each deployed Vercel domain (for example, `https://your-domain/api/auth/callback/google` and `/api/auth/callback/yahoo`). At least one sign-in method (an OAuth provider, or SMTP for the email-link option) must be configured before interactive sign-in is available. Apart from the narrowly configured bootstrap path, signing in requires a matching active `User` record; no Barsheet user table or authentication configuration is shared. Email-link sign-in never creates a password and consumes a one-time, short-lived token stored (hashed) in `VerificationToken`.
 
 ## Authorization
 

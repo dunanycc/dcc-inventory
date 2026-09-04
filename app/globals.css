@@ -359,6 +359,37 @@ button {
   font-size: var(--btn-font-size);
   font-weight: 750;
 }
+.auth-divider {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 4px 0 14px;
+  text-align: center;
+  text-transform: uppercase;
+}
+.auth-email-form {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.auth-email-form label {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.auth-email-form input {
+  border: 1px solid var(--border-input);
+  border-radius: var(--btn-radius);
+  min-height: var(--btn-height);
+  padding: 0 0.75rem;
+}
+.auth-email-form button {
+  min-height: var(--btn-height);
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: var(--green-800);
+  color: #fff;
+  font-size: var(--btn-font-size);
+  font-weight: 750;
+}
 .notice {
   padding: 12px;
   border-radius: 9px;

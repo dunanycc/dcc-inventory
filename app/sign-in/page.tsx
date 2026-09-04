@@ -1,9 +1,16 @@
 import { authProviders, signIn } from "@/auth";
+import { requestSignInLinkAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default function SignInPage() {
-  const configured = authProviders.google || authProviders.yahoo;
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ linkSent?: string; error?: string }>;
+}) {
+  const query = await searchParams;
+  const configured =
+    authProviders.google || authProviders.yahoo || authProviders.emailLink;
   return (
     <main className="auth-page">
       <section className="auth-card">
@@ -13,6 +20,17 @@ export default function SignInPage() {
           Sign in with an identity linked to an independently approved Inventory
           account.
         </p>
+        {query.linkSent && (
+          <p className="notice success" role="status">
+            If this email is approved, a sign-in link has been sent.
+          </p>
+        )}
+        {query.error && (
+          <p className="notice error" role="alert">
+            That sign-in link is invalid or has expired. Request a new one
+            below.
+          </p>
+        )}
         <div className="auth-actions">
           {authProviders.google && (
             <form
@@ -81,6 +99,24 @@ export default function SignInPage() {
             </form>
           )}
         </div>
+        {authProviders.emailLink && (
+          <>
+            <p className="auth-divider">or</p>
+            <form action={requestSignInLinkAction} className="auth-email-form">
+              <label htmlFor="email">Email address</label>
+              <input
+                autoComplete="email"
+                id="email"
+                maxLength={320}
+                name="email"
+                placeholder="you@example.com"
+                required
+                type="email"
+              />
+              <button type="submit">Email me a sign-in link</button>
+            </form>
+          </>
+        )}
         {!configured && (
           <div className="notice warning">
             Authentication providers are not configured yet. Add independent

@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import NextAuth, { type NextAuthConfig } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import { verifySignInToken } from "@/lib/email-signin";
 import { prisma } from "@/lib/prisma";
 import { Yahoo } from "@/lib/yahoo-provider";
 import {
@@ -29,24 +31,77 @@ if (process.env.AUTH_YAHOO_ID && process.env.AUTH_YAHOO_SECRET) {
   );
 }
 
+const emailLinkConfigured = Boolean(
+  process.env.SMTP_USER && process.env.SMTP_PASSWORD,
+);
+
+if (emailLinkConfigured) {
+  providers.push(
+    Credentials({
+      id: "email-link",
+      name: "Email link",
+      credentials: { email: { label: "Email" }, token: { label: "Token" } },
+      async authorize(credentials) {
+        const email = String(credentials?.email ?? "");
+        const token = String(credentials?.token ?? "");
+        const verification = await verifySignInToken(email, token, {
+          async consumeToken(identifier, tokenHash) {
+            try {
+              const row = await prisma.verificationToken.delete({
+                where: { tokenHash },
+                select: { expires: true, identifier: true },
+              });
+              // A token hash is only ever valid for the identifier it was
+              // issued to; a mismatch here is treated the same as "not
+              // found" rather than trusting the caller's claimed email.
+              return row.identifier === identifier ? row : null;
+            } catch {
+              return null;
+            }
+          },
+        });
+        if (!verification.ok) return null;
+        // Only proves the requester owns this mailbox. Whether they are an
+        // approved, active User is decided by the shared signIn callback
+        // below, exactly like Google/Yahoo.
+        return { email: verification.identifier };
+      },
+    }),
+  );
+}
+
 export const authProviders = {
   google: Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET),
   yahoo: Boolean(process.env.AUTH_YAHOO_ID && process.env.AUTH_YAHOO_SECRET),
+  emailLink: emailLinkConfigured,
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   providers,
   pages: { signIn: "/sign-in", error: "/sign-in" },
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  // maxAge: session lifetime with no activity. updateAge: how often an
+  // active session's expiry is pushed back out, so regular use keeps
+  // someone signed in without a custom refresh-token scheme.
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
+  },
   callbacks: {
     async signIn({ user, profile, account }) {
       const email = normalizeEmail(String(profile?.email ?? user.email ?? ""));
       const provider = account?.provider ?? "unknown";
+      // OAuth proves ownership via the provider's own verified-email flag;
+      // email-link proves it by successfully consuming a one-time token in
+      // this Credentials provider's authorize() above - reaching this
+      // callback at all is itself the proof for that path.
+      const emailVerified =
+        provider === "email-link" ? true : profile?.email_verified === true;
       const approved = await authorizeOAuthIdentity(
         {
           email,
-          emailVerified: profile?.email_verified === true,
+          emailVerified,
           name: profile?.name ?? user.name,
           provider,
         },
@@ -93,8 +148,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                       status: created.status,
                       provider: input.provider,
                     },
-                    reason:
-                      "Verified OAuth email matched BOOTSTRAP_ADMIN_EMAILS",
+                    reason: "Verified email matched BOOTSTRAP_ADMIN_EMAILS",
                     correlationId: randomUUID(),
                   },
                 });
