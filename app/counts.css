@@ -2,6 +2,47 @@
   display: grid;
   gap: 1rem;
 }
+.season-opening-year {
+  border-top: 1px solid var(--line);
+  padding: 1rem 22px;
+}
+.product-table-group td {
+  background: var(--surface-subtle);
+  color: var(--th-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 7px 15px;
+  text-transform: uppercase;
+}
+table.season-opening-table {
+  min-width: 0;
+}
+table.season-opening-table th,
+table.season-opening-table td {
+  padding: 8px 15px;
+}
+table.season-opening-table th:not(:first-child),
+table.season-opening-table td:not(:first-child) {
+  width: 140px;
+}
+table.season-opening-table input[type="number"] {
+  width: 80px;
+}
+.season-opening-year label {
+  align-items: center;
+  color: #445149;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 750;
+  gap: 0.5rem;
+}
+.season-opening-year select {
+  border: 1px solid var(--border-input);
+  border-radius: 7px;
+  min-height: 38px;
+  padding: 0.3rem 0.5rem;
+}
 .count-entry-toolbar {
   align-items: center;
   display: flex;

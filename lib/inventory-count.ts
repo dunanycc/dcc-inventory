@@ -40,6 +40,36 @@ export function requireAcceptPermission(actor: CountActor) {
     throw new InventoryCountError("FORBIDDEN");
 }
 
+// Season opening entries are stored as their own already-ACCEPTED
+// InventoryCount, identified by this deterministic source key rather than
+// by id, so re-saving a season's figures updates the same record instead of
+// piling up duplicates.
+export const SEASON_OPENING_SOURCE_SYSTEM = "season-opening-entry";
+
+export function seasonOpeningSourceId(locationCode: string, year: number) {
+  return `${locationCode}-${year}-start`;
+}
+
+export function isValidSeasonYear(year: number) {
+  return Number.isInteger(year) && year >= 2000 && year <= 2100;
+}
+
+export function normalizeSeasonYear(value: string) {
+  const year = Number(value);
+  if (!isValidSeasonYear(year)) throw new InventoryCountError("INVALID_INPUT");
+  return year;
+}
+
+// classifyCountDate (lib/seasonal-consumption.ts) treats Jan-Jun as a
+// season's "start" window and takes the latest count per Location within
+// it. Anchoring a manually-set opening figure to the last day of that
+// window (rather than today) means it always outranks an earlier physical
+// count from the same season, so an explicit correction here is never
+// silently shadowed by a routine count entered earlier in the year.
+export function seasonOpeningCountDate(year: number) {
+  return new Date(Date.UTC(year, 5, 30));
+}
+
 // A physical count reading may legitimately be zero, unlike a movement
 // quantity, so this intentionally does not reuse normalizeStockQuantity
 // (which rejects zero) and never accepts a negative sign.

@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   calculateCountAcceptance,
   InventoryCountError,
+  isValidSeasonYear,
   normalizeCountedQuantity,
   normalizeDraftCountedQuantity,
+  normalizeSeasonYear,
   requireAcceptPermission,
   requireDraftPermission,
+  seasonOpeningCountDate,
+  seasonOpeningSourceId,
 } from "./inventory-count";
 
 const admin = {
@@ -155,5 +159,38 @@ describe("calculateCountAcceptance", () => {
     expect(() => calculateCountAcceptance(admin, "DRAFT", [])).toThrow(
       "INVALID_INPUT",
     );
+  });
+});
+
+describe("isValidSeasonYear / normalizeSeasonYear", () => {
+  it("accepts a plausible four-digit year", () => {
+    expect(isValidSeasonYear(2026)).toBe(true);
+    expect(normalizeSeasonYear("2026")).toBe(2026);
+  });
+
+  it("rejects a non-integer or out-of-range year", () => {
+    expect(isValidSeasonYear(2026.5)).toBe(false);
+    expect(isValidSeasonYear(1999)).toBe(false);
+    expect(isValidSeasonYear(2101)).toBe(false);
+    expect(() => normalizeSeasonYear("not-a-year")).toThrow("INVALID_INPUT");
+  });
+});
+
+describe("seasonOpeningSourceId / seasonOpeningCountDate", () => {
+  it("is deterministic per Location and year, so re-saving updates the same record", () => {
+    expect(seasonOpeningSourceId("BAR", 2025)).toBe("BAR-2025-start");
+    expect(seasonOpeningSourceId("BAR", 2025)).toBe(
+      seasonOpeningSourceId("BAR", 2025),
+    );
+    expect(seasonOpeningSourceId("BAR", 2025)).not.toBe(
+      seasonOpeningSourceId("STARTER_SHACK", 2025),
+    );
+  });
+
+  it("anchors to the last day of the season's Jan-Jun start window", () => {
+    const date = seasonOpeningCountDate(2025);
+    expect(date.getUTCFullYear()).toBe(2025);
+    expect(date.getUTCMonth()).toBe(5);
+    expect(date.getUTCDate()).toBe(30);
   });
 });

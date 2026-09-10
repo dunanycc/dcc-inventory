@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Fragment, useMemo, useState } from "react";
 import {
   acceptCountAction,
   cancelCountAction,
   saveCountDraftAction,
+  setSeasonOpeningAction,
   startCountAction,
 } from "@/app/(protected)/counts/actions";
 
@@ -37,6 +39,7 @@ export type ActiveDraft = {
 };
 
 export type CountHistoryLine = {
+  productId: string;
   productName: string;
   unitLabel: string;
   expectedQuantity: string;
@@ -55,6 +58,20 @@ export type CountHistoryRow = {
   lines: CountHistoryLine[];
 };
 
+export type SeasonOpeningEntry = {
+  productId: string;
+  name: string;
+  categoryName: string;
+  unitLabel: string;
+  quantityScale: number;
+  value: string | null;
+};
+
+export type SeasonOpeningData = {
+  year: number;
+  entries: SeasonOpeningEntry[];
+};
+
 function quantityStep(quantityScale: number) {
   return quantityScale === 0 ? "1" : `0.${"0".repeat(quantityScale - 1)}1`;
 }
@@ -69,6 +86,8 @@ function formatDifference(value: string | null) {
 export function CountWorkspace({
   canEditDraft,
   canAccept,
+  canSetSeasonOpening,
+  seasonOpening,
   draft,
   history,
   locations,
@@ -76,6 +95,8 @@ export function CountWorkspace({
 }: {
   canEditDraft: boolean;
   canAccept: boolean;
+  canSetSeasonOpening: boolean;
+  seasonOpening: SeasonOpeningData;
   draft: ActiveDraft | null;
   history: CountHistoryRow[];
   locations: CountLocationOption[];
@@ -94,6 +115,12 @@ export function CountWorkspace({
           </Link>
         ))}
       </nav>
+      {canSetSeasonOpening && (
+        <SeasonOpeningPanel
+          seasonOpening={seasonOpening}
+          selectedLocation={selectedLocation}
+        />
+      )}
       {draft ? (
         <DraftCountEntry
           canAccept={canAccept}
@@ -132,6 +159,160 @@ export function CountWorkspace({
         locationName={selectedLocation.name}
       />
     </div>
+  );
+}
+
+function SeasonOpeningPanel({
+  seasonOpening,
+  selectedLocation,
+}: {
+  seasonOpening: SeasonOpeningData;
+  selectedLocation: CountLocationOption;
+}) {
+  const router = useRouter();
+  const [show, setShow] = useState(false);
+  const currentYear = new Date().getFullYear();
+  const yearOptions = new Set(
+    [currentYear + 1, currentYear, currentYear - 1, currentYear - 2].concat(
+      seasonOpening.year,
+    ),
+  );
+  // Entries arrive pre-sorted by category, so adjacent same-category runs
+  // can just be grouped in a single pass rather than re-sorted here.
+  const groupedEntries = useMemo(() => {
+    const groups: { categoryName: string; entries: SeasonOpeningEntry[] }[] =
+      [];
+    for (const entry of seasonOpening.entries) {
+      const currentGroup = groups[groups.length - 1];
+      if (currentGroup?.categoryName === entry.categoryName)
+        currentGroup.entries.push(entry);
+      else groups.push({ categoryName: entry.categoryName, entries: [entry] });
+    }
+    return groups;
+  }, [seasonOpening.entries]);
+
+  return (
+    <section className="catalog-panel">
+      <div className="table-toolbar">
+        <div>
+          <h2>Season opening quantities</h2>
+          <p>
+            Set or correct each Product&apos;s starting quantity for a
+            season&apos;s Stock History report. This does not change the live
+            tracked balance.
+          </p>
+        </div>
+        <button
+          className="btn-secondary"
+          onClick={() => setShow((value) => !value)}
+          type="button"
+        >
+          {show ? "Cancel" : "Set season opening quantities"}
+        </button>
+      </div>
+      {show && (
+        <>
+          <div className="season-opening-year">
+            <label>
+              Season
+              <select
+                onChange={(event) =>
+                  router.push(
+                    `/counts?location=${encodeURIComponent(selectedLocation.code)}&openingYear=${event.target.value}`,
+                  )
+                }
+                value={seasonOpening.year}
+              >
+                {[...yearOptions]
+                  .sort((a, b) => b - a)
+                  .map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+          <form
+            action={setSeasonOpeningAction}
+            onSubmit={(event) => {
+              if (
+                !window.confirm(
+                  `Save ${seasonOpening.year} opening quantities for ${selectedLocation.name}? Blank fields with a previously saved value will be cleared.`,
+                )
+              )
+                event.preventDefault();
+            }}
+          >
+            <input
+              name="locationId"
+              type="hidden"
+              value={selectedLocation.id}
+            />
+            <input
+              name="locationCode"
+              type="hidden"
+              value={selectedLocation.code}
+            />
+            <input name="year" type="hidden" value={seasonOpening.year} />
+            <div className="table-scroll">
+              <table className="product-table count-table season-opening-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Counted as</th>
+                    <th>{seasonOpening.year} opening quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedEntries.map((group) => (
+                    <Fragment key={group.categoryName}>
+                      <tr className="product-table-group">
+                        <td colSpan={3}>{group.categoryName}</td>
+                      </tr>
+                      {group.entries.map((entry) => (
+                        <tr key={entry.productId}>
+                          <td>
+                            <strong>{entry.name}</strong>
+                          </td>
+                          <td>{entry.unitLabel}</td>
+                          <td>
+                            <input
+                              aria-label={`${seasonOpening.year} opening quantity for ${entry.name}`}
+                              defaultValue={entry.value ?? "0"}
+                              inputMode="decimal"
+                              key={`${seasonOpening.year}-${entry.productId}`}
+                              min="0"
+                              name={`quantity-${entry.productId}`}
+                              step={quantityStep(entry.quantityScale)}
+                              type="number"
+                            />
+                            <input
+                              name="productId"
+                              type="hidden"
+                              value={entry.productId}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="count-accept-actions">
+              <span className="count-accept-help">
+                Products with no recorded value default to 0. Clear a field
+                entirely to leave it unset for this season instead.
+              </span>
+              <button className="btn-primary" type="submit">
+                Save {seasonOpening.year} opening quantities
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -422,7 +603,7 @@ function CountHistoryList({
                   </thead>
                   <tbody>
                     {count.lines.map((line) => (
-                      <tr key={line.productName}>
+                      <tr key={line.productId}>
                         <td>
                           <strong>{line.productName}</strong>
                         </td>

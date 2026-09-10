@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { pluralizeUnit } from "@/lib/format";
 
 export type QuantitySource = "count" | "carry-forward" | "missing";
 
@@ -28,7 +29,7 @@ export type ProductHistory = {
 
 function formatQty(value: string | null, unitLabel: string) {
   if (value === null) return "—";
-  return `${value} ${unitLabel.toLowerCase()}`;
+  return `${value} ${pluralizeUnit(value, unitLabel).toLowerCase()}`;
 }
 
 function formatPercent(value: number | null) {
@@ -114,7 +115,12 @@ export function HistoryWorkspace({
       {tab === "overview" && (
         <OverviewTab products={products} seasons={seasons} />
       )}
-      {tab === "review" && <ReviewTab products={incompleteProducts} />}
+      {tab === "review" && (
+        <ReviewTab
+          currentSeason={seasons[seasons.length - 1]}
+          products={incompleteProducts}
+        />
+      )}
     </div>
   );
 }
@@ -468,7 +474,107 @@ function OverviewTab({
   );
 }
 
-function ReviewTab({ products }: { products: ProductHistory[] }) {
+type ReviewRow = {
+  productId: string;
+  productName: string;
+  categoryName: string;
+  season: number;
+  reason: string;
+};
+
+function ReviewTab({
+  products,
+  currentSeason,
+}: {
+  products: ProductHistory[];
+  currentSeason: number;
+}) {
+  const allRows = useMemo<ReviewRow[]>(
+    () =>
+      products.flatMap((product) =>
+        product.seasons
+          .filter((season) => season.incompleteReasons.length > 0)
+          .map((season) => ({
+            productId: product.productId,
+            productName: product.productName,
+            categoryName: product.categoryName,
+            season: season.season,
+            reason: reviewCategory(season.incompleteReasons),
+          })),
+      ),
+    [products],
+  );
+
+  const productOptions = useMemo(
+    () =>
+      unique(allRows, (row) => row.productId).map((row) => ({
+        value: row.productId,
+        label: row.productName,
+      })),
+    [allRows],
+  );
+  const categoryOptions = useMemo(
+    () =>
+      unique(allRows, (row) => row.categoryName).map((row) => ({
+        value: row.categoryName,
+        label: row.categoryName,
+      })),
+    [allRows],
+  );
+  const seasonOptions = useMemo(
+    () =>
+      unique(allRows, (row) => String(row.season)).map((row) => ({
+        value: String(row.season),
+        label: `Season ${row.season}`,
+      })),
+    [allRows],
+  );
+  const reasonOptions = useMemo(
+    () =>
+      unique(allRows, (row) => row.reason).map((row) => ({
+        value: row.reason,
+        label: row.reason,
+      })),
+    [allRows],
+  );
+
+  const [selectedProducts, setSelectedProducts] = useState<Set<string> | null>(
+    null,
+  );
+  const [selectedCategories, setSelectedCategories] =
+    useState<Set<string> | null>(null);
+  const [selectedSeasons, setSelectedSeasons] = useState<Set<string> | null>(
+    null,
+  );
+  const [selectedReasons, setSelectedReasons] = useState<Set<string> | null>(
+    null,
+  );
+  // The current season's "missing ending quantity" is just the season being
+  // in progress, not a data problem — it can't be filled in until the
+  // season closes, so it is noise until then and is hidden by default.
+  const [hideOpenSeasonEnding, setHideOpenSeasonEnding] = useState(true);
+
+  const openSeasonEndingCount = allRows.filter(
+    (row) =>
+      row.season === currentSeason && row.reason === "Missing ending quantity",
+  ).length;
+
+  const rows = allRows.filter((row) => {
+    if (selectedProducts && !selectedProducts.has(row.productId)) return false;
+    if (selectedCategories && !selectedCategories.has(row.categoryName))
+      return false;
+    if (selectedSeasons && !selectedSeasons.has(String(row.season)))
+      return false;
+    if (selectedReasons && !selectedReasons.has(row.reason)) return false;
+    if (
+      hideOpenSeasonEnding &&
+      row.season === currentSeason &&
+      row.reason === "Missing ending quantity"
+    )
+      return false;
+    return true;
+  });
+
   if (products.length === 0)
     return (
       <section className="empty-panel">
@@ -490,34 +596,170 @@ function ReviewTab({ products }: { products: ProductHistory[] }) {
           </p>
         </div>
       </div>
-      <div className="table-scroll">
-        <table className="product-table history-review-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Season</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.flatMap((product) =>
-              product.seasons
-                .filter((season) => season.incompleteReasons.length > 0)
-                .map((season) => (
-                  <tr key={`${product.productId}-${season.season}`}>
-                    <td>
-                      <strong>{product.productName}</strong>
-                    </td>
-                    <td>{product.categoryName}</td>
-                    <td>Season {season.season}</td>
-                    <td>{reviewCategory(season.incompleteReasons)}</td>
-                  </tr>
-                )),
-            )}
-          </tbody>
-        </table>
+      <div className="review-filters">
+        <FilterDropdown
+          label="Product"
+          options={productOptions}
+          selected={selectedProducts}
+          onChange={setSelectedProducts}
+        />
+        <FilterDropdown
+          label="Category"
+          options={categoryOptions}
+          selected={selectedCategories}
+          onChange={setSelectedCategories}
+        />
+        <FilterDropdown
+          label="Season"
+          options={seasonOptions}
+          selected={selectedSeasons}
+          onChange={setSelectedSeasons}
+        />
+        <FilterDropdown
+          label="Reason"
+          options={reasonOptions}
+          selected={selectedReasons}
+          onChange={setSelectedReasons}
+        />
+        <span className="review-filters-count">
+          Showing {rows.length} of {allRows.length}
+        </span>
       </div>
+      {openSeasonEndingCount > 0 && (
+        <p className="review-filters-note">
+          {hideOpenSeasonEnding ? (
+            <>
+              Hiding {openSeasonEndingCount} row
+              {openSeasonEndingCount === 1 ? "" : "s"} where Season{" "}
+              {currentSeason} is just missing its ending count — expected until
+              the season closes.{" "}
+              <button
+                onClick={() => setHideOpenSeasonEnding(false)}
+                type="button"
+              >
+                Show anyway
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setHideOpenSeasonEnding(true)} type="button">
+              Hide Season {currentSeason}&apos;s missing ending count again
+            </button>
+          )}
+        </p>
+      )}
+      {rows.length === 0 ? (
+        <div className="empty-inline">No rows match the current filters.</div>
+      ) : (
+        <div className="table-scroll">
+          <table className="product-table history-review-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Season</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.productId}-${row.season}`}>
+                  <td>
+                    <strong>{row.productName}</strong>
+                  </td>
+                  <td>{row.categoryName}</td>
+                  <td>Season {row.season}</td>
+                  <td>{row.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
+  );
+}
+
+function unique<T>(items: readonly T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    const k = key(item);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    result.push(item);
+  }
+  return result;
+}
+
+function FilterDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: Set<string> | null;
+  onChange(next: Set<string> | null): void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocumentClick(event: MouseEvent) {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocumentClick);
+    return () => document.removeEventListener("mousedown", onDocumentClick);
+  }, [open]);
+
+  const activeCount = selected?.size ?? options.length;
+  const isFiltered = selected !== null;
+
+  function toggle(value: string) {
+    const next = new Set(selected ?? options.map((option) => option.value));
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    onChange(next.size === options.length ? null : next);
+  }
+
+  return (
+    <div className="filter-dropdown" ref={ref}>
+      <button
+        aria-expanded={open}
+        className={`filter-dropdown-trigger${isFiltered ? " active" : ""}`}
+        onClick={() => setOpen((value) => !value)}
+        type="button"
+      >
+        {label}
+        {isFiltered && (
+          <span className="filter-dropdown-count">{activeCount}</span>
+        )}
+        <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="filter-dropdown-panel" role="menu">
+          <div className="filter-dropdown-actions">
+            <button onClick={() => onChange(null)} type="button">
+              Select all
+            </button>
+            <button onClick={() => onChange(new Set())} type="button">
+              Clear
+            </button>
+          </div>
+          {options.map((option) => (
+            <label className="filter-dropdown-option" key={option.value}>
+              <input
+                checked={selected?.has(option.value) ?? true}
+                onChange={() => toggle(option.value)}
+                type="checkbox"
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

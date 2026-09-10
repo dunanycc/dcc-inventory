@@ -5,9 +5,13 @@ import { redirect } from "next/navigation";
 import {
   calculateCountAcceptance,
   InventoryCountError,
+  isValidSeasonYear,
   normalizeDraftCountedQuantity,
   requireAcceptPermission,
   requireDraftPermission,
+  SEASON_OPENING_SOURCE_SYSTEM,
+  seasonOpeningCountDate,
+  seasonOpeningSourceId,
 } from "@/lib/inventory-count";
 import { inventoryBalancesForLocation } from "@/lib/inventory-balances";
 import { createValidatedMovement } from "@/lib/inventory-movement";
@@ -211,6 +215,121 @@ export async function cancelCountAction(formData: FormData) {
     );
     revalidatePath("/counts");
     target = destination(locationCode, "success", "Count cancelled.");
+  } catch (error) {
+    target = destination(
+      locationCode,
+      "error",
+      messages[errorCode(error)] ?? messages.FAILED,
+    );
+  }
+  redirect(target);
+}
+
+export async function setSeasonOpeningAction(formData: FormData) {
+  const locationId = String(formData.get("locationId") ?? "");
+  const locationCode = String(formData.get("locationCode") ?? "");
+  const yearInput = Number(formData.get("year"));
+  let target: string;
+  try {
+    const actor = await currentUser();
+    if (!actor) throw new InventoryCountError("FORBIDDEN");
+    if (!isValidSeasonYear(yearInput))
+      throw new InventoryCountError("INVALID_INPUT");
+    await prisma.$transaction(
+      async (tx) => {
+        const fresh = await tx.user.findUnique({
+          where: { id: actor.id },
+          select: { id: true, role: true, status: true },
+        });
+        if (!fresh) throw new InventoryCountError("FORBIDDEN");
+        requireAcceptPermission(fresh);
+        const location = await tx.location.findUnique({
+          where: { id: locationId },
+          select: { id: true, code: true, active: true },
+        });
+        if (!location?.active) throw new InventoryCountError("NOT_ELIGIBLE");
+        const eligibleProducts = await tx.product.findMany({
+          where: {
+            active: true,
+            productLocations: {
+              some: { locationId, active: true, reviewRequired: false },
+            },
+          },
+          select: { id: true, allowFractionalStock: true, quantityScale: true },
+        });
+        const eligibleById = new Map(
+          eligibleProducts.map((product) => [product.id, product]),
+        );
+        const entries: Array<{ productId: string; quantity: string }> = [];
+        for (const rawId of formData.getAll("productId")) {
+          const productId = String(rawId);
+          const product = eligibleById.get(productId);
+          if (!product) continue;
+          const quantity = normalizeDraftCountedQuantity(
+            String(formData.get(`quantity-${productId}`) ?? ""),
+            product,
+          );
+          if (quantity !== null) entries.push({ productId, quantity });
+        }
+        if (!entries.length) throw new InventoryCountError("INVALID_INPUT");
+
+        const sourceId = seasonOpeningSourceId(location.code, yearInput);
+        const existing = await tx.inventoryCount.findUnique({
+          where: {
+            sourceSystem_sourceId: {
+              sourceSystem: SEASON_OPENING_SOURCE_SYSTEM,
+              sourceId,
+            },
+          },
+          select: { id: true },
+        });
+        const now = new Date();
+        const notes = `Season ${yearInput} opening quantities set via Counts.`;
+        let countId: string;
+        if (existing) {
+          countId = existing.id;
+          await tx.inventoryCount.update({
+            where: { id: countId },
+            data: { notes, acceptedById: fresh.id, acceptedAt: now },
+          });
+          await tx.inventoryCountLine.deleteMany({
+            where: { inventoryCountId: countId },
+          });
+        } else {
+          const created = await tx.inventoryCount.create({
+            data: {
+              locationId,
+              countDate: seasonOpeningCountDate(yearInput),
+              status: "ACCEPTED",
+              notes,
+              createdById: fresh.id,
+              acceptedById: fresh.id,
+              acceptedAt: now,
+              sourceSystem: SEASON_OPENING_SOURCE_SYSTEM,
+              sourceId,
+            },
+          });
+          countId = created.id;
+        }
+        await tx.inventoryCountLine.createMany({
+          data: entries.map((entry) => ({
+            inventoryCountId: countId,
+            productId: entry.productId,
+            expectedQuantity: entry.quantity,
+            countedQuantity: entry.quantity,
+            difference: "0",
+          })),
+        });
+      },
+      { isolationLevel: "Serializable" },
+    );
+    revalidatePath("/counts");
+    revalidatePath("/history");
+    target = destination(
+      locationCode,
+      "success",
+      `${yearInput} opening quantities saved.`,
+    );
   } catch (error) {
     target = destination(
       locationCode,
