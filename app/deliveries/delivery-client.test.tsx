@@ -32,7 +32,7 @@ describe("NewDelivery", () => {
     const quantity = screen.getByLabelText("Quantity received for Sapporo");
     expect(quantity).toHaveValue(0);
     fireEvent.change(quantity, { target: { value: "2" } });
-    expect(screen.getByText(/2 case × 24 = 48 can/)).toBeInTheDocument();
+    expect(screen.getByText(/2 cases × 24 = 48 cans/)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Add to Inventory" }),
     ).toBeEnabled();
@@ -40,7 +40,9 @@ describe("NewDelivery", () => {
       screen.getByRole("button", { name: "Remove Sapporo from delivery" }),
     );
     expect(quantity).toHaveValue(0);
-    expect(screen.queryByText(/2 case × 24 = 48 can/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/2 cases × 24 = 48 cans/),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Add to Inventory" }),
     ).toBeDisabled();

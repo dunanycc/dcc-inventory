@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { postDeliveryAction } from "@/app/(protected)/deliveries/actions";
+import { pluralizeUnit } from "@/lib/format";
 
 export type DeliveryCategory = {
   id: string;
@@ -106,7 +107,7 @@ export function NewDelivery({
                 <strong>{product.name}</strong>
                 <span className="delivery-format">
                   {product.purchaseUnit && product.unitsPerPurchaseUnit
-                    ? `${product.purchaseUnit} · ${product.unitsPerPurchaseUnit} ${product.stockUnit} each`
+                    ? `${product.purchaseUnit} · ${product.unitsPerPurchaseUnit} ${pluralizeUnit(product.unitsPerPurchaseUnit, product.stockUnit)} each`
                     : product.stockUnit}
                 </span>
                 <input
@@ -143,9 +144,9 @@ export function NewDelivery({
                         <strong>{product.name}</strong>
                         <small>
                           {product.purchaseUnit && product.unitsPerPurchaseUnit
-                            ? `${quantity} ${product.purchaseUnit.toLowerCase()} × ${product.unitsPerPurchaseUnit} = `
+                            ? `${quantity} ${pluralizeUnit(quantity, product.purchaseUnit).toLowerCase()} × ${product.unitsPerPurchaseUnit} = `
                             : ""}
-                          {actual} {product.stockUnit.toLowerCase()}
+                          {actual} {pluralizeUnit(actual, product.stockUnit).toLowerCase()}
                         </small>
                       </span>
                       <button

@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { pluralizeUnit } from "./format";
 
 type NotificationMessage = { to: string; subject: string; text: string };
 
@@ -46,7 +47,10 @@ export type RequestEmailItem = { name: string; unit: string; quantity: string };
 
 function formatItems(items: readonly RequestEmailItem[]) {
   return items
-    .map((item) => `- ${item.name}: ${item.quantity} ${item.unit}`.trim())
+    .map(
+      (item) =>
+        `- ${item.name}: ${item.quantity} ${pluralizeUnit(item.quantity, item.unit)}`.trim(),
+    )
     .join("\n");
 }
 

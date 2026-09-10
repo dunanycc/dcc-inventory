@@ -6,6 +6,7 @@ import {
   voidDeliveryAction,
 } from "@/app/(protected)/deliveries/actions";
 import type { DeliveryCategory } from "@/app/deliveries/delivery-client";
+import { pluralizeUnit } from "@/lib/format";
 
 export type DeliveryHistoryRow = {
   id: string;
@@ -126,9 +127,9 @@ export function DeliveryHistory({
                           <strong>{line.productName}</strong>
                           <span>
                             {line.purchaseUnit && line.unitsPerPurchaseUnit
-                              ? `${line.entryQuantity} ${line.purchaseUnit.toLowerCase()} × ${line.unitsPerPurchaseUnit} = `
+                              ? `${line.entryQuantity} ${pluralizeUnit(line.entryQuantity, line.purchaseUnit).toLowerCase()} × ${line.unitsPerPurchaseUnit} = `
                               : ""}
-                            {line.quantity} {line.unit.toLowerCase()}
+                            {line.quantity} {pluralizeUnit(line.quantity, line.unit).toLowerCase()}
                           </span>
                         </li>
                       ))}
@@ -402,7 +403,7 @@ function DeliveryEditDialog({
                     <small>
                       {product.purchaseUnit ?? product.stockUnit}
                       {product.unitsPerPurchaseUnit
-                        ? ` · ${product.unitsPerPurchaseUnit} ${product.stockUnit} each`
+                        ? ` · ${product.unitsPerPurchaseUnit} ${pluralizeUnit(product.unitsPerPurchaseUnit, product.stockUnit)} each`
                         : ""}
                     </small>
                   </span>
