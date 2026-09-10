@@ -208,6 +208,10 @@ export async function getSeasonalConsumptionReport(
   const { prisma } = await import("./prisma");
   const [products, countLines, receipts] = await Promise.all([
     prisma.product.findMany({
+      // A deactivated Product is no longer being tracked going forward, so
+      // it has nothing left to review here — matching how Counts and
+      // Inventory already scope everything to active Products.
+      where: { active: true },
       select: {
         id: true,
         name: true,
