@@ -47,7 +47,7 @@ This project has no separate staging database - `DATABASE_URL` is production in 
 3. `npx prisma validate`.
 4. `npx prisma generate`.
 5. Rehearse against a disposable database with `npm run test:postgres` (a separately named `TEST_DATABASE_URL`, per the guard above).
-6. Apply to production only as an explicit, separately authorized deployment step with `npx prisma migrate deploy`.
+6. Apply to production only as an explicitly authorized deployment step with `npx prisma migrate deploy`. Vercel production builds now run this command before building the application; an authorized push to the production branch includes authorization to apply the committed, reviewed migrations. Preview builds do not run migrations.
 
 Never run `prisma migrate dev` or `prisma migrate reset` against this project. `db:migrate` is deliberately wired to a guard script (`scripts/guard-no-dev-migrate.ts`) that refuses and prints this workflow instead of invoking `prisma migrate dev`.
 

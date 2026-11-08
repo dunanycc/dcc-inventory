@@ -52,3 +52,9 @@ Master-data safety, migration identity, Starter Shack availability, and disposab
 The current foundation establishes secure access, Product/Category/Location setup, immutable stock-change history, opening quantities, calculated Location balances, and lightweight Starter Shack request fulfillment. Vendor receiving and physical counts are implemented in focused phases. DCC Inventory is not a billing, accounting, POS, or generalized procurement platform.
 
 Administrators and Inventory Managers can use **Admin → Imports** to preview and atomically import Categories and Products from the provided CSV template or the current DCC Inventory Tracker CSV export. Product imports are repeatable by `source_id`/`ID`; opening counts and consumed quantities are deliberately ignored and no inventory movements are created.
+
+## Vercel production builds
+
+`vercel.json` runs `npm run vercel-build`. For `VERCEL_ENV=production`, this applies committed Prisma migrations before building Next.js; a migration failure stops the build. Preview builds only build the application and do not apply migrations. Production requires `DATABASE_URL` and should also have `DATABASE_URL_UNPOOLED` for the direct migration connection (it falls back to `DATABASE_URL` when absent).
+
+Review and rehearse database changes before authorizing a push to the production branch. That push authorizes production migration execution as part of the deployment. Keep fork deployment authorization enabled and keep production credentials out of untrusted preview builds.

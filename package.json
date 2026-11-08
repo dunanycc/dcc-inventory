@@ -16,7 +16,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "tsx scripts/guard-no-dev-migrate.ts",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "vercel-build": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npm run db:deploy && npm run build; else npm run build; fi"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.0",
