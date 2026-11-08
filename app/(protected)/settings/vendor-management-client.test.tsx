@@ -4,6 +4,7 @@ import { VendorManagementClient } from "./vendor-management-client";
 
 vi.mock("./vendor-actions", () => ({
   createVendorAction: vi.fn(),
+  deleteVendorAction: vi.fn(),
   reorderVendorsAction: vi
     .fn()
     .mockResolvedValue({ ok: true, message: "Vendor order saved." }),
@@ -46,6 +47,19 @@ describe("VendorManagementClient", () => {
       expect.stringContaining("Molson"),
       expect.stringContaining("Costco"),
     ]);
+  });
+
+  it("only offers deletion for unused Vendors and requires confirmation", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<VendorManagementClient vendors={vendors} />);
+    const buttons = screen.getAllByRole("button", { name: "Delete" });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].closest("tr")).toHaveTextContent("Costco");
+    expect(fireEvent.submit(buttons[0].closest("form")!)).toBe(false);
+    expect(confirm).toHaveBeenCalledWith(
+      "Delete Costco? This cannot be undone.",
+    );
+    confirm.mockRestore();
   });
 
   it("opens an editor for Vendor name and notes", () => {

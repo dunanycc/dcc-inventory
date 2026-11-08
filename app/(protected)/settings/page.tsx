@@ -169,7 +169,10 @@ export default async function SettingsPage({
           <CategoryManagementClient categories={categoryRows} />
         )}{" "}
         {tab === "vendors" && canManageCatalog && (
-          <VendorManagementClient vendors={vendorRows} />
+          <VendorManagementClient
+            key={vendorRows.map((vendor) => vendor.id).join(",")}
+            vendors={vendorRows}
+          />
         )}
       </div>
     </>

@@ -3,6 +3,7 @@
 import { useState, useTransition, type DragEvent } from "react";
 import {
   createVendorAction,
+  deleteVendorAction,
   reorderVendorsAction,
   setVendorActiveAction,
   updateVendorAction,
@@ -144,6 +145,31 @@ export function VendorManagementClient({ vendors }: { vendors: VendorRow[] }) {
                     >
                       Edit
                     </button>
+                    {vendor.deliveryCount === 0 && (
+                      <form
+                        action={deleteVendorAction}
+                        onSubmit={(event) => {
+                          if (
+                            !window.confirm(
+                              `Delete ${vendor.name}? This cannot be undone.`,
+                            )
+                          )
+                            event.preventDefault();
+                        }}
+                      >
+                        <input
+                          name="vendorId"
+                          type="hidden"
+                          value={vendor.id}
+                        />
+                        <button
+                          className="btn-danger compact-action"
+                          type="submit"
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    )}
                     <form action={setVendorActiveAction}>
                       <input name="vendorId" type="hidden" value={vendor.id} />
                       <input

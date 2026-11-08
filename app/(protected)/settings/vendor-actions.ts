@@ -151,3 +151,28 @@ export async function setVendorActiveAction(formData: FormData) {
     go("error", "Vendor could not be updated.");
   }
 }
+
+export async function deleteVendorAction(formData: FormData) {
+  await actor();
+  const vendorId = String(formData.get("vendorId") ?? "").trim();
+  if (!vendorId) go("error", "Vendor could not be deleted.");
+  try {
+    const result = await prisma.vendor.deleteMany({
+      where: { id: vendorId, deliveries: { none: {} } },
+    });
+    if (result.count === 0)
+      go(
+        "error",
+        "Vendor was not found or has delivery history. Hide used Vendors instead.",
+      );
+    revalidatePath("/settings");
+    revalidatePath("/deliveries");
+    go("success", "Vendor deleted.");
+  } catch (error) {
+    if (typeof error === "object" && error && "digest" in error) throw error;
+    go(
+      "error",
+      "Vendor could not be deleted. Vendors with delivery history must be hidden instead.",
+    );
+  }
+}
