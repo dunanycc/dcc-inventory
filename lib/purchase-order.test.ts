@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   money,
+  privateOrderLines,
   orderDate,
   quantity,
   receiptTotals,
@@ -54,4 +55,27 @@ describe("purchase order rules", () => {
     expect(historicalVendor("Mixers & Misc")).toBe("Groceries");
     expect(historicalVendor("Unmapped")).toBeNull();
   });
+});
+
+it("validates manual products and never links them to the catalog", () => {
+  expect(
+    privateOrderLines([
+      { name: " Special bottle ", unit: "BOTTLE", quantity: "2" },
+    ])[0],
+  ).toMatchObject({
+    productId: null,
+    productName: "Special bottle",
+    unitsPerEntry: "1",
+    orderedQuantity: "2",
+  });
+  expect(() => privateOrderLines([])).toThrow();
+  expect(() =>
+    privateOrderLines([{ name: "", unit: "BOTTLE", quantity: "1" }]),
+  ).toThrow();
+  expect(() =>
+    privateOrderLines([{ name: "Bottle", unit: "", quantity: "1" }]),
+  ).toThrow();
+  expect(() =>
+    privateOrderLines([{ name: "Bottle", unit: "BOTTLE", quantity: "-1" }]),
+  ).toThrow();
 });

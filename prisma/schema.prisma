@@ -423,6 +423,7 @@ model AuditEvent {
 
 
 model PurchaseOrder {
+  isPrivate      Boolean @default(false)
   id             String   @id @default(uuid()) @db.Uuid
   vendorId       String   @db.Uuid
   vendorName     String

@@ -141,3 +141,54 @@ describe("orders workspace", () => {
     expect(screen.queryByLabelText("Attach file")).not.toBeInTheDocument();
   });
 });
+
+it("switches to manual private products for the selected vendor", () => {
+  render(
+    <NewOrder
+      today="2026-11-08"
+      vendors={[{ id: "saq", name: "SAQ" }]}
+      categories={[
+        {
+          id: "wine",
+          name: "Wine",
+          products: [
+            {
+              id: "red",
+              name: "Inventory red",
+              vendorId: "saq",
+              unit: "CASE",
+              factor: "12",
+              stockUnit: "BOTTLE",
+            },
+          ],
+        },
+      ]}
+    />,
+  );
+  fireEvent.change(screen.getByRole("combobox", { name: "Vendor" }), {
+    target: { value: "saq" },
+  });
+  fireEvent.click(screen.getByRole("switch", { name: "Private order" }));
+  expect(screen.queryByText("Inventory red")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "Private product 1" }), {
+    target: { value: "Private wine" },
+  });
+  fireEvent.change(
+    screen.getByRole("spinbutton", { name: "Private quantity 1" }),
+    { target: { value: "3" } },
+  );
+  const form = screen
+    .getByRole("button", { name: "Save order" })
+    .closest("form")!;
+  const data = new FormData(form);
+  expect(data.get("vendorId")).toBe("saq");
+  expect(data.get("isPrivate")).toBe("on");
+  expect(data.get("items")).toBe("[]");
+  expect(JSON.parse(String(data.get("manualItems")))).toEqual([
+    { name: "Private wine", unit: "BOTTLE", quantity: "3" },
+  ]);
+  fireEvent.click(screen.getByRole("button", { name: "Add private product" }));
+  expect(
+    screen.getByRole("textbox", { name: "Private product 2" }),
+  ).toBeInTheDocument();
+});

@@ -16,6 +16,8 @@ export function OrderHistory({
   const [message, setMessage] = useState("");
   const [busy, start] = useTransition();
   const [mode, setMode] = useState("received");
+  const [includePrivate, setIncludePrivate] = useState(true);
+  const visibleOrders = orders.filter((o) => includePrivate || !o.isPrivate);
   const router = useRouter();
   function move(id: string, target: string) {
     if (id === target || busy) return;
@@ -29,7 +31,7 @@ export function OrderHistory({
     string,
     { name: string; category: string; unit: string }
   >();
-  for (const o of orders)
+  for (const o of visibleOrders)
     for (const l of o.lines)
       rows.set(JSON.stringify([l.productName, l.categoryName, l.unit]), {
         name: l.productName,
@@ -51,6 +53,14 @@ export function OrderHistory({
             <option value="ordered">Ordered</option>
           </select>
         </label>
+        <label className="product-check">
+          <input
+            type="checkbox"
+            checked={includePrivate}
+            onChange={(e) => setIncludePrivate(e.target.checked)}
+          />{" "}
+          Include private orders
+        </label>
       </div>
       {canManage && (
         <p>
@@ -60,7 +70,7 @@ export function OrderHistory({
         </p>
       )}
       <p role="status">{busy ? "Saving sequence…" : message}</p>
-      {!orders.length ? (
+      {!visibleOrders.length ? (
         <p>No orders for this vendor and year.</p>
       ) : (
         <div className="table-scroll">
@@ -68,7 +78,7 @@ export function OrderHistory({
             <thead>
               <tr>
                 <th>Product / unit</th>
-                {orders.map((o, i) => (
+                {visibleOrders.map((o) => (
                   <th
                     key={o.id}
                     onDragOver={(e) => {
@@ -81,6 +91,9 @@ export function OrderHistory({
                     }}
                   >
                     <Link href={`/orders?id=${o.id}`}>#{o.number}</Link>
+                    {o.isPrivate && (
+                      <span className="order-private-badge">Private</span>
+                    )}
                     <span className="order-muted">
                       {o.orderDate ?? "Date needs review"}
                     </span>
@@ -100,7 +113,7 @@ export function OrderHistory({
                           onKeyDown={(e) => {
                             const target =
                               orders[
-                                i +
+                                orders.findIndex((order) => order.id === o.id) +
                                   (e.key === "ArrowLeft"
                                     ? -1
                                     : e.key === "ArrowRight"
@@ -142,7 +155,7 @@ export function OrderHistory({
                       {p.category} · {p.unit}
                     </small>
                   </th>
-                  {orders.map((o) => {
+                  {visibleOrders.map((o) => {
                     const matches = o.lines.filter(
                       (l) =>
                         JSON.stringify([
@@ -174,7 +187,7 @@ export function OrderHistory({
               ))}
               <tr>
                 <th scope="row">Grand total</th>
-                {orders.map((o) => {
+                {visibleOrders.map((o) => {
                   const total = receiptTotals(
                     o.lines.map((l) => ({
                       quantity: l.receivedQuantity ?? l.orderedQuantity,

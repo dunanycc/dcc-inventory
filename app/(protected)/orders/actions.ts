@@ -45,6 +45,8 @@ export async function createOrderAction(form: FormData) {
       date: text(form, "date"),
       notes: text(form, "notes"),
       items: JSON.parse(text(form, "items") || "[]"),
+      isPrivate: form.get("isPrivate") === "on",
+      manualItems: JSON.parse(text(form, "manualItems") || "[]"),
     }),
   );
 }
@@ -69,18 +71,21 @@ export async function editOrderAction(form: FormData) {
       year: Number(text(form, "year")),
       notes: text(form, "notes"),
       reason: text(form, "reason"),
-      lines: form
-        .getAll("lineId")
-        .map((value) => ({
-          id: String(value),
-          ordered: text(form, `ordered-${value}`),
-          received: form.has(`received-${value}`)
-            ? text(form, `received-${value}`)
-            : null,
-          price: form.has(`price-${value}`)
-            ? text(form, `price-${value}`)
-            : null,
-        })),
+      isPrivate: form.get("isPrivate") === "on",
+      lines: form.getAll("lineId").map((value) => ({
+        id: String(value),
+        name: form.has(`name-${value}`)
+          ? text(form, `name-${value}`)
+          : undefined,
+        unit: form.has(`unit-${value}`)
+          ? text(form, `unit-${value}`)
+          : undefined,
+        ordered: text(form, `ordered-${value}`),
+        received: form.has(`received-${value}`)
+          ? text(form, `received-${value}`)
+          : null,
+        price: form.has(`price-${value}`) ? text(form, `price-${value}`) : null,
+      })),
     }),
   );
 }

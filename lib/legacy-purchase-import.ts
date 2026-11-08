@@ -119,12 +119,24 @@ export async function importLegacyPurchases(
   actorId: string,
   bytes: Uint8Array,
   expectedHash: string,
+  privateSourceIds: string[] = [],
 ) {
   const preview = await legacyPurchasePreview(bytes);
   if (preview.fileHash !== expectedHash || preview.errors.length)
     throw new Error(
       "The preview changed or contains errors. Preview the workbook again.",
     );
+  if (
+    !Array.isArray(privateSourceIds) ||
+    privateSourceIds.some(
+      (id) =>
+        typeof id !== "string" ||
+        !preview.orders.some((order) => order.sourceId === id),
+    ) ||
+    new Set(privateSourceIds).size !== privateSourceIds.length
+  )
+    throw new Error("Review the private order selections.");
+  const privateIds = new Set(privateSourceIds);
   return orderTransaction(actorId, async (tx) => {
     let created = 0,
       skipped = 0;
@@ -151,6 +163,7 @@ export async function importLegacyPurchases(
           orderDate: order.date ? new Date(`${order.date}T12:00:00Z`) : null,
           status: "RECEIVED",
           historical: true,
+          isPrivate: privateIds.has(order.sourceId),
           sourceSystem: LEGACY_ORDER_SOURCE,
           sourceId: order.sourceId,
           createdById: actorId,
@@ -176,7 +189,9 @@ export async function importLegacyPurchases(
                     })
                   : null;
                 return {
-                  productId: line.productId,
+                  productId: privateIds.has(order.sourceId)
+                    ? null
+                    : line.productId,
                   productName: line.productName,
                   categoryName: line.categoryName,
                   unit: line.unit,
@@ -185,7 +200,10 @@ export async function importLegacyPurchases(
                   receivedQuantity: line.receivedQuantity,
                   unitPrice: null,
                   sourceProductId: line.sourceProductId,
-                  deliveryLineId: linked ? null : line.existingDeliveryLineId,
+                  deliveryLineId:
+                    privateIds.has(order.sourceId) || linked
+                      ? null
+                      : line.existingDeliveryLineId,
                 };
               }),
             ),
@@ -196,6 +214,7 @@ export async function importLegacyPurchases(
         sourceId: order.sourceId,
         fileHash: preview.fileHash,
         stockPosted: false,
+        isPrivate: privateIds.has(order.sourceId),
       });
       created++;
     }

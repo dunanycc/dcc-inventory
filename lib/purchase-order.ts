@@ -81,3 +81,38 @@ export function historicalVendor(category: string) {
   if (name === "mixers & misc") return "Groceries";
   return null;
 }
+
+export type ManualOrderLine = { name: string; unit: string; quantity: string };
+export function privateOrderLines(items: ManualOrderLine[]) {
+  if (!Array.isArray(items) || !items.length || items.length > 200)
+    throw new Error("Add at least one manual product (maximum 200).");
+  return items.map((item) => {
+    const name =
+      typeof item.name === "string"
+        ? item.name.trim().replace(/\s+/g, " ")
+        : "";
+    const unit =
+      typeof item.unit === "string"
+        ? item.unit.trim().replace(/\s+/g, " ")
+        : "";
+    if (
+      !name ||
+      name.length > 160 ||
+      !unit ||
+      unit.length > 80 ||
+      typeof item.quantity !== "string" ||
+      quantity(item.quantity) <= BigInt(0)
+    )
+      throw new Error(
+        "Enter a product name, unit, and positive quantity for each private order line.",
+      );
+    return {
+      productId: null,
+      productName: name,
+      categoryName: "Private",
+      unit,
+      unitsPerEntry: "1",
+      orderedQuantity: item.quantity,
+    };
+  });
+}

@@ -3,6 +3,8 @@ import { hasPermission } from "./authorization";
 import { prisma } from "./prisma";
 import {
   money,
+  privateOrderLines,
+  type ManualOrderLine,
   orderDate,
   quantity,
   receiptTotals,
@@ -74,16 +76,29 @@ export async function createPurchaseOrder(
     date: string;
     notes: string;
     items: { productId: string; quantity: string }[];
+    isPrivate?: boolean;
+    manualItems?: ManualOrderLine[];
   },
 ) {
   const date = orderDate(input.date);
-  if (
-    !input.items.length ||
-    input.items.length > 200 ||
-    new Set(input.items.map((x) => x.productId)).size !== input.items.length ||
-    input.notes.length > 1000
-  )
+  const isPrivate = input.isPrivate === true;
+  if (input.notes.length > 1000 || !Array.isArray(input.items))
     throw new Error("Review the order items and notes.");
+  const manualLines = isPrivate
+    ? privateOrderLines(input.manualItems ?? [])
+    : [];
+  if (
+    isPrivate
+      ? input.items.length > 0
+      : !input.items.length ||
+        input.items.length > 200 ||
+        new Set(input.items.map((x) => x.productId)).size !==
+          input.items.length ||
+        (input.manualItems?.length ?? 0) > 0
+  )
+    throw new Error(
+      "Private orders use manual products; inventory orders use catalog products.",
+    );
   return orderTransaction(actorId, async (tx) => {
     const vendor = await tx.vendor.findUnique({
       where: { id: input.vendorId },
@@ -102,34 +117,38 @@ export async function createPurchaseOrder(
     const categories = await tx.category.findMany({
       where: { id: { in: products.map((p) => p.categoryId) } },
     });
-    const lines = input.items.map((item) => {
-      const product = products.find((p) => p.id === item.productId)!;
-      if (quantity(item.quantity) <= 0n)
-        throw new Error("Order quantities must be greater than zero.");
-      const factor =
-        product.purchaseUnit && product.unitsPerPurchaseUnit
-          ? product.unitsPerPurchaseUnit.toString()
-          : "1";
-      normalizeStockQuantity(
-        new Prisma.Decimal(item.quantity).mul(factor).toString(),
-        product,
-      );
-      return {
-        productId: product.id,
-        productName: product.name,
-        categoryName: categories.find((c) => c.id === product.categoryId)!.name,
-        unit:
-          product.purchaseUnit && product.unitsPerPurchaseUnit
-            ? product.purchaseUnit
-            : product.stockUnitLabel || product.stockUnit,
-        unitsPerEntry: factor,
-        orderedQuantity: item.quantity,
-      };
-    });
+    const lines = isPrivate
+      ? manualLines
+      : input.items.map((item) => {
+          const product = products.find((p) => p.id === item.productId)!;
+          if (quantity(item.quantity) <= 0n)
+            throw new Error("Order quantities must be greater than zero.");
+          const factor =
+            product.purchaseUnit && product.unitsPerPurchaseUnit
+              ? product.unitsPerPurchaseUnit.toString()
+              : "1";
+          normalizeStockQuantity(
+            new Prisma.Decimal(item.quantity).mul(factor).toString(),
+            product,
+          );
+          return {
+            productId: product.id,
+            productName: product.name,
+            categoryName: categories.find((c) => c.id === product.categoryId)!
+              .name,
+            unit:
+              product.purchaseUnit && product.unitsPerPurchaseUnit
+                ? product.purchaseUnit
+                : product.stockUnitLabel || product.stockUnit,
+            unitsPerEntry: factor,
+            orderedQuantity: item.quantity,
+          };
+        });
     const order = await tx.purchaseOrder.create({
       data: {
         vendorId: vendor.id,
         vendorName: vendor.name,
+        isPrivate,
         year: date.getUTCFullYear(),
         number: await nextNumber(tx, vendor.id, date.getUTCFullYear()),
         orderDate: date,
@@ -142,6 +161,7 @@ export async function createPurchaseOrder(
       vendorId: vendor.id,
       number: order.number,
       year: order.year,
+      isPrivate,
     });
     return order.id;
   });
@@ -179,24 +199,28 @@ export async function finalizePurchaseOrder(
       order.lines.some((l) => !input.lines.some((x) => x.id === l.id))
     )
       throw new Error("The order changed. Reload before receiving it.");
-    const bar = await tx.location.findUnique({ where: { code: "BAR" } });
-    if (!bar?.active) throw new Error("Bar location is unavailable.");
+    const bar = order.isPrivate
+      ? null
+      : await tx.location.findUnique({ where: { code: "BAR" } });
+    if (!order.isPrivate && !bar?.active)
+      throw new Error("Bar location is unavailable.");
     const actor = await tx.user.findUniqueOrThrow({ where: { id: actorId } });
     const positive = input.lines.filter((l) => quantity(l.quantity) > 0n);
-    const delivery = positive.length
-      ? await tx.delivery.create({
-          data: {
-            vendorId: order.vendorId,
-            deliveryDate: date,
-            recordedById: actorId,
-            notes: `Order ${order.vendorName} ${order.year} #${order.number}`,
-          },
-        })
-      : null;
+    const delivery =
+      !order.isPrivate && positive.length
+        ? await tx.delivery.create({
+            data: {
+              vendorId: order.vendorId,
+              deliveryDate: date,
+              recordedById: actorId,
+              notes: `Order ${order.vendorName} ${order.year} #${order.number}`,
+            },
+          })
+        : null;
     for (const received of input.lines) {
       const line = order.lines.find((l) => l.id === received.id)!;
       let deliveryLineId: string | null = null;
-      if (quantity(received.quantity) > 0n) {
+      if (!order.isPrivate && quantity(received.quantity) > 0n) {
         if (!line.productId) throw new Error("A received product is missing.");
         const stockQuantity = new Prisma.Decimal(received.quantity)
           .mul(line.unitsPerEntry)
@@ -219,7 +243,7 @@ export async function finalizePurchaseOrder(
             type: "RECEIPT",
             productId: line.productId,
             quantity: stockQuantity,
-            destinationLocationId: bar.id,
+            destinationLocationId: bar!.id,
             occurredAt: date,
             notes: `Order ${order.vendorName} ${order.year} #${order.number}`,
           },
@@ -251,6 +275,8 @@ export async function finalizePurchaseOrder(
     });
     await auditOrder(tx, actorId, order.id, "ORDER_FINALIZED", {
       receivedDate: input.receivedDate,
+      isPrivate: order.isPrivate,
+      stockPosted: !order.isPrivate && positive.length > 0,
       total: totals.total,
       lines: input.lines,
       taxIncluded: input.taxIncluded,
@@ -303,11 +329,14 @@ export async function editPurchaseOrder(
     year: number;
     notes: string;
     reason: string;
+    isPrivate?: boolean;
     lines: {
       id: string;
       ordered: string;
       received: string | null;
       price: string | null;
+      name?: string;
+      unit?: string;
     }[];
   },
 ) {
@@ -327,6 +356,9 @@ export async function editPurchaseOrder(
       where: { id: input.id },
       include: { lines: true },
     });
+    const isPrivate = order.historical
+      ? (input.isPrivate ?? order.isPrivate)
+      : order.isPrivate;
     const vendor = await tx.vendor.findUniqueOrThrow({
       where: { id: input.vendorId },
     });
@@ -350,7 +382,7 @@ export async function editPurchaseOrder(
       if (order.historical && line.received !== null) quantity(line.received);
       if (line.price) money(line.price);
       const original = order.lines.find((l) => l.id === line.id)!;
-      if (!order.historical && original.productId) {
+      if (!order.historical && !isPrivate && original.productId) {
         const product = await tx.product.findUniqueOrThrow({
           where: { id: original.productId },
         });
@@ -361,15 +393,34 @@ export async function editPurchaseOrder(
           product,
         );
       }
+      const manual = isPrivate
+        ? privateOrderLines([
+            {
+              name: line.name ?? original.productName,
+              unit: line.unit ?? original.unit,
+              quantity: line.ordered,
+            },
+          ])[0]
+        : null;
       await tx.purchaseOrderLine.update({
         where: { id: line.id },
         data: {
+          ...(manual
+            ? {
+                productId: null,
+                productName: manual.productName,
+                unit: manual.unit,
+                unitsPerEntry: "1",
+                deliveryLineId: null,
+              }
+            : {}),
           orderedQuantity: line.ordered,
           ...(order.historical
             ? {
                 receivedQuantity: line.received,
                 unitPrice: line.price || null,
                 deliveryLineId:
+                  isPrivate ||
                   line.received !== original.receivedQuantity?.toString()
                     ? null
                     : original.deliveryLineId,
@@ -389,6 +440,7 @@ export async function editPurchaseOrder(
       data: {
         vendorId: vendor.id,
         vendorName: vendor.name,
+        isPrivate,
         orderDate: date,
         year,
         notes: input.notes || null,
@@ -409,12 +461,14 @@ export async function editPurchaseOrder(
     }
     await auditOrder(tx, actorId, order.id, "ORDER_CORRECTED", {
       before: {
+        isPrivate: order.isPrivate,
         vendorId: order.vendorId,
         date: order.orderDate?.toISOString() ?? null,
         year: order.year,
         number: order.number,
       },
       after: {
+        isPrivate: updated.isPrivate,
         vendorId: updated.vendorId,
         date: updated.orderDate?.toISOString() ?? null,
         year: updated.year,

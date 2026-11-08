@@ -130,3 +130,74 @@
   letter-spacing: normal;
   text-transform: none;
 }
+.order-private-toggle {
+  margin: 1rem 0;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  font-weight: 700;
+}
+.manual-order-line {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 2fr) minmax(110px, 1fr) minmax(100px, 1fr)
+    auto;
+  gap: 1rem;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+}
+.manual-order-line button {
+  margin-bottom: 0.8rem;
+}
+.order-private-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: #f2e8d6;
+  color: #66512d;
+  font-size: 0.72rem;
+  margin: 0.3rem;
+}
+@media (max-width: 620px) {
+  .manual-order-line {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .manual-order-line button {
+    justify-self: start;
+  }
+}
+.order-private-toggle input[role="switch"] {
+  appearance: none;
+  width: 42px;
+  min-width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #c8ceca;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.order-private-toggle input[role="switch"]::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.15s;
+}
+.order-private-toggle input[role="switch"]:checked {
+  background: var(--green-800);
+}
+.order-private-toggle input[role="switch"]:checked::before {
+  transform: translateX(18px);
+}
+.order-private-toggle input[role="switch"]:focus-visible {
+  outline: 2px solid var(--green-800);
+  outline-offset: 3px;
+}

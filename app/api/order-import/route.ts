@@ -34,6 +34,7 @@ export async function POST(request: Request) {
         actor.id,
         bytes,
         String(form.get("fileHash") ?? ""),
+        JSON.parse(String(form.get("privateSourceIds") ?? "[]")),
       );
       revalidatePath("/orders");
       revalidatePath("/order-history");

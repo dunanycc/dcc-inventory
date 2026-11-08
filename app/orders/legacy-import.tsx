@@ -5,6 +5,7 @@ import type { LegacyPurchasePreview } from "@/lib/legacy-purchase-import";
 export function LegacyOrderImport() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LegacyPurchasePreview | null>(null);
+  const [privateIds, setPrivateIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   async function send(execute = false) {
@@ -24,6 +25,7 @@ export function LegacyOrderImport() {
       if (execute) {
         form.set("execute", "true");
         form.set("fileHash", preview!.fileHash);
+        form.set("privateSourceIds", JSON.stringify(privateIds));
       }
       const response = await fetch("/api/order-import", {
         method: "POST",
@@ -36,7 +38,10 @@ export function LegacyOrderImport() {
           `Imported ${result.created} orders; ${result.skipped} already imported and skipped.`,
         );
         setPreview(null);
-      } else setPreview(result);
+      } else {
+        setPreview(result);
+        setPrivateIds([]);
+      }
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Import failed.");
     } finally {
@@ -63,6 +68,7 @@ export function LegacyOrderImport() {
           onChange={(e) => {
             setFile(e.target.files?.[0] ?? null);
             setPreview(null);
+            setPrivateIds([]);
             setMessage("");
           }}
         />
@@ -95,12 +101,18 @@ export function LegacyOrderImport() {
             Review date warnings below; original labels and notes are retained
             for correction.
           </p>
+          <p>
+            Mark non-inventory orders as Private before import. They retain this
+            vendor and are stored as manual products. Missing catalog matches
+            alone do not automatically make an order private.
+          </p>
           <div className="table-scroll order-import-report">
             <table className="inventory-table">
               <thead>
                 <tr>
                   <th>Original order</th>
                   <th>Vendor</th>
+                  <th>Private</th>
                   <th>Date</th>
                   <th>Products</th>
                   <th>Review</th>
@@ -116,12 +128,40 @@ export function LegacyOrderImport() {
                       )}
                     </td>
                     <td>{o.vendorName}</td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`Private ${o.originalLabel} ${o.vendorName}`}
+                        disabled={o.alreadyImported || busy}
+                        checked={privateIds.includes(o.sourceId)}
+                        onChange={(e) =>
+                          setPrivateIds(
+                            e.target.checked
+                              ? [...privateIds, o.sourceId]
+                              : privateIds.filter((id) => id !== o.sourceId),
+                          )
+                        }
+                      />
+                      {privateIds.includes(o.sourceId) && (
+                        <small className="order-muted">
+                          Manual products; no inventory
+                        </small>
+                      )}
+                    </td>
                     <td>{o.date ?? "Needs review"}</td>
                     <td>{o.lines.length}</td>
                     <td>
-                      {o.warnings.map((w, i) => (
-                        <p key={i}>{w}</p>
-                      ))}
+                      {o.warnings
+                        .filter(
+                          (w) =>
+                            !privateIds.includes(o.sourceId) ||
+                            !w.includes(
+                              "preserved as an archived product label",
+                            ),
+                        )
+                        .map((w, i) => (
+                          <p key={i}>{w}</p>
+                        ))}
                     </td>
                   </tr>
                 ))}

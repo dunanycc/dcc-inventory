@@ -118,6 +118,12 @@ function OrderDetail({
   return (
     <div className="order-detail">
       <p>{order.notes}</p>
+      {order.isPrivate && (
+        <p className="notice">
+          Private order — manual products, outside club inventory. Finalizing
+          will not create a stock delivery.
+        </p>
+      )}
       {order.historical && (
         <p className="notice">
           Imported history. No inventory is posted by this record. Historical
@@ -129,7 +135,9 @@ function OrderDetail({
         onSubmit={(e) => {
           if (
             !window.confirm(
-              "Finalize this order using the received quantities and prices shown? This closes the order and posts stock once.",
+              order.isPrivate
+                ? "Finalize this private order using the received quantities and prices shown? Club inventory will not change."
+                : "Finalize this order using the received quantities and prices shown? This closes the order and posts stock once.",
             )
           )
             e.preventDefault();
@@ -298,6 +306,16 @@ function OrderDetail({
           <form action={editOrderAction} className="order-correction">
             <input type="hidden" name="orderId" value={order.id} />
             <input type="hidden" name="year" value={order.year} />
+            {order.historical && (
+              <label className="product-check order-private-toggle">
+                <input
+                  type="checkbox"
+                  name="isPrivate"
+                  defaultChecked={order.isPrivate}
+                />{" "}
+                Private order (no club inventory)
+              </label>
+            )}
             <label className="order-field">
               Vendor
               <select name="vendorId" defaultValue={order.vendorId}>
@@ -345,7 +363,32 @@ function OrderDetail({
                   {order.lines.map((l) => (
                     <tr key={l.id}>
                       <td>
-                        {l.productName} ({l.unit})
+                        {order.isPrivate ? (
+                          <>
+                            <label className="order-field">
+                              Product name
+                              <input
+                                name={`name-${l.id}`}
+                                defaultValue={l.productName}
+                                maxLength={160}
+                                required
+                              />
+                            </label>
+                            <label className="order-field">
+                              Unit
+                              <input
+                                name={`unit-${l.id}`}
+                                defaultValue={l.unit}
+                                maxLength={80}
+                                required
+                              />
+                            </label>
+                          </>
+                        ) : (
+                          <>
+                            {l.productName} ({l.unit})
+                          </>
+                        )}
                         <input type="hidden" name="lineId" value={l.id} />
                       </td>
                       <td>
@@ -426,6 +469,7 @@ export function Orders({
 }) {
   const [vendor, setVendor] = useState("");
   const [status, setStatus] = useState("");
+  const [kind, setKind] = useState("");
   return (
     <>
       <div className="order-filters">
@@ -448,13 +492,22 @@ export function Orders({
             <option value="RECEIVED">Received</option>
           </select>
         </label>
+        <label className="order-field">
+          Order type
+          <select value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="">All orders</option>
+            <option value="inventory">Inventory</option>
+            <option value="private">Private</option>
+          </select>
+        </label>
       </div>
       {!orders.length && <p>No orders yet.</p>}
       {orders
         .filter(
           (o) =>
             (!vendor || o.vendorId === vendor) &&
-            (!status || o.status === status),
+            (!status || o.status === status) &&
+            (!kind || (kind === "private" ? o.isPrivate : !o.isPrivate)),
         )
         .map((o) => (
           <details
@@ -465,6 +518,7 @@ export function Orders({
             <summary>
               <strong>
                 {o.vendorName} · {o.year} · #{o.number}
+                {o.isPrivate ? " · Private" : ""}
               </strong>{" "}
               — {o.orderDate ?? "Date needs review"} · {o.status.toLowerCase()}
             </summary>

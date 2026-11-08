@@ -277,6 +277,7 @@ async function main() {
     admin.id,
     bytes,
     preview.fileHash,
+    [preview.orders.find((o) => o.vendorName === "Beer")!.sourceId],
   );
   assert.equal(imported.created, 2);
   assert.equal(
@@ -289,6 +290,8 @@ async function main() {
     include: { lines: true },
   });
   assert.equal(historical.number, 1);
+  assert.equal(historical.isPrivate, true);
+  assert.equal(historical.lines[0].productId, null);
   assert.equal(historical.lines[0].unitPrice, null);
   await editPurchaseOrder(admin.id, {
     id: historical.id,
@@ -338,6 +341,60 @@ async function main() {
     numbered.map((order) => order.number),
     numbered.map((_, i) => i + 1),
   );
+  const productsBefore = await prisma.product.count();
+  const deliveriesBefore = await prisma.delivery.count();
+  const movementsBefore = await prisma.inventoryMovement.count();
+  const privateId = await createPurchaseOrder(admin.id, {
+    vendorId: vendor.id,
+    date: "2026-11-08",
+    notes: "Private test",
+    isPrivate: true,
+    items: [],
+    manualItems: [
+      { name: "Outside-catalog bottle", unit: "BOTTLE", quantity: "2" },
+    ],
+  });
+  const privateOrder = await prisma.purchaseOrder.findUniqueOrThrow({
+    where: { id: privateId },
+    include: { lines: true },
+  });
+  assert.equal(privateOrder.isPrivate, true);
+  assert.equal(privateOrder.vendorId, vendor.id);
+  assert.equal(privateOrder.lines[0].productId, null);
+  await assert.rejects(
+    createPurchaseOrder(admin.id, {
+      vendorId: vendor.id,
+      date: "2026-11-08",
+      notes: "",
+      isPrivate: true,
+      items: [{ productId: product.id, quantity: "1" }],
+      manualItems: [{ name: "Manual", unit: "BOTTLE", quantity: "1" }],
+    }),
+  );
+  await prisma.location.update({
+    where: { id: bar.id },
+    data: { active: false },
+  });
+  await finalizePurchaseOrder(admin.id, {
+    id: privateId,
+    receivedDate: "2026-11-08",
+    taxIncluded: false,
+    gst: "1",
+    pst: "2",
+    lines: [{ id: privateOrder.lines[0].id, quantity: "3", price: "10" }],
+  });
+  assert.equal(
+    (await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: privateId } }))
+      .status,
+    "RECEIVED",
+  );
+  assert.equal(await prisma.product.count(), productsBefore);
+  assert.equal(await prisma.delivery.count(), deliveriesBefore);
+  assert.equal(await prisma.inventoryMovement.count(), movementsBefore);
+  await prisma.location.update({
+    where: { id: bar.id },
+    data: { active: true },
+  });
   await prisma.orderReceipt.create({
     data: {
       orderId: id,
