@@ -11,7 +11,11 @@ function normalized(name: string) {
 }
 async function actor() {
   const user = await currentUser();
-  if (!user || !hasPermission(user.role, "catalog:manage"))
+  if (
+    !user ||
+    user.status !== "ACTIVE" ||
+    !hasPermission(user.role, "catalog:manage")
+  )
     throw new Error("FORBIDDEN");
   return user;
 }

@@ -76,19 +76,19 @@ describe("shouldIssueSignInLink", () => {
   it("issues a link for an unknown email on the bootstrap admin list", async () => {
     const deps = dependencies({ user: null });
     const result = await shouldIssueSignInLink(
-      "billrh@me.com",
+      "bootstrap@example.com",
       deps,
-      new Set(["billrh@me.com"]),
+      new Set(["bootstrap@example.com"]),
     );
     expect(result.issue).toBe(true);
   });
 
   it("normalizes email case/whitespace before every check", async () => {
     const deps = dependencies({ user: { status: "ACTIVE" } });
-    await shouldIssueSignInLink("  Bill@ME.com  ", deps, new Set());
-    expect(deps.findUserByEmail).toHaveBeenCalledWith("bill@me.com");
+    await shouldIssueSignInLink("  Bill@EXAMPLE.com  ", deps, new Set());
+    expect(deps.findUserByEmail).toHaveBeenCalledWith("bill@example.com");
     expect(deps.findRecentToken).toHaveBeenCalledWith(
-      "bill@me.com",
+      "bill@example.com",
       expect.any(Date),
     );
   });

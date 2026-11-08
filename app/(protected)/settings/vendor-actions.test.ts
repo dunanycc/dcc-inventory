@@ -24,7 +24,11 @@ function data() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.currentUser.mockResolvedValue({ id: "admin", role: "ADMINISTRATOR" });
+  mocks.currentUser.mockResolvedValue({
+    id: "admin",
+    role: "ADMINISTRATOR",
+    status: "ACTIVE",
+  });
 });
 describe("deleteVendorAction", () => {
   it("deletes only vendors without any delivery history", async () => {
@@ -50,6 +54,15 @@ describe("deleteVendorAction", () => {
   });
   it("rejects unauthorized deletion", async () => {
     mocks.currentUser.mockResolvedValue(null);
+    await expect(deleteVendorAction(data())).rejects.toThrow("FORBIDDEN");
+    expect(mocks.deleteMany).not.toHaveBeenCalled();
+  });
+  it("rejects a disabled administrator with an existing session", async () => {
+    mocks.currentUser.mockResolvedValue({
+      id: "admin",
+      role: "ADMINISTRATOR",
+      status: "DISABLED",
+    });
     await expect(deleteVendorAction(data())).rejects.toThrow("FORBIDDEN");
     expect(mocks.deleteMany).not.toHaveBeenCalled();
   });

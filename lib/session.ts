@@ -8,7 +8,7 @@ export const currentUser = cache(async () => {
   const session = await auth();
   if (!session?.user?.id) return null;
   return prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: session.user.id, status: "ACTIVE" },
     select: { id: true, email: true, name: true, role: true, status: true },
   });
 });
