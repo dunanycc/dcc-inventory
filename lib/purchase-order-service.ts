@@ -85,7 +85,7 @@ export async function createPurchaseOrder(
   if (input.notes.length > 1000 || !Array.isArray(input.items))
     throw new Error("Review the order items and notes.");
   const manualLines = isPrivate
-    ? privateOrderLines(input.manualItems ?? [])
+    ? privateOrderLines(input.manualItems ?? [], true)
     : [];
   if (
     isPrivate

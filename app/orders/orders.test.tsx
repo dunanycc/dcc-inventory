@@ -173,10 +173,20 @@ it("switches to manual private products for the selected vendor", () => {
   fireEvent.change(screen.getByRole("textbox", { name: "Private product 1" }), {
     target: { value: "Private wine" },
   });
-  fireEvent.change(
-    screen.getByRole("spinbutton", { name: "Private quantity 1" }),
-    { target: { value: "3" } },
+  expect(screen.getByRole("combobox", { name: "Private unit 1" })).toHaveValue(
+    "BOTTLE",
   );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Add quantity for private product 1" }),
+  );
+  expect(screen.getByLabelText("Private quantity 1")).toHaveTextContent("1");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Increase private quantity 1" }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Increase private quantity 1" }),
+  );
+  expect(screen.getByLabelText("Private quantity 1")).toHaveTextContent("3");
   const form = screen
     .getByRole("button", { name: "Save order" })
     .closest("form")!;
@@ -191,4 +201,20 @@ it("switches to manual private products for the selected vendor", () => {
   expect(
     screen.getByRole("textbox", { name: "Private product 2" }),
   ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove private product 2" }),
+  );
+  expect(
+    screen.queryByRole("textbox", { name: "Private product 2" }),
+  ).not.toBeInTheDocument();
+  for (let i = 0; i < 3; i++)
+    fireEvent.click(
+      screen.getByRole("button", { name: "Decrease private quantity 1" }),
+    );
+  expect(
+    screen.getByRole("button", { name: "Add quantity for private product 1" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Save order" }),
+  ).not.toBeInTheDocument();
 });

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { PRIVATE_ORDER_UNITS } from "@/lib/purchase-order";
 import { createOrderAction } from "@/app/(protected)/orders/actions";
 export function SubmitOrder({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
@@ -33,7 +34,7 @@ export function NewOrder({
   const [vendor, setVendor] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [manual, setManual] = useState([
-    { id: "first", name: "", unit: "BOTTLE", quantity: "1" },
+    { id: "first", name: "", unit: "BOTTLE", quantity: "0" },
   ]);
   const [values, setValues] = useState<Record<string, string>>({});
   const products = categories
@@ -53,7 +54,7 @@ export function NewOrder({
             setVendor(e.target.value);
             setValues({});
             setManual([
-              { id: "first", name: "", unit: "BOTTLE", quantity: "1" },
+              { id: "first", name: "", unit: "BOTTLE", quantity: "0" },
             ]);
           }}
         >
@@ -78,11 +79,13 @@ export function NewOrder({
             name="manualItems"
             value={JSON.stringify(
               isPrivate
-                ? manual.map(({ name, unit, quantity }) => ({
-                    name,
-                    unit,
-                    quantity,
-                  }))
+                ? manual
+                    .filter((line) => Number(line.quantity) > 0)
+                    .map(({ name, unit, quantity }) => ({
+                      name,
+                      unit,
+                      quantity,
+                    }))
                 : [],
             )}
           />
@@ -182,7 +185,7 @@ export function NewOrder({
                       aria-label={`Private product ${index + 1}`}
                       value={line.name}
                       maxLength={160}
-                      required
+                      required={Number(line.quantity) > 0}
                       onChange={(e) =>
                         setManual(
                           manual.map((l) =>
@@ -196,12 +199,9 @@ export function NewOrder({
                   </label>
                   <label className="order-field">
                     Unit
-                    <input
+                    <select
                       aria-label={`Private unit ${index + 1}`}
                       value={line.unit}
-                      maxLength={80}
-                      required
-                      placeholder="Bottle, case, keg…"
                       onChange={(e) =>
                         setManual(
                           manual.map((l) =>
@@ -211,38 +211,111 @@ export function NewOrder({
                           ),
                         )
                       }
-                    />
+                    >
+                      {PRIVATE_ORDER_UNITS.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit.charAt(0) + unit.slice(1).toLowerCase()}
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                  <label className="order-field">
-                    Quantity
-                    <input
-                      aria-label={`Private quantity ${index + 1}`}
-                      type="number"
-                      min="0.000001"
-                      step="0.000001"
-                      value={line.quantity}
-                      required
-                      onChange={(e) =>
-                        setManual(
-                          manual.map((l) =>
-                            l.id === line.id
-                              ? { ...l, quantity: e.target.value }
-                              : l,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
+                  <div className="order-field">
+                    <span>Quantity</span>
+                    <div
+                      className="private-quantity-stepper"
+                      role="group"
+                      aria-label={`Quantity for private product ${index + 1}`}
+                    >
+                      {Number(line.quantity) === 0 ? (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          aria-label={`Add quantity for private product ${index + 1}`}
+                          onClick={() =>
+                            setManual(
+                              manual.map((l) =>
+                                l.id === line.id ? { ...l, quantity: "1" } : l,
+                              ),
+                            )
+                          }
+                        >
+                          Add
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            aria-label={`Decrease private quantity ${index + 1}`}
+                            onClick={() =>
+                              setManual(
+                                manual.map((l) =>
+                                  l.id === line.id
+                                    ? {
+                                        ...l,
+                                        quantity: String(
+                                          Number(l.quantity) - 1,
+                                        ),
+                                      }
+                                    : l,
+                                ),
+                              )
+                            }
+                          >
+                            −
+                          </button>
+                          <output
+                            aria-label={`Private quantity ${index + 1}`}
+                            aria-live="polite"
+                          >
+                            {line.quantity}
+                          </output>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            aria-label={`Increase private quantity ${index + 1}`}
+                            disabled={Number(line.quantity) >= 999999999}
+                            onClick={() =>
+                              setManual(
+                                manual.map((l) =>
+                                  l.id === line.id
+                                    ? {
+                                        ...l,
+                                        quantity: String(
+                                          Number(l.quantity) + 1,
+                                        ),
+                                      }
+                                    : l,
+                                ),
+                              )
+                            }
+                          >
+                            +
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                   <button
-                    className="btn-secondary"
+                    className="btn-secondary private-product-trash"
                     type="button"
+                    title="Remove product"
                     aria-label={`Remove private product ${index + 1}`}
-                    disabled={manual.length === 1}
                     onClick={() =>
                       setManual(manual.filter((l) => l.id !== line.id))
                     }
                   >
-                    Remove
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+                    </svg>
                   </button>
                 </div>
               ))}
@@ -257,7 +330,7 @@ export function NewOrder({
                       id: crypto.randomUUID(),
                       name: "",
                       unit: "BOTTLE",
-                      quantity: "1",
+                      quantity: "0",
                     },
                   ])
                 }
@@ -270,10 +343,15 @@ export function NewOrder({
             Notes
             <textarea name="notes" maxLength={1000} />
           </label>
-          <p>{isPrivate ? manual.length : items.length} products selected</p>
-          {(isPrivate || items.length > 0) && (
-            <SubmitOrder>Save order</SubmitOrder>
-          )}
+          <p>
+            {isPrivate
+              ? manual.filter((line) => Number(line.quantity) > 0).length
+              : items.length}{" "}
+            products selected
+          </p>
+          {(isPrivate
+            ? manual.some((line) => Number(line.quantity) > 0)
+            : items.length > 0) && <SubmitOrder>Save order</SubmitOrder>}
         </form>
       )}
     </section>

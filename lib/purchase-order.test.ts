@@ -79,3 +79,22 @@ it("validates manual products and never links them to the catalog", () => {
     privateOrderLines([{ name: "Bottle", unit: "BOTTLE", quantity: "-1" }]),
   ).toThrow();
 });
+
+it("requires standard units and integer quantities on new private orders", () => {
+  expect(() =>
+    privateOrderLines(
+      [{ name: "Wine", unit: "BOTTLE", quantity: "1.000003" }],
+      true,
+    ),
+  ).toThrow("whole-number");
+  expect(() =>
+    privateOrderLines(
+      [{ name: "Wine", unit: "Unlisted", quantity: "1" }],
+      true,
+    ),
+  ).toThrow("standard unit");
+  expect(
+    privateOrderLines([{ name: "Wine", unit: "CASE", quantity: "2" }], true)[0]
+      .orderedQuantity,
+  ).toBe("2");
+});

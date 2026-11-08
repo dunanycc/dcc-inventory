@@ -82,8 +82,22 @@ export function historicalVendor(category: string) {
   return null;
 }
 
+export const PRIVATE_ORDER_UNITS = [
+  "BOTTLE",
+  "CAN",
+  "KEG",
+  "CASE",
+  "BOX",
+  "PACKAGE",
+  "EACH",
+  "OTHER",
+] as const;
+
 export type ManualOrderLine = { name: string; unit: string; quantity: string };
-export function privateOrderLines(items: ManualOrderLine[]) {
+export function privateOrderLines(
+  items: ManualOrderLine[],
+  standardWholeUnits = false,
+) {
   if (!Array.isArray(items) || !items.length || items.length > 200)
     throw new Error("Add at least one manual product (maximum 200).");
   return items.map((item) => {
@@ -95,6 +109,14 @@ export function privateOrderLines(items: ManualOrderLine[]) {
       typeof item.unit === "string"
         ? item.unit.trim().replace(/\s+/g, " ")
         : "";
+    if (
+      standardWholeUnits &&
+      (!PRIVATE_ORDER_UNITS.some((value) => value === unit) ||
+        !/^\d{1,9}$/.test(item.quantity))
+    )
+      throw new Error(
+        "Choose a standard unit and enter a whole-number quantity.",
+      );
     if (
       !name ||
       name.length > 160 ||
