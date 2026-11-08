@@ -73,6 +73,6 @@ export function formatStockQuantity(value: string, quantityScale: number) {
   const numeric = Number(value);
   return new Intl.NumberFormat("en-CA", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: quantityScale,
+    maximumFractionDigits: Math.min(2, quantityScale),
   }).format(numeric);
 }

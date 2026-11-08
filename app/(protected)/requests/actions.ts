@@ -1,5 +1,7 @@
 "use server";
 
+import { inventoryQuantityScale } from "@/lib/quantity-policy";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -63,6 +65,7 @@ function productShape(product: {
   starterShackRequestEligible: boolean;
   allowFractionalStock: boolean;
   quantityScale: number;
+  category?: { name: string };
   productLocations: Array<{
     active: boolean;
     reviewRequired: boolean;
@@ -82,7 +85,7 @@ function productShape(product: {
     active: product.active,
     starterShackRequestEligible: product.starterShackRequestEligible,
     allowFractionalStock: product.allowFractionalStock,
-    quantityScale: product.quantityScale,
+    quantityScale: inventoryQuantityScale(product),
     barEligible: eligible("BAR"),
     shackEligible: eligible("STARTER_SHACK"),
   };
@@ -131,6 +134,7 @@ export async function submitStockRequestAction(formData: FormData) {
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       include: {
+        category: { select: { name: true } },
         productLocations: {
           include: { location: { select: { code: true, active: true } } },
         },
@@ -153,6 +157,7 @@ export async function submitStockRequestAction(formData: FormData) {
         const freshProducts = await transaction.product.findMany({
           where: { id: { in: productIds } },
           include: {
+            category: { select: { name: true } },
             productLocations: {
               include: { location: { select: { code: true, active: true } } },
             },
@@ -251,6 +256,7 @@ export async function fulfillStockRequestAction(formData: FormData) {
               include: {
                 product: {
                   include: {
+                    category: { select: { name: true } },
                     productLocations: {
                       include: {
                         location: { select: { code: true, active: true } },

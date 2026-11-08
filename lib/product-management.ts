@@ -104,12 +104,6 @@ function cleanOptional(value: string | null | undefined, maximum: number) {
   return cleaned;
 }
 
-function decimalPlaces(value: number) {
-  const text = String(value);
-  if (text.includes("e-")) return Number(text.split("e-")[1]);
-  return text.includes(".") ? text.split(".")[1].length : 0;
-}
-
 export function normalizeProductInput(
   input: ProductInput,
 ): Omit<ManagedProduct, "id"> & { source?: ProductInput["source"] } {
@@ -121,7 +115,7 @@ export function normalizeProductInput(
   if (
     !Number.isSafeInteger(input.quantityScale) ||
     input.quantityScale < 0 ||
-    input.quantityScale > 6
+    input.quantityScale > 2
   )
     throw new ProductManagementError("INVALID_INPUT");
   if (!input.allowFractionalStock && input.quantityScale !== 0)
@@ -144,7 +138,7 @@ export function normalizeProductInput(
     (!Number.isFinite(conversion) ||
       conversion <= 0 ||
       conversion > 999_999_999.999 ||
-      decimalPlaces(conversion) > 3)
+      !Number.isSafeInteger(conversion))
   )
     throw new ProductManagementError("INVALID_INPUT");
 

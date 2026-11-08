@@ -214,7 +214,7 @@ export function InventoryCategoryTabs({
                               step={
                                 product.quantityScale === 0
                                   ? "1"
-                                  : `0.${"0".repeat(product.quantityScale - 1)}1`
+                                  : `0.${"0".repeat(Math.min(2, product.quantityScale) - 1)}1`
                               }
                               type="number"
                             />

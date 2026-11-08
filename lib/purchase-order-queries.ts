@@ -1,3 +1,4 @@
+import { inventoryQuantityScale } from "./quantity-policy";
 import { prisma } from "./prisma";
 export async function orderRows(
   where: { vendorId?: string; year?: number; id?: string } = {},
@@ -10,7 +11,18 @@ export async function orderRows(
       { number: "asc" },
     ],
     include: {
-      lines: { orderBy: { id: "asc" } },
+      lines: {
+        orderBy: { id: "asc" },
+        include: {
+          product: {
+            select: {
+              allowFractionalStock: true,
+              quantityScale: true,
+              category: { select: { name: true } },
+            },
+          },
+        },
+      },
       receipts: { select: { id: true, name: true, mimeType: true } },
     },
   });
@@ -26,6 +38,8 @@ export async function orderRows(
     legacyData: undefined,
     lines: o.lines.map((l) => ({
       ...l,
+      product: undefined,
+      quantityScale: l.product ? inventoryQuantityScale(l.product) : 0,
       unitsPerEntry: l.unitsPerEntry.toString(),
       orderedQuantity: l.orderedQuantity.toString(),
       receivedQuantity: l.receivedQuantity?.toString() ?? null,

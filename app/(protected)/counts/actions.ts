@@ -144,7 +144,11 @@ export async function saveCountDraftAction(formData: FormData) {
                 id: true,
                 productId: true,
                 product: {
-                  select: { allowFractionalStock: true, quantityScale: true },
+                  select: {
+                    allowFractionalStock: true,
+                    quantityScale: true,
+                    category: { select: { name: true } },
+                  },
                 },
               },
             },
@@ -255,7 +259,12 @@ export async function setSeasonOpeningAction(formData: FormData) {
               some: { locationId, active: true, reviewRequired: false },
             },
           },
-          select: { id: true, allowFractionalStock: true, quantityScale: true },
+          select: {
+            id: true,
+            allowFractionalStock: true,
+            quantityScale: true,
+            category: { select: { name: true } },
+          },
         });
         const eligibleById = new Map(
           eligibleProducts.map((product) => [product.id, product]),
@@ -367,7 +376,11 @@ export async function acceptCountAction(formData: FormData) {
                 expectedQuantity: true,
                 countedQuantity: true,
                 product: {
-                  select: { allowFractionalStock: true, quantityScale: true },
+                  select: {
+                    allowFractionalStock: true,
+                    quantityScale: true,
+                    category: { select: { name: true } },
+                  },
                 },
               },
             },

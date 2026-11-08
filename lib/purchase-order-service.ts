@@ -1,3 +1,4 @@
+import { wholeQuantity, validateReceivedQuantity } from "./quantity-policy";
 import { Prisma } from "@/app/generated/prisma/client";
 import { hasPermission } from "./authorization";
 import { prisma } from "./prisma";
@@ -121,6 +122,7 @@ export async function createPurchaseOrder(
       ? manualLines
       : input.items.map((item) => {
           const product = products.find((p) => p.id === item.productId)!;
+          wholeQuantity(item.quantity);
           if (quantity(item.quantity) <= 0n)
             throw new Error("Order quantities must be greater than zero.");
           const factor =
@@ -199,6 +201,12 @@ export async function finalizePurchaseOrder(
       order.lines.some((l) => !input.lines.some((x) => x.id === l.id))
     )
       throw new Error("The order changed. Reload before receiving it.");
+    for (const received of input.lines)
+      validateReceivedQuantity(
+        received.quantity,
+        order.lines.find((line) => line.id === received.id)!,
+        order.isPrivate,
+      );
     const bar = order.isPrivate
       ? null
       : await tx.location.findUnique({ where: { code: "BAR" } });
@@ -378,10 +386,22 @@ export async function editPurchaseOrder(
       throw new Error("Order lines changed. Reload and try again.");
     if (!order.historical && !date) throw new Error("Choose an order date.");
     for (const line of input.lines) {
+      if (!order.historical) wholeQuantity(line.ordered);
       quantity(line.ordered);
       if (order.historical && line.received !== null) quantity(line.received);
       if (line.price) money(line.price);
       const original = order.lines.find((l) => l.id === line.id)!;
+      if (
+        order.historical &&
+        line.ordered !== original.orderedQuantity.toString()
+      )
+        wholeQuantity(line.ordered);
+      if (
+        order.historical &&
+        line.received !== null &&
+        line.received !== original.receivedQuantity?.toString()
+      )
+        validateReceivedQuantity(line.received, original, isPrivate);
       if (!order.historical && !isPrivate && original.productId) {
         const product = await tx.product.findUniqueOrThrow({
           where: { id: original.productId },

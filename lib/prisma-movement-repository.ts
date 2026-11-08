@@ -30,6 +30,7 @@ export function createMovementTransaction(
         select: {
           id: true,
           active: true,
+          category: { select: { name: true } },
           allowFractionalStock: true,
           quantityScale: true,
         },

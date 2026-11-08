@@ -8,7 +8,7 @@
   border-bottom: 3px solid transparent;
   color: var(--muted);
   cursor: pointer;
-  font-weight: 750;
+  font-weight: 600;
   padding: 0.75rem 1.1rem;
 }
 .history-workspace .admin-tabs button.active {
@@ -51,7 +51,7 @@
 }
 .history-yoy {
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: 600;
 }
 .history-yoy.up {
   color: #18612c;
@@ -65,7 +65,7 @@
 }
 .history-incomplete {
   color: #9a3324;
-  font-weight: 700;
+  font-weight: 600;
 }
 .history-detail {
   border-top: 1px solid var(--line);
@@ -92,7 +92,7 @@
 }
 .history-bar-value {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .history-bar-label {
   fill: var(--muted);
@@ -112,7 +112,7 @@
   border-bottom: 0;
 }
 .history-calc-total {
-  font-weight: 800;
+  font-weight: 600;
 }
 .history-overview-table th button,
 .history-review-table th button {
@@ -151,7 +151,7 @@
   color: var(--green-800);
   cursor: pointer;
   font: inherit;
-  font-weight: 750;
+  font-weight: 600;
   padding: 0;
   text-decoration: underline;
 }
@@ -167,7 +167,7 @@
   cursor: pointer;
   display: flex;
   font-size: 0.8rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.4rem;
   padding: 0.4rem 0.75rem;
 }
@@ -181,7 +181,7 @@
   border-radius: 999px;
   color: #fff;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 600;
   padding: 1px 6px;
 }
 .filter-dropdown-panel {
@@ -214,7 +214,7 @@
   color: var(--green-800);
   cursor: pointer;
   font-size: 0.76rem;
-  font-weight: 750;
+  font-weight: 600;
   padding: 0;
 }
 .filter-dropdown-option {

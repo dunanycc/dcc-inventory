@@ -55,6 +55,7 @@ export async function postDeliveryAction(formData: FormData) {
         const products = await tx.product.findMany({
           where: { id: { in: raw.map((i) => i.productId) } },
           include: {
+            category: { select: { name: true } },
             productLocations: {
               where: { locationId: bar.id },
               select: { active: true, reviewRequired: true },
@@ -178,7 +179,8 @@ export async function updateDeliveryAction(formData: FormData) {
           }),
         ]);
         if (
-          (vendorId && (!vendor || (!vendor.active && delivery?.vendorId !== vendorId))) ||
+          (vendorId &&
+            (!vendor || (!vendor.active && delivery?.vendorId !== vendorId))) ||
           !bar?.active ||
           !delivery ||
           delivery.voidedAt
@@ -187,6 +189,7 @@ export async function updateDeliveryAction(formData: FormData) {
         const products = await tx.product.findMany({
           where: { id: { in: raw.map((item) => item.productId) } },
           include: {
+            category: { select: { name: true } },
             productLocations: {
               where: { locationId: bar.id },
               select: { active: true, reviewRequired: true },
@@ -250,6 +253,7 @@ export async function updateDeliveryAction(formData: FormData) {
           )
             throw new Error("PRODUCT");
           const calculated = calculateDeliveryQuantity(item.quantity, {
+            category: product.category,
             allowFractionalStock: product.allowFractionalStock,
             quantityScale: product.quantityScale,
             purchaseUnit: line?.purchaseUnit ?? product.purchaseUnit,

@@ -13,7 +13,7 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   color: #4b5a51;
-  font-weight: 750;
+  font-weight: 600;
   padding: 0.65rem 1rem;
   white-space: nowrap;
 }
@@ -46,7 +46,7 @@
   color: var(--green-800);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: 600;
 }
 .opening-panel {
   background: #f5f8f6;
@@ -74,7 +74,7 @@
   color: #445149;
   display: grid;
   font-size: 0.76rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.3rem;
 }
 .opening-notes input {

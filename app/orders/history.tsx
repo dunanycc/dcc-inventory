@@ -178,7 +178,11 @@ export function OrderHistory({
                             : values
                                 .reduce((sum, v) => sum + Number(v), 0)
                                 .toLocaleString("en-CA", {
-                                  maximumFractionDigits: 6,
+                                  maximumFractionDigits:
+                                    p.category.trim().toLowerCase() ===
+                                    "hard liquor"
+                                      ? 2
+                                      : 0,
                                 })}
                       </td>
                     );

@@ -1,6 +1,6 @@
-.product-table th,
-.inventory-table th,
-.request-table th {
-  background: var(--green-650);
-  color: #fff;
+.product-table thead th,
+.inventory-table thead th,
+.request-table thead th {
+  background: var(--green-100);
+  color: var(--green-950);
 }

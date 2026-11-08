@@ -97,11 +97,7 @@ export function NewStockRequest({
             <input
               aria-label={`Requested quantity for ${products.get(id)?.name}`}
               min="0"
-              step={
-                products.get(id)?.quantityScale
-                  ? 10 ** -(products.get(id)?.quantityScale ?? 0)
-                  : 1
-              }
+              step="1"
               value={quantity}
               onChange={(event) =>
                 setCart({ ...cart, [id]: event.target.value })
@@ -172,7 +168,7 @@ export function NewStockRequest({
               <input
                 aria-label={`Quantity for ${product.name}`}
                 min="0"
-                step={product.quantityScale ? 10 ** -product.quantityScale : 1}
+                step="1"
                 type="number"
                 value={drafts[product.id] ?? "1"}
                 onChange={(event) =>
@@ -430,7 +426,7 @@ export function FulfillmentQueue({
                                     min="0"
                                     step={
                                       line.quantityScale
-                                        ? 10 ** -line.quantityScale
+                                        ? 10 ** -Math.min(2, line.quantityScale)
                                         : 1
                                     }
                                     type="number"

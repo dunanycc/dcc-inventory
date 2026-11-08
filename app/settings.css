@@ -34,7 +34,7 @@
   color: #445149;
   display: grid;
   font-size: 0.77rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.35rem;
 }
 .preauthorize-form label span {
@@ -153,7 +153,7 @@
   color: #445149;
   display: grid;
   font-size: 0.77rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.35rem;
 }
 .category-create-form input,
@@ -233,7 +233,7 @@
 .admin-tabs a {
   border-bottom: 3px solid transparent;
   color: var(--muted);
-  font-weight: 750;
+  font-weight: 600;
   padding: 0.75rem 1.1rem;
 }
 .admin-tabs a.active {
@@ -261,7 +261,7 @@
 }
 .import-form > label {
   display: grid;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.45rem;
 }
 .import-form input[type="file"] {
@@ -299,7 +299,7 @@
 }
 .import-warnings summary {
   cursor: pointer;
-  font-weight: 750;
+  font-weight: 600;
 }
 .import-warnings ul {
   margin-bottom: 0.2rem;
@@ -357,7 +357,7 @@
   display: grid;
   gap: 0.35rem;
   font-size: 0.77rem;
-  font-weight: 750;
+  font-weight: 600;
 }
 .vendor-create-form input {
   border: 1px solid var(--border-input);
@@ -382,7 +382,7 @@
 .vendor-edit-fields label {
   display: grid;
   font-size: 0.77rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.35rem;
 }
 .vendor-edit-fields input,

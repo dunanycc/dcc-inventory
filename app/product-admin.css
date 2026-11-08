@@ -33,7 +33,7 @@
   color: var(--green-800);
   display: inline-flex;
   font-size: 0.6rem;
-  font-weight: 800;
+  font-weight: 600;
   justify-content: center;
   min-width: 18px;
   padding: 0.1rem 0.32rem;
@@ -126,7 +126,7 @@
   background: var(--green-100);
   border-color: #9ebbac;
   color: var(--green-800);
-  font-weight: 750;
+  font-weight: 600;
 }
 .product-editor {
   background: #f5f8f6;
@@ -146,7 +146,7 @@
   color: #445149;
   display: grid;
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.3rem;
 }
 .product-form-grid > label:not(.product-check) {
@@ -262,7 +262,7 @@
   color: #445149;
   display: grid;
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.3rem;
 }
 .add-note-form textarea {
@@ -337,7 +337,7 @@
   color: var(--muted);
   display: inline-flex;
   font-size: 0.72rem;
-  font-weight: 750;
+  font-weight: 600;
   padding: 0.35rem 0.6rem;
 }
 .availability-pill.available {
@@ -388,7 +388,7 @@
 .request-email-settings label {
   display: grid;
   font-size: 0.72rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 4px;
 }
 .request-email-settings input {
@@ -430,7 +430,7 @@
   color: #fff;
   cursor: pointer;
   font-size: var(--btn-font-size);
-  font-weight: 750;
+  font-weight: 600;
   min-height: var(--btn-height);
   min-width: 100px;
   padding: var(--btn-padding);
@@ -468,7 +468,7 @@
 .request-closure-dialog-body label {
   display: grid;
   font-size: 0.8rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 6px;
 }
 .request-closure-dialog-body textarea {

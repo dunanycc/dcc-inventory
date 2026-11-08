@@ -412,6 +412,65 @@ async function main() {
       expires: new Date(Date.now() + 3600000),
     },
   });
+  const liquorCategory = await prisma.category.create({
+    data: { name: "Hard Liquor", nameNormalized: "hard liquor" },
+  });
+  const liquor = await prisma.product.create({
+    data: {
+      name: "Test liquor",
+      categoryId: liquorCategory.id,
+      vendorId: vendor.id,
+      stockUnit: "BOTTLE",
+      allowFractionalStock: true,
+      quantityScale: 2,
+      productLocations: {
+        create: { locationId: bar.id, reviewRequired: false },
+      },
+    },
+  });
+  await assert.rejects(
+    createPurchaseOrder(admin.id, {
+      vendorId: vendor.id,
+      date: "2026-11-08",
+      notes: "",
+      items: [{ productId: liquor.id, quantity: "1.5" }],
+    }),
+  );
+  const liquorOrder = await createPurchaseOrder(admin.id, {
+    vendorId: vendor.id,
+    date: "2026-11-08",
+    notes: "",
+    items: [{ productId: liquor.id, quantity: "1" }],
+  });
+  const liquorLine = await prisma.purchaseOrderLine.findFirstOrThrow({
+    where: { orderId: liquorOrder },
+  });
+  await assert.rejects(
+    finalizePurchaseOrder(admin.id, {
+      id: liquorOrder,
+      receivedDate: "2026-11-08",
+      taxIncluded: true,
+      gst: "0",
+      pst: "0",
+      lines: [{ id: liquorLine.id, quantity: "0.251", price: "20" }],
+    }),
+  );
+  await finalizePurchaseOrder(admin.id, {
+    id: liquorOrder,
+    receivedDate: "2026-11-08",
+    taxIncluded: true,
+    gst: "0",
+    pst: "0",
+    lines: [{ id: liquorLine.id, quantity: "0.25", price: "20" }],
+  });
+  assert.equal(
+    (
+      await prisma.inventoryMovement.findFirstOrThrow({
+        where: { productId: liquor.id },
+      })
+    ).quantity.toString(),
+    "0.25",
+  );
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",
   );

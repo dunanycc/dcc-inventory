@@ -12,7 +12,7 @@
 .order-field {
   display: grid;
   gap: 0.4rem;
-  font-weight: 650;
+  font-weight: 600;
   font-size: 0.85rem;
   margin: 0.8rem 0;
   max-width: 440px;
@@ -135,7 +135,7 @@
   display: flex;
   gap: 0.6rem;
   align-items: center;
-  font-weight: 700;
+  font-weight: 600;
 }
 .manual-order-line {
   display: grid;

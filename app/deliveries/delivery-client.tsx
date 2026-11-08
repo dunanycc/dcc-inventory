@@ -117,7 +117,7 @@ export function NewDelivery({
                     setItems({ ...items, [product.id]: event.target.value })
                   }
                   step={
-                    product.quantityScale ? 10 ** -product.quantityScale : 1
+                    !product.purchaseUnit && product.quantityScale ? 0.01 : 1
                   }
                   type="number"
                   value={items[product.id] ?? "0"}
@@ -146,7 +146,11 @@ export function NewDelivery({
                           {product.purchaseUnit && product.unitsPerPurchaseUnit
                             ? `${quantity} ${pluralizeUnit(quantity, product.purchaseUnit).toLowerCase()} × ${product.unitsPerPurchaseUnit} = `
                             : ""}
-                          {actual} {pluralizeUnit(actual, product.stockUnit).toLowerCase()}
+                          {actual}{" "}
+                          {pluralizeUnit(
+                            actual,
+                            product.stockUnit,
+                          ).toLowerCase()}
                         </small>
                       </span>
                       <button

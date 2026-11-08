@@ -174,10 +174,10 @@ function ProductFields({
         <input
           defaultValue={product?.unitsPerPurchaseUnit ?? ""}
           disabled={!purchaseUnit}
-          min="0.001"
+          min="1"
           name="unitsPerPurchaseUnit"
           required={Boolean(purchaseUnit)}
-          step="0.001"
+          step="1"
           type="number"
         />
         <small>

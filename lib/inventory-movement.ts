@@ -1,3 +1,7 @@
+import {
+  inventoryQuantityScale,
+  type InventoryQuantityConfig,
+} from "./quantity-policy";
 import { inventoryPostingEligibility } from "./product-location-management";
 import { hasPermission, type AppRole } from "./authorization";
 
@@ -131,7 +135,7 @@ function normalizeSource(source: MovementSource | undefined) {
 
 export function normalizeStockQuantity(
   value: string,
-  product: Pick<MovementProduct, "allowFractionalStock" | "quantityScale">,
+  product: InventoryQuantityConfig,
   allowNegative = false,
 ) {
   const input = value.trim();
@@ -140,7 +144,7 @@ export function normalizeStockQuantity(
     throw new InventoryMovementError("INVALID_INPUT");
   const fractionalDigits = match[3]?.length ?? 0;
   if (
-    fractionalDigits > product.quantityScale ||
+    fractionalDigits > inventoryQuantityScale(product) ||
     (!product.allowFractionalStock && fractionalDigits > 0)
   )
     throw new InventoryMovementError("INVALID_INPUT");
@@ -149,7 +153,7 @@ export function normalizeStockQuantity(
   return {
     negative: match[1] === "-",
     quantity:
-      `${match[2]}.${(match[3] ?? "").padEnd(product.quantityScale, "0")}`.replace(
+      `${match[2]}.${(match[3] ?? "").padEnd(inventoryQuantityScale(product), "0")}`.replace(
         /\.$/,
         "",
       ),

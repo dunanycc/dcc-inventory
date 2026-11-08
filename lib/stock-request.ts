@@ -77,7 +77,10 @@ export function validateRequestSubmission(
       throw new StockRequestError("NOT_ELIGIBLE");
     return {
       productId: product.id,
-      quantity: normalizeStockQuantity(item.quantity, product).quantity,
+      quantity: normalizeStockQuantity(item.quantity, {
+        allowFractionalStock: false,
+        quantityScale: 0,
+      }).quantity,
     };
   });
 }

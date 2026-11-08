@@ -1,3 +1,7 @@
+import {
+  inventoryQuantityScale,
+  type InventoryQuantityConfig,
+} from "./quantity-policy";
 import { decimalToMicros, microsToDecimal } from "./inventory-balances";
 import { hasPermission, type AppRole } from "./authorization";
 import type { MovementProduct } from "./inventory-movement";
@@ -75,18 +79,18 @@ export function seasonOpeningCountDate(year: number) {
 // (which rejects zero) and never accepts a negative sign.
 export function normalizeCountedQuantity(
   value: string,
-  product: Pick<MovementProduct, "allowFractionalStock" | "quantityScale">,
+  product: InventoryQuantityConfig,
 ) {
   const input = value.trim();
   const match = /^(\d{1,12})(?:\.(\d{1,6}))?$/.exec(input);
   if (!match) throw new InventoryCountError("INVALID_INPUT");
   const fractionalDigits = match[2]?.length ?? 0;
   if (
-    fractionalDigits > product.quantityScale ||
+    fractionalDigits > inventoryQuantityScale(product) ||
     (!product.allowFractionalStock && fractionalDigits > 0)
   )
     throw new InventoryCountError("INVALID_INPUT");
-  return `${match[1]}.${(match[2] ?? "").padEnd(product.quantityScale, "0")}`.replace(
+  return `${match[1]}.${(match[2] ?? "").padEnd(inventoryQuantityScale(product), "0")}`.replace(
     /\.$/,
     "",
   );
@@ -96,7 +100,7 @@ export function normalizeCountedQuantity(
 // null rather than throwing, so a partially-completed draft can be saved.
 export function normalizeDraftCountedQuantity(
   value: string,
-  product: Pick<MovementProduct, "allowFractionalStock" | "quantityScale">,
+  product: InventoryQuantityConfig,
 ) {
   const trimmed = value.trim();
   if (!trimmed) return null;

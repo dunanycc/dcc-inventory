@@ -30,7 +30,7 @@
 .delivery-edit-meta label {
   display: grid;
   font-size: 0.74rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.3rem;
 }
 .delivery-edit-meta input,
@@ -70,7 +70,7 @@
   background: var(--green-650);
   color: #fff;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 600;
   position: sticky;
   text-transform: uppercase;
   top: 0;

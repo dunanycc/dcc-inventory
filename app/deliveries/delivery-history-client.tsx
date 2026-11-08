@@ -23,6 +23,7 @@ export type DeliveryHistoryRow = {
     id: string;
     productId: string;
     productName: string;
+    quantityScale?: number;
     entryQuantity: string;
     quantity: string;
     purchaseUnit: string | null;
@@ -129,7 +130,11 @@ export function DeliveryHistory({
                             {line.purchaseUnit && line.unitsPerPurchaseUnit
                               ? `${line.entryQuantity} ${pluralizeUnit(line.entryQuantity, line.purchaseUnit).toLowerCase()} × ${line.unitsPerPurchaseUnit} = `
                               : ""}
-                            {line.quantity} {pluralizeUnit(line.quantity, line.unit).toLowerCase()}
+                            {line.quantity}{" "}
+                            {pluralizeUnit(
+                              line.quantity,
+                              line.unit,
+                            ).toLowerCase()}
                           </span>
                         </li>
                       ))}
@@ -265,7 +270,7 @@ function DeliveryEditDialog({
             id: line.productId,
             name: line.productName,
             stockUnit: line.unit,
-            quantityScale: 0,
+            quantityScale: line.quantityScale ?? 0,
             purchaseUnit: line.purchaseUnit,
             unitsPerPurchaseUnit: line.unitsPerPurchaseUnit,
           })),
@@ -416,7 +421,11 @@ function DeliveryEditDialog({
                         [product.id]: event.target.value,
                       })
                     }
-                    step="any"
+                    step={
+                      !product.purchaseUnit && product.quantityScale
+                        ? "0.01"
+                        : "1"
+                    }
                     type="number"
                     value={quantities[product.id] ?? "0"}
                   />

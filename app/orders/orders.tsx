@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
+import { receivedQuantityScale } from "@/lib/quantity-policy";
 import { receiptTotals } from "@/lib/purchase-order";
 import {
   finalizeOrderAction,
@@ -186,7 +187,11 @@ function OrderDetail({
                           type="number"
                           required
                           min="0"
-                          step="0.000001"
+                          step={
+                            receivedQuantityScale(l, order.isPrivate)
+                              ? "0.01"
+                              : "1"
+                          }
                           value={lines[i].quantity}
                           onChange={(e) =>
                             setLines(
@@ -399,7 +404,7 @@ function OrderDetail({
                           defaultValue={l.orderedQuantity}
                           type="number"
                           min="0"
-                          step="0.000001"
+                          step="1"
                           required
                         />
                       </td>
@@ -413,7 +418,11 @@ function OrderDetail({
                               defaultValue={l.receivedQuantity ?? ""}
                               type="number"
                               min="0"
-                              step="0.000001"
+                              step={
+                                receivedQuantityScale(l, order.isPrivate)
+                                  ? "0.01"
+                                  : "1"
+                              }
                               required
                             />
                           </td>

@@ -10,7 +10,7 @@
   background: var(--surface-subtle);
   color: var(--th-text);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.05em;
   padding: 7px 15px;
   text-transform: uppercase;
@@ -34,7 +34,7 @@ table.season-opening-table input[type="number"] {
   color: #445149;
   display: flex;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 600;
   gap: 0.5rem;
 }
 .season-opening-year select {
@@ -72,7 +72,7 @@ table.season-opening-table input[type="number"] {
 }
 .count-difference {
   font-variant-numeric: tabular-nums;
-  font-weight: 750;
+  font-weight: 600;
 }
 .count-accept-actions {
   align-items: center;
@@ -104,7 +104,7 @@ table.season-opening-table input[type="number"] {
   color: var(--th-text);
   display: grid;
   font-size: 0.67rem;
-  font-weight: 800;
+  font-weight: 600;
   gap: 0.75rem;
   grid-template-columns: 100px 110px minmax(140px, 220px) 100px;
   letter-spacing: 0.05em;
@@ -136,7 +136,7 @@ table.season-opening-table input[type="number"] {
   border-radius: 999px;
   color: #4e5a52;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 600;
   padding: 4px 9px;
   text-transform: uppercase;
 }

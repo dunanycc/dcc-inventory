@@ -73,7 +73,9 @@ export type SeasonOpeningData = {
 };
 
 function quantityStep(quantityScale: number) {
-  return quantityScale === 0 ? "1" : `0.${"0".repeat(quantityScale - 1)}1`;
+  return quantityScale === 0
+    ? "1"
+    : `0.${"0".repeat(Math.min(2, quantityScale) - 1)}1`;
 }
 
 function formatDifference(value: string | null) {

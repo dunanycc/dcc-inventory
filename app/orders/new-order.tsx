@@ -150,7 +150,7 @@ export function NewOrder({
                                   aria-label={`Quantity for ${p.name}`}
                                   type="number"
                                   min="0"
-                                  step="0.001"
+                                  step="1"
                                   className="order-number"
                                   value={values[p.id] ?? ""}
                                   onChange={(e) =>

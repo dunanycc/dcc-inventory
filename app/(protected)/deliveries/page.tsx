@@ -1,3 +1,4 @@
+import { inventoryQuantityScale } from "@/lib/quantity-policy";
 import { connection } from "next/server";
 import { PageHeading } from "@/app/components/page-heading";
 import {
@@ -56,6 +57,7 @@ export default async function DeliveriesPage({
                 stockUnit: true,
                 stockUnitLabel: true,
                 quantityScale: true,
+                allowFractionalStock: true,
                 purchaseUnit: true,
                 unitsPerPurchaseUnit: true,
               },
@@ -76,7 +78,14 @@ export default async function DeliveriesPage({
           ],
           include: {
             product: {
-              select: { name: true, stockUnit: true, stockUnitLabel: true },
+              select: {
+                name: true,
+                stockUnit: true,
+                stockUnitLabel: true,
+                quantityScale: true,
+                allowFractionalStock: true,
+                category: { select: { name: true } },
+              },
             },
           },
         },
@@ -87,6 +96,10 @@ export default async function DeliveriesPage({
     ...category,
     products: category.products.map((product) => ({
       ...product,
+      quantityScale: inventoryQuantityScale({
+        ...product,
+        categoryName: category.name,
+      }),
       stockUnit:
         product.stockUnit === "OTHER"
           ? (product.stockUnitLabel ?? "Other")
@@ -111,6 +124,7 @@ export default async function DeliveriesPage({
       id: line.id,
       productId: line.productId,
       productName: line.product.name,
+      quantityScale: inventoryQuantityScale(line.product),
       entryQuantity: line.entryQuantity.toString(),
       quantity: line.quantity.toString(),
       purchaseUnit: line.purchaseUnit,

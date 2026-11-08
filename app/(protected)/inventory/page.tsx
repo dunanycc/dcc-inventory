@@ -1,3 +1,4 @@
+import { inventoryQuantityScale } from "@/lib/quantity-policy";
 import { connection } from "next/server";
 import { PageHeading } from "@/app/components/page-heading";
 import {
@@ -92,6 +93,7 @@ export default async function InventoryPage({
             stockUnit: true,
             stockUnitLabel: true,
             quantityScale: true,
+            allowFractionalStock: true,
             inventoryMovements: {
               where: {
                 type: "OPENING",
@@ -118,10 +120,13 @@ export default async function InventoryPage({
         product.stockUnit === "OTHER"
           ? (product.stockUnitLabel ?? "Other")
           : product.stockUnit,
-      quantityScale: product.quantityScale,
+      quantityScale: inventoryQuantityScale({
+        ...product,
+        categoryName: category.name,
+      }),
       balance: formatStockQuantity(
         balances.get(product.id) ?? "0",
-        product.quantityScale,
+        inventoryQuantityScale({ ...product, categoryName: category.name }),
       ),
       openingSet: product.inventoryMovements.length > 0,
     })),

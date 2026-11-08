@@ -1,3 +1,4 @@
+import { inventoryQuantityScale } from "@/lib/quantity-policy";
 import { connection } from "next/server";
 import { PageHeading } from "@/app/components/page-heading";
 import {
@@ -146,6 +147,7 @@ export default async function CountsPage({
           stockUnit: true,
           stockUnitLabel: true,
           quantityScale: true,
+          allowFractionalStock: true,
           category: { select: { name: true } },
         },
       }),
@@ -179,7 +181,7 @@ export default async function CountsPage({
         name: line.product.name,
         packageSize: line.product.packageSize,
         unitLabel: unitLabel(line.product),
-        quantityScale: line.product.quantityScale,
+        quantityScale: inventoryQuantityScale(line.product),
         displayOrder: line.product.displayOrder,
         expectedQuantity: line.expectedQuantity.toString(),
         countedQuantity: line.countedQuantity?.toString() ?? null,
@@ -209,7 +211,7 @@ export default async function CountsPage({
       name: product.name,
       categoryName: product.category.name,
       unitLabel: unitLabel(product),
-      quantityScale: product.quantityScale,
+      quantityScale: inventoryQuantityScale(product),
       value: openingValueByProduct.get(product.id) ?? null,
     })),
   };
