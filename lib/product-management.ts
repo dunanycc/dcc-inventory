@@ -20,6 +20,7 @@ export type ManagedProduct = {
   id: string;
   name: string;
   categoryId: string;
+  vendorId?: string | null;
   stockUnit: ProductStockUnit;
   stockUnitLabel: string | null;
   allowFractionalStock: boolean;
@@ -161,6 +162,7 @@ export function normalizeProductInput(
   return {
     name,
     categoryId: input.categoryId,
+    vendorId: input.vendorId?.trim() || null,
     stockUnit: input.stockUnit,
     stockUnitLabel: input.stockUnit === "OTHER" ? stockUnitLabel : null,
     allowFractionalStock: input.allowFractionalStock,
@@ -177,6 +179,7 @@ export function normalizeProductInput(
 function snapshot(product: ManagedProduct) {
   return {
     name: product.name,
+    vendorId: product.vendorId ?? null,
     categoryId: product.categoryId,
     stockUnit: product.stockUnit,
     stockUnitLabel: product.stockUnitLabel,
@@ -192,6 +195,7 @@ function snapshot(product: ManagedProduct) {
 function generalSnapshot(product: ManagedProduct) {
   return {
     name: product.name,
+    vendorId: product.vendorId ?? null,
     packageSize: product.packageSize,
     starterShackRequestEligible: product.starterShackRequestEligible,
   };
@@ -252,6 +256,7 @@ function changed(before: object, after: object) {
 function editableData(product: Omit<ManagedProduct, "id">) {
   return {
     name: product.name,
+    vendorId: product.vendorId ?? null,
     categoryId: product.categoryId,
     stockUnit: product.stockUnit,
     stockUnitLabel: product.stockUnitLabel,

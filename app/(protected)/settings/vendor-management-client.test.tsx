@@ -62,6 +62,15 @@ describe("VendorManagementClient", () => {
     confirm.mockRestore();
   });
 
+  it("does not offer deletion for Vendors assigned to Products", () => {
+    render(
+      <VendorManagementClient vendors={[{ ...vendors[0], productCount: 1 }]} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens an editor for Vendor name and notes", () => {
     render(<VendorManagementClient vendors={vendors} />);
     fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[1]);

@@ -33,7 +33,11 @@ describe("deleteVendorAction", () => {
       "Vendor%20deleted.",
     );
     expect(mocks.deleteMany).toHaveBeenCalledWith({
-      where: { id: "unused-vendor", deliveries: { none: {} } },
+      where: {
+        id: "unused-vendor",
+        deliveries: { none: {} },
+        products: { none: {} },
+      },
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings");
   });

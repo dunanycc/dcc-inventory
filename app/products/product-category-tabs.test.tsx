@@ -353,3 +353,52 @@ describe("ProductCategoryTabs", () => {
     ]);
   });
 });
+
+it("shows a Product Vendor and lets managers change it", () => {
+  render(
+    <ProductCategoryTabs
+      canManageCatalog
+      vendors={[
+        { id: "saq", name: "SAQ", active: true },
+        { id: "beer-vendor", name: "Beer supplier", active: true },
+        { id: "hidden", name: "Hidden supplier", active: false },
+      ]}
+      categories={[
+        {
+          id: "wine",
+          name: "Wine",
+          active: true,
+          displayOrder: 0,
+          products: [
+            {
+              id: "red",
+              name: "Red wine",
+              categoryId: "wine",
+              vendorId: "saq",
+              vendorName: "SAQ",
+              stockUnit: "BOTTLE",
+              stockUnitLabel: null,
+              packageSize: "750 ml",
+              quantityScale: 0,
+              allowFractionalStock: false,
+              purchaseUnit: null,
+              unitsPerPurchaseUnit: null,
+              active: true,
+              starterShackRequestEligible: false,
+            },
+          ],
+        },
+      ]}
+    />,
+  );
+  expect(screen.getByRole("cell", { name: "SAQ" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+  const select = screen.getByRole("combobox", { name: "Vendor" });
+  expect(select).toHaveValue("saq");
+  expect(
+    screen.queryByRole("option", { name: "Hidden supplier" }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(select, { target: { value: "beer-vendor" } });
+  const form = select.closest("form")!;
+  expect(new FormData(form).get("vendorId")).toBe("beer-vendor");
+});

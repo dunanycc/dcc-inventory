@@ -31,6 +31,13 @@ async function main() {
     .sort();
 
   for (const migration of migrations) {
+    if (migration === "20261108123000_product_vendor") {
+      for (const name of ["Wine", "Hard Liquor", "Mixed Drinks", "Beer", "Beer Kegs", "Non-alcohol Beer", "Mixers & Misc", "Other"]) {
+        const category = await pool.query(`INSERT INTO "Category" (id,name,"nameNormalized","updatedAt") VALUES(gen_random_uuid(),$1,lower($1),now()) RETURNING id`, [name]);
+        await pool.query(`INSERT INTO "Product" (id,name,"categoryId","stockUnit","updatedAt") VALUES(gen_random_uuid(),$1,$2,'EACH',now())`, [name, category.rows[0].id]);
+      }
+      await pool.query(`INSERT INTO "Vendor" (id,name,"nameNormalized",notes,"updatedAt") VALUES(gen_random_uuid(),'SAQ','saq','Preserve me',now())`);
+    }
     const sql = await readFile(path.join(migrationsDirectory, migration, "migration.sql"), "utf8");
     await pool.query(sql);
     if (migration === "20260827214958_phase1_foundation") {
@@ -43,6 +50,18 @@ async function main() {
       `);
     }
   }
+
+  const assignedVendors = await pool.query(`SELECT p.name, v.name AS vendor FROM "Product" p LEFT JOIN "Vendor" v ON v.id=p."vendorId" WHERE p.name <> 'Lager'`);
+  for (const row of assignedVendors.rows) {
+    const expected = ["Wine", "Hard Liquor", "Mixed Drinks"].includes(row.name) ? "SAQ"
+      : ["Beer", "Beer Kegs", "Non-alcohol Beer"].includes(row.name) ? "Beer"
+      : row.name === "Mixers & Misc" ? "Groceries" : null;
+    if (row.vendor !== expected) throw new Error(`Incorrect initial Vendor for ${row.name}`);
+  }
+  const existingVendor = await pool.query(`SELECT notes FROM "Vendor" WHERE "nameNormalized"='saq'`);
+  if (existingVendor.rows[0]?.notes !== "Preserve me") throw new Error("Existing Vendor was overwritten");
+  await expectConstraint(`DELETE FROM "Vendor" WHERE "nameNormalized"='saq'`);
+  await expectConstraint(`UPDATE "Product" SET "vendorId"=gen_random_uuid() WHERE name='Wine'`);
 
   const preserved = await pool.query('SELECT "starterShackRequestEligible" FROM "Product" WHERE id = $1', ['00000000-0000-0000-0000-000000000003']);
   if (preserved.rows[0]?.starterShackRequestEligible !== true) throw new Error("Starter Shack request eligibility was not preserved");

@@ -110,6 +110,8 @@ model Product {
   id                          String               @id @default(uuid()) @db.Uuid
   legacyProductId             String?              @unique
   name                        String
+  vendorId                    String?              @db.Uuid
+  vendor                      Vendor?              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   categoryId                  String               @db.Uuid
   displayOrder                Int                  @default(0)
   stockUnit                   StockUnit
@@ -136,6 +138,7 @@ model Product {
 
   @@unique([sourceSystem, sourceId])
   @@index([categoryId, active, displayOrder])
+  @@index([vendorId])
 }
 
 model ProductNote {
@@ -229,6 +232,7 @@ model Vendor {
   notes          String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+  products       Product[]
   deliveries     Delivery[]
 
   @@index([active, displayOrder])

@@ -320,3 +320,29 @@ describe("Product administration", () => {
     );
   });
 });
+
+describe("Product Vendors", () => {
+  it("saves and audits a vendor-only change", async () => {
+    const repo = repository();
+    await updateProduct(
+      admin,
+      product.id,
+      input({ vendorId: "saq" }),
+      repo.repository,
+    );
+    expect(repo.state.vendorId).toBe("saq");
+    expect(repo.audits).toContainEqual(
+      expect.objectContaining({
+        action: "PRODUCT_UPDATED",
+        after: expect.objectContaining({ vendorId: "saq" }),
+      }),
+    );
+    await updateProduct(
+      admin,
+      product.id,
+      input({ vendorId: null }),
+      repo.repository,
+    );
+    expect(repo.state.vendorId).toBeNull();
+  });
+});

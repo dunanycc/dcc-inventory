@@ -11,7 +11,11 @@ import {
 } from "@/app/(protected)/products/actions";
 import { STOCK_UNITS, type ProductStockUnit } from "@/lib/product-management";
 
+type VendorOption = { id: string; name: string; active: boolean };
+
 export type ProductRow = {
+  vendorId?: string | null;
+  vendorName?: string | null;
   id: string;
   name: string;
   categoryId: string;
@@ -43,10 +47,12 @@ export type ProductCategoryRow = {
 function ProductFields({
   product,
   categories,
+  vendors = [],
   defaultCategoryId,
 }: {
   product?: ProductRow;
   categories: ProductCategoryRow[];
+  vendors?: VendorOption[];
   defaultCategoryId: string;
 }) {
   const initialCategoryId = product?.categoryId ?? defaultCategoryId;
@@ -103,6 +109,22 @@ function ProductFields({
               {category.active ? "" : " (inactive)"}
             </option>
           ))}
+        </select>
+      </label>
+      <label>
+        Vendor
+        <select name="vendorId" defaultValue={product?.vendorId ?? ""}>
+          <option value="">Not specified</option>
+          {vendors
+            .filter(
+              (vendor) => vendor.active || vendor.id === product?.vendorId,
+            )
+            .map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>
+                {vendor.name}
+                {vendor.active ? "" : " (hidden)"}
+              </option>
+            ))}
         </select>
       </label>
       <label>
@@ -208,10 +230,12 @@ function ProductFields({
 
 export function ProductCategoryTabs({
   categories,
+  vendors = [],
   canManageCatalog = false,
   initialCategoryId,
 }: {
   categories: ProductCategoryRow[];
+  vendors?: VendorOption[];
   canManageCatalog?: boolean;
   initialCategoryId?: string;
 }) {
@@ -332,6 +356,7 @@ export function ProductCategoryTabs({
           <h3>New Product</h3>
           <ProductFields
             categories={visibleCategories}
+            vendors={vendors}
             defaultCategoryId={selected.id}
           />
           <div className="product-editor-actions">
@@ -354,6 +379,7 @@ export function ProductCategoryTabs({
                   </th>
                 )}
                 <th>Product</th>
+                <th>Vendor</th>
                 <th>Starter Shack</th>
                 <th>Status</th>
                 {canManageCatalog && <th>Actions</th>}
@@ -385,6 +411,7 @@ export function ProductCategoryTabs({
       {editingId && (
         <ProductEditDialog
           categories={visibleCategories}
+          vendors={vendors}
           product={selectedProducts.find((product) => product.id === editingId)}
           onClose={() => setEditingId(null)}
         />
@@ -471,6 +498,7 @@ function ProductTableRow({
         <strong>{product.name}</strong>
         {details && <span className="product-inline-details">{details}</span>}
       </td>
+      <td>{product.vendorName || "—"}</td>
       <td>
         {product.starterShackRequestEligible ? (
           <span className="availability-pill available">Available</span>
@@ -612,10 +640,12 @@ function ProductNotesDialog({
 function ProductEditDialog({
   product,
   categories,
+  vendors = [],
   onClose,
 }: {
   product?: ProductRow;
   categories: ProductCategoryRow[];
+  vendors?: VendorOption[];
   onClose(): void;
 }) {
   if (!product) return null;
@@ -646,6 +676,7 @@ function ProductEditDialog({
         <form action={updateProductAction} id="edit-product-form">
           <ProductFields
             categories={categories}
+            vendors={vendors}
             defaultCategoryId={product.categoryId}
             product={product}
           />

@@ -16,6 +16,7 @@ export type VendorRow = {
   active: boolean;
   notes: string | null;
   deliveryCount: number;
+  productCount?: number;
 };
 
 export function VendorManagementClient({ vendors }: { vendors: VendorRow[] }) {
@@ -145,7 +146,7 @@ export function VendorManagementClient({ vendors }: { vendors: VendorRow[] }) {
                     >
                       Edit
                     </button>
-                    {vendor.deliveryCount === 0 && (
+                    {vendor.deliveryCount === 0 && !vendor.productCount && (
                       <form
                         action={deleteVendorAction}
                         onSubmit={(event) => {

@@ -28,6 +28,7 @@ export default async function ProductsPage({
       products: {
         orderBy: PRODUCT_ORDER_BY,
         include: {
+          vendor: { select: { name: true } },
           notes: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             include: { author: { select: { name: true, email: true } } },
@@ -35,6 +36,9 @@ export default async function ProductsPage({
         },
       },
     },
+  });
+  const vendors = await prisma.vendor.findMany({
+    orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
   });
   const rows: ProductCategoryRow[] = categories.map((category) => ({
     id: category.id,
@@ -45,6 +49,8 @@ export default async function ProductsPage({
       id: product.id,
       name: product.name,
       categoryId: product.categoryId,
+      vendorId: product.vendorId,
+      vendorName: product.vendor?.name ?? null,
       displayOrder: product.displayOrder,
       packageSize: product.packageSize,
       stockUnit: product.stockUnit,
@@ -84,6 +90,8 @@ export default async function ProductsPage({
       <ProductCategoryTabs
         canManageCatalog={hasPermission(actor.role, "catalog:manage")}
         categories={rows}
+        vendors={vendors.map(({ id, name, active }) => ({ id, name, active }))}
+        key={JSON.stringify(rows)}
         initialCategoryId={message.category}
       />
     </>

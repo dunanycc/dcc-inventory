@@ -21,6 +21,7 @@ const productSelect = {
   id: true,
   name: true,
   categoryId: true,
+  vendorId: true,
   stockUnit: true,
   stockUnitLabel: true,
   allowFractionalStock: true,
@@ -193,6 +194,15 @@ function optionalNumber(value: FormDataEntryValue | null) {
 }
 
 async function productInput(formData: FormData): Promise<ProductInput> {
+  const vendorId = String(formData.get("vendorId") ?? "").trim() || null;
+  if (
+    vendorId &&
+    !(await prisma.vendor.findUnique({
+      where: { id: vendorId },
+      select: { id: true },
+    }))
+  )
+    throw new ProductManagementError("INVALID_INPUT");
   const categoryId = String(formData.get("categoryId") ?? "");
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
@@ -220,6 +230,7 @@ async function productInput(formData: FormData): Promise<ProductInput> {
   return {
     name: String(formData.get("name") ?? ""),
     categoryId,
+    vendorId,
     stockUnit: String(formData.get("stockUnit") ?? "") as ProductStockUnit,
     stockUnitLabel: String(formData.get("stockUnitLabel") ?? ""),
     allowFractionalStock,
