@@ -64,9 +64,8 @@ export function OrderHistory({
       </div>
       {canManage && (
         <p>
-          Drag an order heading to another position to move the whole order and
-          renumber this vendor/year. You can also use the position selector or
-          arrow keys.
+          Drag the grab handle to move a whole order. Use left or right arrow
+          keys when the handle is focused.
         </p>
       )}
       <p role="status">{busy ? "Saving sequence…" : message}</p>
@@ -90,18 +89,12 @@ export function OrderHistory({
                       setDragging(null);
                     }}
                   >
-                    <Link href={`/orders?id=${o.id}`}>#{o.number}</Link>
-                    {o.isPrivate && (
-                      <span className="order-private-badge">Private</span>
-                    )}
-                    <span className="order-muted">
-                      {o.orderDate ?? "Date needs review"}
-                    </span>
                     {canManage && (
-                      <>
+                      <div className="order-grab-bar">
                         <button
                           type="button"
-                          className="btn-secondary"
+                          className="order-grab-handle"
+                          title="Drag to reorder; use left or right arrow keys"
                           disabled={busy}
                           draggable={!busy}
                           aria-label={`Move order ${o.number}`}
@@ -112,8 +105,10 @@ export function OrderHistory({
                           onDragEnd={() => setDragging(null)}
                           onKeyDown={(e) => {
                             const target =
-                              orders[
-                                orders.findIndex((order) => order.id === o.id) +
+                              visibleOrders[
+                                visibleOrders.findIndex(
+                                  (order) => order.id === o.id,
+                                ) +
                                   (e.key === "ArrowLeft"
                                     ? -1
                                     : e.key === "ArrowRight"
@@ -126,22 +121,30 @@ export function OrderHistory({
                             }
                           }}
                         >
-                          Move ↔
+                          <svg
+                            width="12"
+                            height="18"
+                            viewBox="0 0 12 18"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            {[4, 9, 14].map((y) => (
+                              <g key={y}>
+                                <circle cx="3" cy={y} r="1.3" />
+                                <circle cx="8" cy={y} r="1.3" />
+                              </g>
+                            ))}
+                          </svg>
                         </button>
-                        <select
-                          aria-label={`Position for order ${o.number}`}
-                          disabled={busy}
-                          value={o.id}
-                          onChange={(e) => move(o.id, e.target.value)}
-                        >
-                          {orders.map((target) => (
-                            <option key={target.id} value={target.id}>
-                              Position {target.number}
-                            </option>
-                          ))}
-                        </select>
-                      </>
+                      </div>
                     )}
+                    <Link href={`/orders?id=${o.id}`}>#{o.number}</Link>
+                    {o.isPrivate && (
+                      <span className="order-private-badge">Private</span>
+                    )}
+                    <span className="order-muted">
+                      {o.orderDate ?? "Date needs review"}
+                    </span>
                   </th>
                 ))}
               </tr>

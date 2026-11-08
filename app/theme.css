@@ -415,3 +415,34 @@ summary:focus-visible {
   padding: 24px;
   border-radius: var(--card-radius);
 }
+
+.order-grab-bar {
+  display: flex;
+  margin: -3px 0 3px;
+}
+.order-history-table .order-grab-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  width: 32px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: pan-y;
+}
+.order-history-table .order-grab-handle:hover {
+  background: var(--surface-subtle);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.order-history-table .order-grab-handle:active {
+  cursor: grabbing;
+}
+.order-history-table .order-grab-handle:focus-visible {
+  outline: 2px solid var(--green-800);
+  outline-offset: 2px;
+}
