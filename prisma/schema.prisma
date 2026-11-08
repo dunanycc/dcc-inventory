@@ -423,6 +423,9 @@ model AuditEvent {
 
 
 model PurchaseOrder {
+  mergedIntoId   String? @db.Uuid
+  mergedInto     PurchaseOrder? @relation("OrderMerges", fields: [mergedIntoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  mergedOrders   PurchaseOrder[] @relation("OrderMerges")
   isPrivate      Boolean @default(false)
   id             String   @id @default(uuid()) @db.Uuid
   vendorId       String   @db.Uuid
@@ -452,6 +455,7 @@ model PurchaseOrder {
   @@index([vendorId, year, number])
   @@unique([sourceSystem, sourceId])
   @@index([year, status])
+  @@index([mergedIntoId])
 }
 
 model PurchaseOrderLine {

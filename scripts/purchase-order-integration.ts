@@ -525,6 +525,25 @@ async function main() {
   await assert.rejects(
     positionPurchaseOrder("missing-user", positionedOrder, 5),
   );
+  await prisma.purchaseOrder.update({
+    where: { id: positionedOrder },
+    data: { mergedIntoId: liquorOrder },
+  });
+  const { orderRows } = await import("../lib/purchase-order-queries");
+  assert(
+    !(await orderRows({ year: 2026 })).some((o) => o.id === positionedOrder),
+  );
+  assert.equal(
+    (await orderRows({ id: positionedOrder }))[0].mergedIntoId,
+    liquorOrder,
+  );
+  await assert.rejects(positionPurchaseOrder(admin.id, positionedOrder, 5));
+  await assert.rejects(
+    prisma.purchaseOrder.update({
+      where: { id: liquorOrder },
+      data: { mergedIntoId: liquorOrder },
+    }),
+  );
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",
   );

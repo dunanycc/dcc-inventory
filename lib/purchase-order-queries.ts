@@ -1,10 +1,11 @@
+import { caseHistoryCategory } from "./purchase-order-history";
 import { inventoryQuantityScale } from "./quantity-policy";
 import { prisma } from "./prisma";
 export async function orderRows(
   where: { vendorId?: string; year?: number; id?: string } = {},
 ) {
   const orders = await prisma.purchaseOrder.findMany({
-    where,
+    where: { ...where, ...(where.id ? {} : { mergedIntoId: null }) },
     orderBy: [
       { year: "desc" },
       { vendor: { displayOrder: "asc" } },
@@ -16,6 +17,9 @@ export async function orderRows(
         include: {
           product: {
             select: {
+              name: true,
+              purchaseUnit: true,
+              unitsPerPurchaseUnit: true,
               allowFractionalStock: true,
               quantityScale: true,
               category: { select: { name: true } },
@@ -38,6 +42,16 @@ export async function orderRows(
     legacyData: undefined,
     lines: o.lines.map((l) => ({
       ...l,
+      historyName:
+        l.product && caseHistoryCategory(l.categoryName)
+          ? l.product.name
+          : l.productName,
+      historyCaseSize:
+        l.product &&
+        caseHistoryCategory(l.categoryName) &&
+        l.product.purchaseUnit?.toLowerCase() === "case"
+          ? (l.product.unitsPerPurchaseUnit?.toString() ?? null)
+          : null,
       product: undefined,
       quantityScale: l.product ? inventoryQuantityScale(l.product) : 0,
       unitsPerEntry: l.unitsPerEntry.toString(),

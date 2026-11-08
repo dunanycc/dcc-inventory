@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
@@ -118,6 +119,15 @@ function OrderDetail({
   }
   return (
     <div className="order-detail">
+      {order.mergedIntoId && (
+        <p className="notice">
+          This original record was merged.{" "}
+          <Link href={`/orders?id=${order.mergedIntoId}`}>
+            View the combined order
+          </Link>
+          .
+        </p>
+      )}
       <p>{order.notes}</p>
       {order.isPrivate && (
         <p className="notice">
@@ -534,7 +544,7 @@ export function Orders({
             <OrderDetail
               order={o}
               vendors={vendors}
-              canManage={canManage}
+              canManage={canManage && !o.mergedIntoId}
               today={today}
             />
           </details>

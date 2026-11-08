@@ -53,7 +53,7 @@ export async function orderTransaction<T>(
 }
 export async function nextNumber(tx: Tx, vendorId: string, year: number) {
   const last = await tx.purchaseOrder.aggregate({
-    where: { vendorId, year },
+    where: { vendorId, year, mergedIntoId: null },
     _max: { number: true },
   });
   return (last._max.number ?? 0) + 1;
@@ -306,7 +306,7 @@ export async function reorderPurchaseOrders(
   return orderTransaction(actorId, async (tx) => {
     const order = await tx.purchaseOrder.findUniqueOrThrow({ where: { id } });
     const group = await tx.purchaseOrder.findMany({
-      where: { vendorId: order.vendorId, year: order.year },
+      where: { vendorId: order.vendorId, year: order.year, mergedIntoId: null },
       orderBy: { number: "asc" },
     });
     const ids = reordered(
@@ -343,6 +343,7 @@ export async function positionPurchaseOrder(
     throw new Error("Choose an order column from 1 to 1000.");
   return orderTransaction(actorId, async (tx) => {
     const order = await tx.purchaseOrder.findUniqueOrThrow({ where: { id } });
+    if (order.mergedIntoId) throw new Error("This order has been merged.");
     if (order.number === position) return;
     await tx.purchaseOrder.update({
       where: { id },
@@ -391,6 +392,7 @@ export async function editPurchaseOrder(
       where: { id: input.id },
       include: { lines: true },
     });
+    if (order.mergedIntoId) throw new Error("This order has been merged.");
     const isPrivate = order.historical
       ? (input.isPrivate ?? order.isPrivate)
       : order.isPrivate;

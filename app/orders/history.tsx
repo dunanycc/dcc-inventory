@@ -4,6 +4,10 @@ import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
 import { moveOrderAction } from "@/app/(protected)/orders/actions";
+import {
+  historyLineKey,
+  historyReceivedQuantity,
+} from "@/lib/purchase-order-history";
 import { receiptTotals } from "@/lib/purchase-order";
 
 export function OrderHistory({
@@ -50,11 +54,10 @@ export function OrderHistory({
       if (result.ok) router.refresh();
     });
   }
-  const keyOf = (l: OrderRow["lines"][number]) =>
-    JSON.stringify([l.productName, l.categoryName, l.unit]);
+  const keyOf = historyLineKey;
   const valuesFor = (group: OrderRow[], key: string) =>
     group.flatMap((o) =>
-      o.lines.filter((l) => keyOf(l) === key).map((l) => l.receivedQuantity),
+      o.lines.filter((l) => keyOf(l) === key).map(historyReceivedQuantity),
     );
   const display = (values: (string | null)[], category: string) =>
     !values.length
@@ -153,7 +156,7 @@ export function OrderHistory({
                 ].sort(
                   (a, b) =>
                     a[1].categoryName.localeCompare(b[1].categoryName) ||
-                    a[1].productName.localeCompare(b[1].productName),
+                    a[1].historyName.localeCompare(b[1].historyName),
                 );
                 return (
                   <Fragment key={section.id}>
@@ -311,7 +314,7 @@ export function OrderHistory({
                             JSON.stringify([section.id, p.categoryName]),
                           )}
                         >
-                          <th scope="row">{p.productName}</th>
+                          <th scope="row">{p.historyName}</th>
                           {columns.map((n) => (
                             <td key={n}>
                               {display(
