@@ -449,7 +449,7 @@ model PurchaseOrder {
   lines          PurchaseOrderLine[]
   receipts       OrderReceipt[]
 
-  @@unique([vendorId, year, number])
+  @@index([vendorId, year, number])
   @@unique([sourceSystem, sourceId])
   @@index([year, status])
 }

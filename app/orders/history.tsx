@@ -122,8 +122,8 @@ export function OrderHistory({
       {canManage && (
         <p>
           Drag a handle to a numbered column, or focus a handle and use
-          left/right arrow keys. Empty columns are preserved; occupied orders
-          shift right within the same vendor.
+          left/right arrow keys. Empty columns are preserved; distinct orders
+          can share a column without being merged.
         </p>
       )}
       <p role="status">{busy ? "Saving sequence…" : message}</p>

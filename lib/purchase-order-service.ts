@@ -38,8 +38,13 @@ export async function orderTransaction<T>(
     } catch (error) {
       if (
         attempt < 4 &&
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        ["P2034", "P2002"].includes(error.code)
+        ((error instanceof Prisma.PrismaClientKnownRequestError &&
+          ["P2034", "P2002"].includes(error.code)) ||
+          (error instanceof Error &&
+            typeof error.cause === "object" &&
+            error.cause !== null &&
+            "kind" in error.cause &&
+            error.cause.kind === "TransactionWriteConflict"))
       )
         continue;
       throw error;
@@ -328,7 +333,7 @@ export async function reorderPurchaseOrders(
     });
   });
 }
-/** Move to an explicit column, retaining gaps and shifting occupied slots right. */
+/** Column positions can be shared by distinct orders without merging their identities. */
 export async function positionPurchaseOrder(
   actorId: string,
   id: string,
@@ -339,24 +344,6 @@ export async function positionPurchaseOrder(
   return orderTransaction(actorId, async (tx) => {
     const order = await tx.purchaseOrder.findUniqueOrThrow({ where: { id } });
     if (order.number === position) return;
-    const group = await tx.purchaseOrder.findMany({
-      where: { vendorId: order.vendorId, year: order.year, id: { not: id } },
-      orderBy: { number: "asc" },
-    });
-    const occupied = new Map(group.map((o) => [o.number, o]));
-    let free = position;
-    while (occupied.has(free)) free++;
-    await tx.purchaseOrder.update({
-      where: { id },
-      data: {
-        number: Math.max(free, order.number, ...group.map((o) => o.number)) + 1,
-      },
-    });
-    for (let n = free - 1; n >= position; n--)
-      await tx.purchaseOrder.update({
-        where: { id: occupied.get(n)!.id },
-        data: { number: n + 1 },
-      });
     await tx.purchaseOrder.update({
       where: { id },
       data: { number: position },
@@ -364,9 +351,7 @@ export async function positionPurchaseOrder(
     await auditOrder(tx, actorId, id, "ORDER_REORDERED", {
       before: order.number,
       after: position,
-      shifted: group
-        .filter((o) => o.number >= position && o.number < free)
-        .map((o) => ({ id: o.id, before: o.number, after: o.number + 1 })),
+      ordersMerged: false,
     });
   });
 }

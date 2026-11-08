@@ -472,7 +472,7 @@ async function main() {
     ).quantity.toString(),
     "0.25",
   );
-  // Explicit columns retain gaps and only shift an occupied run in this vendor/year.
+  // Explicit columns retain gaps and allow distinct orders to share a column.
   await positionPurchaseOrder(admin.id, liquorOrder, 50);
   assert.equal(
     (
@@ -503,14 +503,14 @@ async function main() {
         where: { id: liquorOrder },
       })
     ).number,
-    51,
+    50,
   );
   await positionPurchaseOrder(admin.id, positionedOrder, 60);
   assert.equal(
     await prisma.purchaseOrder.count({
       where: { vendorId: vendor.id, year: 2026, number: 50 },
     }),
-    0,
+    1,
   );
   assert.equal(
     (
@@ -518,7 +518,7 @@ async function main() {
         where: { id: liquorOrder },
       })
     ).number,
-    51,
+    50,
   );
   await assert.rejects(positionPurchaseOrder(admin.id, positionedOrder, 0));
   await assert.rejects(positionPurchaseOrder(admin.id, positionedOrder, 1.5));
