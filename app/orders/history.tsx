@@ -5,59 +5,112 @@ import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
 import { moveOrderAction } from "@/app/(protected)/orders/actions";
 import { receiptTotals } from "@/lib/purchase-order";
+
 export function OrderHistory({
   orders,
+  vendors,
   canManage,
 }: {
   orders: OrderRow[];
+  vendors: { id: string; name: string }[];
   canManage: boolean;
 }) {
+  const [hidden, setHidden] = useState<string[]>([]);
   const [dragging, setDragging] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [busy, start] = useTransition();
   const [mode, setMode] = useState("received");
-  const [includePrivate, setIncludePrivate] = useState(true);
-  const visibleOrders = orders.filter((o) => includePrivate || !o.isPrivate);
+  const [extra, setExtra] = useState(0);
   const router = useRouter();
-  function move(id: string, target: string) {
-    if (id === target || busy) return;
+  const priority = ["saq", "beer", "groceries"];
+  const sections = [...vendors]
+    .sort((a, b) => {
+      const rank = (name: string) => {
+        const i = priority.indexOf(name.toLowerCase());
+        return i < 0 ? 3 : i;
+      };
+      return rank(a.name) - rank(b.name) || a.name.localeCompare(b.name);
+    })
+    .map((v) => ({
+      ...v,
+      orders: orders.filter((o) => !o.isPrivate && o.vendorId === v.id),
+    }));
+  sections.push({
+    id: "private",
+    name: "Private",
+    orders: orders.filter((o) => o.isPrivate),
+  });
+  const count = Math.max(5, ...orders.map((o) => o.number)) + extra;
+  const columns = Array.from({ length: count }, (_, i) => i + 1);
+  function move(id: string, position: number) {
+    if (busy) return;
     start(async () => {
-      const result = await moveOrderAction(id, target);
+      const result = await moveOrderAction(id, position);
       setMessage(result.message);
       if (result.ok) router.refresh();
     });
   }
-  const rows = new Map<
-    string,
-    { name: string; category: string; unit: string }
-  >();
-  for (const o of visibleOrders)
-    for (const l of o.lines)
-      rows.set(JSON.stringify([l.productName, l.categoryName, l.unit]), {
-        name: l.productName,
-        category: l.categoryName,
-        unit: l.unit,
-      });
-  const products = [...rows.entries()].sort(
-    (a, b) =>
-      a[1].category.localeCompare(b[1].category) ||
-      a[1].name.localeCompare(b[1].name),
-  );
-  const orderTotals = visibleOrders.map(
-    (o) =>
-      receiptTotals(
-        o.lines.map((l) => ({
-          quantity: l.receivedQuantity ?? l.orderedQuantity,
-          price: l.unitPrice,
-        })),
-        o.taxIncluded,
-        o.gst,
-        o.pst,
-      ).total,
-  );
+  const keyOf = (l: OrderRow["lines"][number]) =>
+    JSON.stringify([l.productName, l.categoryName, l.unit]);
+  const valuesFor = (group: OrderRow[], key: string) =>
+    group.flatMap((o) =>
+      o.lines
+        .filter((l) => keyOf(l) === key)
+        .map((l) =>
+          mode === "ordered" ? l.orderedQuantity : l.receivedQuantity,
+        ),
+    );
+  const display = (values: (string | null)[], category: string) =>
+    !values.length
+      ? "—"
+      : values.some((v) => v === null)
+        ? "Pending"
+        : values
+            .reduce((sum, v) => sum + Number(v), 0)
+            .toLocaleString("en-CA", {
+              maximumFractionDigits:
+                category.trim().toLowerCase() === "hard liquor" ? 2 : 0,
+            });
+  const totalFor = (group: OrderRow[]) => {
+    if (!group.length) return "—";
+    const totals = group.map(
+      (o) =>
+        receiptTotals(
+          o.lines.map((l) => ({
+            quantity: l.receivedQuantity ?? l.orderedQuantity,
+            price: l.unitPrice,
+          })),
+          o.taxIncluded,
+          o.gst,
+          o.pst,
+        ).total,
+    );
+    return totals.some((v) => v === null)
+      ? "Unavailable"
+      : `$${totals.reduce((sum, v) => sum + Number(v), 0).toFixed(2)}`;
+  };
   return (
     <section className="order-panel">
       <div className="order-filters">
+        <div className="order-vendor-pills" aria-label="Show order sections">
+          {sections.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`btn-secondary ${hidden.includes(s.id) ? "" : "is-selected"}`}
+              aria-pressed={!hidden.includes(s.id)}
+              onClick={() =>
+                setHidden((old) =>
+                  old.includes(s.id)
+                    ? old.filter((id) => id !== s.id)
+                    : [...old, s.id],
+                )
+              }
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
         <label className="order-field">
           Quantities
           <select value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -65,205 +118,205 @@ export function OrderHistory({
             <option value="ordered">Ordered</option>
           </select>
         </label>
-        <label className="product-check">
-          <input
-            type="checkbox"
-            checked={includePrivate}
-            onChange={(e) => setIncludePrivate(e.target.checked)}
-          />{" "}
-          Include private orders
-        </label>
+        {canManage && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setExtra((n) => n + 1)}
+          >
+            Add column
+          </button>
+        )}
       </div>
       {canManage && (
         <p>
-          Drag the grab handle to move a whole order. Use left or right arrow
-          keys when the handle is focused.
+          Drag a handle to a numbered column, or focus a handle and use
+          left/right arrow keys. Empty columns are preserved; occupied orders
+          shift right within the same vendor.
         </p>
       )}
       <p role="status">{busy ? "Saving sequence…" : message}</p>
-      {!visibleOrders.length ? (
-        <p>No orders for this vendor and year.</p>
-      ) : (
-        <div className="table-scroll">
-          <table className="inventory-table order-history-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                {visibleOrders.map((o) => (
-                  <th
-                    key={o.id}
-                    onDragOver={(e) => {
-                      if (canManage && !busy) e.preventDefault();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragging) move(dragging, o.id);
-                      setDragging(null);
-                    }}
-                  >
-                    <Link href={`/orders?id=${o.id}`}>#{o.number}</Link>
-                    {o.isPrivate && (
-                      <span className="order-private-badge">Private</span>
-                    )}
-                    <div className="order-date-row">
-                      <span className="order-muted">
-                        {o.orderDate ?? "Date needs review"}
-                      </span>
-                      {canManage && (
-                        <>
-                          <button
-                            type="button"
-                            className="order-grab-handle"
-                            title="Drag to reorder; use left or right arrow keys"
-                            disabled={busy}
-                            draggable={!busy}
-                            aria-label={`Move order ${o.number}`}
-                            onDragStart={(e) => {
-                              setDragging(o.id);
-                              e.dataTransfer.setData("text/plain", o.id);
-                            }}
-                            onDragEnd={() => setDragging(null)}
-                            onKeyDown={(e) => {
-                              const target =
-                                visibleOrders[
-                                  visibleOrders.findIndex(
-                                    (order) => order.id === o.id,
-                                  ) +
-                                    (e.key === "ArrowLeft"
-                                      ? -1
-                                      : e.key === "ArrowRight"
-                                        ? 1
-                                        : 0)
-                                ];
-                              if (target && target.id !== o.id) {
-                                e.preventDefault();
-                                move(o.id, target.id);
-                              }
-                            }}
-                          >
-                            <svg
-                              width="12"
-                              height="18"
-                              viewBox="0 0 12 18"
-                              fill="currentColor"
-                              aria-hidden="true"
-                            >
-                              {[4, 9, 14].map((y) => (
-                                <g key={y}>
-                                  <circle cx="3" cy={y} r="1.3" />
-                                  <circle cx="8" cy={y} r="1.3" />
-                                </g>
-                              ))}
-                            </svg>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </th>
-                ))}
-                <th className="order-history-total" scope="col">
-                  Total
+      <div className="table-scroll">
+        <table className="inventory-table order-history-table order-year-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              {columns.map((n) => (
+                <th key={n} className="order-column-number">
+                  #{n}
                 </th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map(([key, p], index) => (
-                <Fragment key={key}>
-                  {(index === 0 ||
-                    products[index - 1][1].category !== p.category) && (
-                    <tr className="order-category-row">
-                      <th scope="row">{p.category || "Other"}</th>
-                      {visibleOrders.map((o) => (
-                        <td key={o.id} />
+              ))}
+              <th className="order-history-total">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sections
+              .filter((s) => !hidden.includes(s.id))
+              .map((section) => {
+                const products = [
+                  ...new Map(
+                    section.orders.flatMap((o) =>
+                      o.lines.map((l) => [keyOf(l), l] as const),
+                    ),
+                  ).entries(),
+                ].sort(
+                  (a, b) =>
+                    a[1].categoryName.localeCompare(b[1].categoryName) ||
+                    a[1].productName.localeCompare(b[1].productName),
+                );
+                return (
+                  <Fragment key={section.id}>
+                    <tr className="order-section-row">
+                      <th scope="row">{section.name}</th>
+                      {columns.map((n) => (
+                        <td
+                          key={n}
+                          className={`order-column-drop ${dragging ? "is-drop-target" : ""}`}
+                          onDragOver={(e) => {
+                            if (canManage && dragging && !busy)
+                              e.preventDefault();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (dragging) move(dragging, n);
+                            setDragging(null);
+                          }}
+                        >
+                          {section.orders
+                            .filter((o) => o.number === n)
+                            .map((o) => (
+                              <div key={o.id} className="order-column-card">
+                                <Link
+                                  href={`/orders?id=${o.id}`}
+                                  className="order-column-number"
+                                >
+                                  #{o.number}
+                                </Link>
+                                {section.id === "private" && (
+                                  <span className="order-muted">
+                                    {o.vendorName}
+                                  </span>
+                                )}
+                                <div className="order-date-row">
+                                  <span className="order-muted">
+                                    {o.orderDate ?? "Date needs review"}
+                                  </span>
+                                  {canManage && (
+                                    <button
+                                      type="button"
+                                      className="order-grab-handle"
+                                      title="Drag to a column; use left or right arrow keys"
+                                      aria-label={`Move ${o.vendorName} order ${o.number}${o.isPrivate ? " private" : ""}`}
+                                      disabled={busy}
+                                      draggable={!busy}
+                                      onDragStart={(e) => {
+                                        setDragging(o.id);
+                                        e.dataTransfer.setData(
+                                          "text/plain",
+                                          o.id,
+                                        );
+                                      }}
+                                      onDragEnd={() => setDragging(null)}
+                                      onKeyDown={(e) => {
+                                        if (
+                                          e.key !== "ArrowLeft" &&
+                                          e.key !== "ArrowRight"
+                                        )
+                                          return;
+                                        e.preventDefault();
+                                        const next =
+                                          o.number +
+                                          (e.key === "ArrowLeft" ? -1 : 1);
+                                        if (next >= 1 && next <= 1000)
+                                          move(o.id, next);
+                                      }}
+                                    >
+                                      <svg
+                                        width="12"
+                                        height="18"
+                                        viewBox="0 0 12 18"
+                                        fill="currentColor"
+                                        aria-hidden="true"
+                                      >
+                                        {[4, 9, 14].map((y) => (
+                                          <g key={y}>
+                                            <circle cx="3" cy={y} r="1.3" />
+                                            <circle cx="8" cy={y} r="1.3" />
+                                          </g>
+                                        ))}
+                                      </svg>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                        </td>
                       ))}
                       <td className="order-history-total" />
                     </tr>
-                  )}
-                  <tr>
-                    <th scope="row">{p.name}</th>
-                    {visibleOrders.map((o) => {
-                      const matches = o.lines.filter(
-                        (l) =>
-                          JSON.stringify([
-                            l.productName,
-                            l.categoryName,
-                            l.unit,
-                          ]) === key,
-                      );
-                      const values = matches.map((l) =>
-                        mode === "ordered"
-                          ? l.orderedQuantity
-                          : l.receivedQuantity,
-                      );
-                      return (
-                        <td key={o.id}>
-                          {!matches.length
-                            ? "—"
-                            : values.some((v) => v === null)
-                              ? "Pending"
-                              : values
-                                  .reduce((sum, v) => sum + Number(v), 0)
-                                  .toLocaleString("en-CA", {
-                                    maximumFractionDigits:
-                                      p.category.trim().toLowerCase() ===
-                                      "hard liquor"
-                                        ? 2
-                                        : 0,
-                                  })}
+                    {!section.orders.length && (
+                      <tr>
+                        <th scope="row">No orders</th>
+                        {columns.map((n) => (
+                          <td key={n} />
+                        ))}
+                        <td className="order-history-total" />
+                      </tr>
+                    )}
+                    {products.map(([key, p], index) => (
+                      <Fragment key={key}>
+                        {(index === 0 ||
+                          products[index - 1][1].categoryName !==
+                            p.categoryName) && (
+                          <tr className="order-category-row">
+                            <th scope="row">{p.categoryName || "Other"}</th>
+                            {columns.map((n) => (
+                              <td key={n} />
+                            ))}
+                            <td className="order-history-total" />
+                          </tr>
+                        )}
+                        <tr>
+                          <th scope="row">{p.productName}</th>
+                          {columns.map((n) => (
+                            <td key={n}>
+                              {display(
+                                valuesFor(
+                                  section.orders.filter((o) => o.number === n),
+                                  key,
+                                ),
+                                p.categoryName,
+                              )}
+                            </td>
+                          ))}
+                          <td className="order-history-total">
+                            {display(
+                              valuesFor(section.orders, key),
+                              p.categoryName,
+                            )}
+                          </td>
+                        </tr>
+                      </Fragment>
+                    ))}
+                    <tr>
+                      <th scope="row">Grand total</th>
+                      {columns.map((n) => (
+                        <td key={n}>
+                          {totalFor(
+                            section.orders.filter((o) => o.number === n),
+                          )}
                         </td>
-                      );
-                    })}
-                    <td className="order-history-total">
-                      {(() => {
-                        const values = visibleOrders.flatMap((o) =>
-                          o.lines
-                            .filter(
-                              (l) =>
-                                JSON.stringify([
-                                  l.productName,
-                                  l.categoryName,
-                                  l.unit,
-                                ]) === key,
-                            )
-                            .map((l) =>
-                              mode === "ordered"
-                                ? l.orderedQuantity
-                                : l.receivedQuantity,
-                            ),
-                        );
-                        return values.some((v) => v === null)
-                          ? "Pending"
-                          : values
-                              .reduce((sum, v) => sum + Number(v), 0)
-                              .toLocaleString("en-CA", {
-                                maximumFractionDigits:
-                                  p.category.trim().toLowerCase() ===
-                                  "hard liquor"
-                                    ? 2
-                                    : 0,
-                              });
-                      })()}
-                    </td>
-                  </tr>
-                </Fragment>
-              ))}
-              <tr>
-                <th scope="row">Grand total</th>
-                {orderTotals.map((total, index) => (
-                  <td key={visibleOrders[index].id}>
-                    {total === null ? "Unavailable" : `$${total}`}
-                  </td>
-                ))}
-                <td className="order-history-total">
-                  {orderTotals.some((total) => total === null)
-                    ? "Unavailable"
-                    : `$${orderTotals.reduce((sum, total) => sum + Number(total), 0).toFixed(2)}`}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
+                      ))}
+                      <td className="order-history-total">
+                        {totalFor(section.orders)}
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

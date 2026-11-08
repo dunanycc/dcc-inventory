@@ -5,7 +5,7 @@ import { currentUser } from "@/lib/session";
 import {
   createPurchaseOrder,
   finalizePurchaseOrder,
-  reorderPurchaseOrders,
+  positionPurchaseOrder,
   editPurchaseOrder,
 } from "@/lib/purchase-order-service";
 const text = (f: FormData, key: string) => String(f.get(key) ?? "");
@@ -89,11 +89,11 @@ export async function editOrderAction(form: FormData) {
     }),
   );
 }
-export async function moveOrderAction(id: string, targetId: string) {
+export async function moveOrderAction(id: string, position: number) {
   try {
     const actor = await currentUser();
     if (!actor) throw new Error("Sign in first.");
-    await reorderPurchaseOrders(actor.id, id, targetId);
+    await positionPurchaseOrder(actor.id, id, position);
     refresh();
     return { ok: true, message: "Order sequence saved." };
   } catch {

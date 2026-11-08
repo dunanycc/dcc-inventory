@@ -328,6 +328,48 @@ export async function reorderPurchaseOrders(
     });
   });
 }
+/** Move to an explicit column, retaining gaps and shifting occupied slots right. */
+export async function positionPurchaseOrder(
+  actorId: string,
+  id: string,
+  position: number,
+) {
+  if (!Number.isSafeInteger(position) || position < 1 || position > 1000)
+    throw new Error("Choose an order column from 1 to 1000.");
+  return orderTransaction(actorId, async (tx) => {
+    const order = await tx.purchaseOrder.findUniqueOrThrow({ where: { id } });
+    if (order.number === position) return;
+    const group = await tx.purchaseOrder.findMany({
+      where: { vendorId: order.vendorId, year: order.year, id: { not: id } },
+      orderBy: { number: "asc" },
+    });
+    const occupied = new Map(group.map((o) => [o.number, o]));
+    let free = position;
+    while (occupied.has(free)) free++;
+    await tx.purchaseOrder.update({
+      where: { id },
+      data: {
+        number: Math.max(free, order.number, ...group.map((o) => o.number)) + 1,
+      },
+    });
+    for (let n = free - 1; n >= position; n--)
+      await tx.purchaseOrder.update({
+        where: { id: occupied.get(n)!.id },
+        data: { number: n + 1 },
+      });
+    await tx.purchaseOrder.update({
+      where: { id },
+      data: { number: position },
+    });
+    await auditOrder(tx, actorId, id, "ORDER_REORDERED", {
+      before: order.number,
+      after: position,
+      shifted: group
+        .filter((o) => o.number >= position && o.number < free)
+        .map((o) => ({ id: o.id, before: o.number, after: o.number + 1 })),
+    });
+  });
+}
 export async function editPurchaseOrder(
   actorId: string,
   input: {
@@ -467,18 +509,6 @@ export async function editPurchaseOrder(
         number: moved ? await nextNumber(tx, vendor.id, year) : order.number,
       },
     });
-    if (moved) {
-      const oldGroup = await tx.purchaseOrder.findMany({
-        where: { vendorId: order.vendorId, year: order.year },
-        orderBy: { number: "asc" },
-      });
-      // Closing a gap only lowers numbers, so ascending updates cannot collide.
-      for (let i = 0; i < oldGroup.length; i++)
-        await tx.purchaseOrder.update({
-          where: { id: oldGroup[i].id },
-          data: { number: i + 1 },
-        });
-    }
     await auditOrder(tx, actorId, order.id, "ORDER_CORRECTED", {
       before: {
         isPrivate: order.isPrivate,

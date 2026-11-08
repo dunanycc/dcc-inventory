@@ -33,6 +33,7 @@ async function main() {
     createPurchaseOrder,
     finalizePurchaseOrder,
     reorderPurchaseOrders,
+    positionPurchaseOrder,
     editPurchaseOrder,
   } = await import("../lib/purchase-order-service");
   const { importLegacyPurchases, legacyPurchasePreview } =
@@ -470,6 +471,59 @@ async function main() {
       })
     ).quantity.toString(),
     "0.25",
+  );
+  // Explicit columns retain gaps and only shift an occupied run in this vendor/year.
+  await positionPurchaseOrder(admin.id, liquorOrder, 50);
+  assert.equal(
+    (
+      await prisma.purchaseOrder.findUniqueOrThrow({
+        where: { id: liquorOrder },
+      })
+    ).number,
+    50,
+  );
+  const positionedOrder = await createPurchaseOrder(admin.id, {
+    vendorId: vendor.id,
+    date: "2026-11-08",
+    notes: "",
+    items: [{ productId: liquor.id, quantity: "1" }],
+  });
+  await positionPurchaseOrder(admin.id, positionedOrder, 50);
+  assert.equal(
+    (
+      await prisma.purchaseOrder.findUniqueOrThrow({
+        where: { id: positionedOrder },
+      })
+    ).number,
+    50,
+  );
+  assert.equal(
+    (
+      await prisma.purchaseOrder.findUniqueOrThrow({
+        where: { id: liquorOrder },
+      })
+    ).number,
+    51,
+  );
+  await positionPurchaseOrder(admin.id, positionedOrder, 60);
+  assert.equal(
+    await prisma.purchaseOrder.count({
+      where: { vendorId: vendor.id, year: 2026, number: 50 },
+    }),
+    0,
+  );
+  assert.equal(
+    (
+      await prisma.purchaseOrder.findUniqueOrThrow({
+        where: { id: liquorOrder },
+      })
+    ).number,
+    51,
+  );
+  await assert.rejects(positionPurchaseOrder(admin.id, positionedOrder, 0));
+  await assert.rejects(positionPurchaseOrder(admin.id, positionedOrder, 1.5));
+  await assert.rejects(
+    positionPurchaseOrder("missing-user", positionedOrder, 5),
   );
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",

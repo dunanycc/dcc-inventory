@@ -485,3 +485,49 @@ summary:focus-visible {
     min-width: 80px;
   }
 }
+
+.order-vendor-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.order-vendor-pills .is-selected {
+  background: var(--green-800);
+  color: white;
+  border-color: var(--green-800);
+}
+.order-year-table .order-column-number {
+  display: block;
+  text-align: center;
+}
+.order-year-table th.order-column-number {
+  display: table-cell;
+}
+.order-year-table .order-section-row > :is(th, td) {
+  background: #e4efdf;
+  vertical-align: top;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.order-year-table .order-section-row > th {
+  font-weight: 600;
+}
+.order-year-table .order-date-row {
+  justify-content: center;
+}
+.order-year-table .order-column-card {
+  text-align: center;
+}
+.order-year-table .order-column-card + .order-column-card {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.order-year-table .is-drop-target {
+  outline: 1px dashed var(--border-input);
+  outline-offset: -3px;
+}
+.order-year-table .is-drop-target:hover {
+  background: #d3e6cd;
+}
