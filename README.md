@@ -12,7 +12,7 @@ Standalone stock-tracking application for Dunany Country Club volunteers. It is 
 
 ## Local setup
 
-1. Install dependencies with `npm install`.
+1. Use Node.js 24 (matching Vercel and `package.json`), then install dependencies with `npm ci`.
 2. Copy `.env.example` to `.env.local` and replace placeholders locally. Never commit `.env.local`.
 3. Generate the Prisma client with `npm run db:generate`.
 4. Apply migrations with `npm run db:deploy`. This project has no separate staging database, so `prisma migrate dev`/`reset` must never be run against it - `npm run db:migrate` is a guard that refuses and explains the approved hand-author-and-rehearse workflow (see `docs/master-data-foundation.md`).
