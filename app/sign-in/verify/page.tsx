@@ -11,8 +11,28 @@ export default async function VerifySignInLinkPage({
   const { token, email } = await searchParams;
   if (!token || !email) redirect("/sign-in?error=1");
 
-  // On success this throws Next.js's internal redirect to /dashboard. On
-  // failure (invalid, expired, reused, or not an approved active User),
-  // Auth.js redirects to the configured error page (/sign-in) itself.
-  await signIn("email-link", { token, email, redirectTo: "/dashboard" });
+  // Only consume the token and set cookies in a Server Action, never during
+  // rendering (which may also be triggered by email link scanners/prefetch).
+  return (
+    <main className="auth-page">
+      <section className="auth-card">
+        <h1>Confirm sign-in</h1>
+        <p>Continue to sign in to DCC Inventory.</p>
+        <form
+          action={async () => {
+            "use server";
+            await signIn("email-link", {
+              token,
+              email,
+              redirectTo: "/dashboard",
+            });
+          }}
+        >
+          <button className="btn-primary" type="submit">
+            Continue to inventory
+          </button>
+        </form>
+      </section>
+    </main>
+  );
 }

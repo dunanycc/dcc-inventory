@@ -9,6 +9,9 @@ import {
 const navigation = [
   ["Inventory", "/inventory"],
   ["Products", "/products"],
+  ["Order", "/order"],
+  ["Orders", "/orders"],
+  ["Order History", "/order-history"],
   ["Deliveries", "/deliveries"],
   ["Starter Shack", "/requests"],
   ["Counts", "/counts"],

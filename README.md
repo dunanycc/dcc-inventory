@@ -58,3 +58,7 @@ Administrators and Inventory Managers can use **Admin → Imports** to preview a
 `vercel.json` runs `npm run vercel-build`. For `VERCEL_ENV=production`, this applies committed Prisma migrations before building Next.js; a migration failure stops the build. Preview builds only build the application and do not apply migrations. Production requires `DATABASE_URL` and should also have `DATABASE_URL_UNPOOLED` for the direct migration connection (it falls back to `DATABASE_URL` when absent).
 
 Review and rehearse database changes before authorizing a push to the production branch. That push authorizes production migration execution as part of the deployment. Keep fork deployment authorization enabled and keep production credentials out of untrusted preview builds.
+
+## Purchasing
+
+Use **Order** for vendor-first entry, **Orders** for receiving and private receipt attachments, and **Order History** for the Vendor/year column view and whole-order sequence changes. Managers can preview and import the original legacy workbook from **Order History → Import legacy orders**. See `docs/purchase-orders.md` for pricing, manual taxes, receipt privacy, historical Vendor splits, duplicate-import protection, and the disposable PostgreSQL order integration harness.

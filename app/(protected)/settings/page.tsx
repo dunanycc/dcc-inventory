@@ -56,7 +56,11 @@ export default async function SettingsPage({
     tab === "vendors"
       ? prisma.vendor.findMany({
           orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-          include: { _count: { select: { deliveries: true, products: true } } },
+          include: {
+            _count: {
+              select: { deliveries: true, products: true, orders: true },
+            },
+          },
         })
       : Promise.resolve([]),
   ]);
@@ -109,6 +113,7 @@ export default async function SettingsPage({
     notes: v.notes,
     deliveryCount: v._count.deliveries,
     productCount: v._count.products,
+    orderCount: v._count.orders,
   }));
   return (
     <>

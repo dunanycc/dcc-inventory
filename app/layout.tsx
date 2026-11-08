@@ -11,6 +11,7 @@ import "./requests.css";
 import "./counts.css";
 import "./table-colors.css";
 import "./history.css";
+import "./orders.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 

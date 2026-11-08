@@ -41,6 +41,7 @@ describe("deleteVendorAction", () => {
         id: "unused-vendor",
         deliveries: { none: {} },
         products: { none: {} },
+        orders: { none: {} },
       },
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings");
