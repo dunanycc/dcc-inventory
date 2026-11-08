@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { PageHeading } from "@/app/components/page-heading";
 import { requireInventoryWorkspaceUser } from "@/lib/session";
@@ -43,13 +42,6 @@ export default async function Page({
         eyebrow="Purchasing"
         description="All orders for the year, grouped by vendor with private orders below."
       />
-      <p>
-        <Link href="/order">New order</Link> ·{" "}
-        <Link href="/orders">Orders</Link> ·{" "}
-        {hasPermission(actor.role, "imports:review") && (
-          <Link href="/order-history/import">Import legacy orders</Link>
-        )}
-      </p>
       <form className="order-filters">
         <label className="order-field">
           Year

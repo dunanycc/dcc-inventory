@@ -531,3 +531,24 @@ summary:focus-visible {
 .order-year-table .is-drop-target:hover {
   background: #d3e6cd;
 }
+
+.order-history-table .order-category-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 1px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.order-history-table .order-category-toggle:hover {
+  background: #d3e6cd;
+}
+.order-history-table tr[hidden] {
+  display: none;
+}

@@ -170,7 +170,20 @@ export default async function SettingsPage({
         {tab === "users" && canManageUsers && (
           <UserManagementClient users={userRows} />
         )}{" "}
-        {tab === "imports" && canManageCatalog && <ProductImportClient />}
+        {tab === "imports" && canManageCatalog && (
+          <>
+            {hasPermission(actor.role, "imports:review") && (
+              <section className="admin-panel import-panel">
+                <h2>Order history</h2>
+                <p>Review and import orders from the legacy system.</p>
+                <Link className="btn-secondary" href="/order-history/import">
+                  Import legacy orders
+                </Link>
+              </section>
+            )}
+            <ProductImportClient />
+          </>
+        )}
         {tab === "categories" && canManageCatalog && (
           <CategoryManagementClient categories={categoryRows} />
         )}{" "}

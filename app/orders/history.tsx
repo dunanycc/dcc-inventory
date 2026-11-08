@@ -19,7 +19,7 @@ export function OrderHistory({
   const [dragging, setDragging] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [busy, start] = useTransition();
-  const [mode, setMode] = useState("received");
+  const [collapsed, setCollapsed] = useState<string[]>([]);
   const [extra, setExtra] = useState(0);
   const router = useRouter();
   const priority = ["saq", "beer", "groceries"];
@@ -54,11 +54,7 @@ export function OrderHistory({
     JSON.stringify([l.productName, l.categoryName, l.unit]);
   const valuesFor = (group: OrderRow[], key: string) =>
     group.flatMap((o) =>
-      o.lines
-        .filter((l) => keyOf(l) === key)
-        .map((l) =>
-          mode === "ordered" ? l.orderedQuantity : l.receivedQuantity,
-        ),
+      o.lines.filter((l) => keyOf(l) === key).map((l) => l.receivedQuantity),
     );
   const display = (values: (string | null)[], category: string) =>
     !values.length
@@ -73,11 +69,13 @@ export function OrderHistory({
             });
   const totalFor = (group: OrderRow[]) => {
     if (!group.length) return "—";
+    if (group.some((o) => o.lines.some((l) => l.receivedQuantity === null)))
+      return "Pending";
     const totals = group.map(
       (o) =>
         receiptTotals(
           o.lines.map((l) => ({
-            quantity: l.receivedQuantity ?? l.orderedQuantity,
+            quantity: l.receivedQuantity ?? "0",
             price: l.unitPrice,
           })),
           o.taxIncluded,
@@ -111,13 +109,6 @@ export function OrderHistory({
             </button>
           ))}
         </div>
-        <label className="order-field">
-          Quantities
-          <select value={mode} onChange={(e) => setMode(e.target.value)}>
-            <option value="received">Received</option>
-            <option value="ordered">Ordered</option>
-          </select>
-        </label>
         {canManage && (
           <button
             type="button"
@@ -269,14 +260,57 @@ export function OrderHistory({
                           products[index - 1][1].categoryName !==
                             p.categoryName) && (
                           <tr className="order-category-row">
-                            <th scope="row">{p.categoryName || "Other"}</th>
+                            <th scope="row">
+                              <button
+                                type="button"
+                                className="order-category-toggle"
+                                aria-expanded={
+                                  !collapsed.includes(
+                                    JSON.stringify([
+                                      section.id,
+                                      p.categoryName,
+                                    ]),
+                                  )
+                                }
+                                aria-label={`${collapsed.includes(JSON.stringify([section.id, p.categoryName])) ? "Expand" : "Collapse"} ${section.name} ${p.categoryName || "Other"}`}
+                                onClick={() => {
+                                  const categoryKey = JSON.stringify([
+                                    section.id,
+                                    p.categoryName,
+                                  ]);
+                                  setCollapsed((old) =>
+                                    old.includes(categoryKey)
+                                      ? old.filter(
+                                          (value) => value !== categoryKey,
+                                        )
+                                      : [...old, categoryKey],
+                                  );
+                                }}
+                              >
+                                <span aria-hidden="true">
+                                  {collapsed.includes(
+                                    JSON.stringify([
+                                      section.id,
+                                      p.categoryName,
+                                    ]),
+                                  )
+                                    ? "▸"
+                                    : "▾"}
+                                </span>
+                                {p.categoryName || "Other"}
+                              </button>
+                            </th>
                             {columns.map((n) => (
                               <td key={n} />
                             ))}
                             <td className="order-history-total" />
                           </tr>
                         )}
-                        <tr>
+                        <tr
+                          hidden={collapsed.includes(
+                            JSON.stringify([section.id, p.categoryName]),
+                          )}
+                        >
                           <th scope="row">{p.productName}</th>
                           {columns.map((n) => (
                             <td key={n}>
