@@ -119,6 +119,7 @@ export function InventoryCategoryTabs({
             <form
               action={setOpeningInventoryAction}
               className="opening-panel"
+              id="opening-inventory-form"
               onSubmit={(event) => {
                 if (
                   !window.confirm(
@@ -151,39 +152,11 @@ export function InventoryCategoryTabs({
                   stock.
                 </p>
               </div>
-              {availableOpeningProducts.length === 0 ? (
+              {availableOpeningProducts.length === 0 && (
                 <p className="opening-complete">
                   Opening inventory is already set for every Product in this
                   Category.
                 </p>
-              ) : (
-                <div className="opening-grid">
-                  {availableOpeningProducts.map((product) => (
-                    <label key={product.id}>
-                      <span>
-                        <strong>{product.name}</strong>
-                        <small>{product.unitLabel}</small>
-                      </span>
-                      <input
-                        inputMode="decimal"
-                        min="0"
-                        name={`quantity-${product.id}`}
-                        placeholder="0"
-                        step={
-                          product.quantityScale === 0
-                            ? "1"
-                            : `0.${"0".repeat(product.quantityScale - 1)}1`
-                        }
-                        type="number"
-                      />
-                      <input
-                        name="productId"
-                        type="hidden"
-                        value={product.id}
-                      />
-                    </label>
-                  ))}
-                </div>
               )}
               {availableOpeningProducts.length > 0 && (
                 <>
@@ -212,6 +185,7 @@ export function InventoryCategoryTabs({
                   <th>Package</th>
                   <th>Counted as</th>
                   <th>Current tracked quantity</th>
+                  {showOpening && <th>Opening quantity</th>}
                 </tr>
               </thead>
               <tbody>
@@ -223,6 +197,37 @@ export function InventoryCategoryTabs({
                     <td>{product.packageSize || "—"}</td>
                     <td>{product.unitLabel}</td>
                     <td className="inventory-quantity">{product.balance}</td>
+                    {showOpening && (
+                      <td>
+                        {product.openingSet ? (
+                          <span>Already set</span>
+                        ) : (
+                          <>
+                            <input
+                              aria-label={`Opening quantity for ${product.name} (${product.packageSize || product.unitLabel})`}
+                              className="opening-quantity-input"
+                              form="opening-inventory-form"
+                              inputMode="decimal"
+                              min="0"
+                              name={`quantity-${product.id}`}
+                              placeholder="0"
+                              step={
+                                product.quantityScale === 0
+                                  ? "1"
+                                  : `0.${"0".repeat(product.quantityScale - 1)}1`
+                              }
+                              type="number"
+                            />
+                            <input
+                              form="opening-inventory-form"
+                              name="productId"
+                              type="hidden"
+                              value={product.id}
+                            />
+                          </>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

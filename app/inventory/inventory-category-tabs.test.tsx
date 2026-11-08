@@ -98,6 +98,13 @@ describe("InventoryCategoryTabs", () => {
     const form = screen
       .getByRole("button", { name: "Confirm opening inventory" })
       .closest("form")!;
+    const quantity = screen.getByRole("spinbutton", { name: /Club Lager/ });
+    expect(quantity.closest("tr")).toHaveTextContent("Club Lager");
+    expect(screen.getAllByText("Club Lager")).toHaveLength(1);
+    fireEvent.change(quantity, { target: { value: "12" } });
+    const data = new FormData(form);
+    expect(data.get("quantity-lager")).toBe("12");
+    expect(data.getAll("productId")).toEqual(["lager"]);
     fireEvent.submit(form);
     expect(confirm).toHaveBeenCalledWith(
       expect.stringContaining("cannot be replaced"),
