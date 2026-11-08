@@ -659,7 +659,7 @@ function ProductEditDialog({
       <section
         aria-labelledby="product-dialog-title"
         aria-modal="true"
-        className="product-dialog"
+        className="product-dialog product-entry-dialog"
         role="dialog"
       >
         <div className="product-dialog-heading">

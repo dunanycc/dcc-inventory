@@ -523,3 +523,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+.product-entry-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: min(520px, 100%);
+}
+.product-entry-dialog .product-dialog-heading,
+.product-entry-dialog .product-dialog-actions {
+  flex-shrink: 0;
+}
+.product-entry-dialog #edit-product-form {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+.product-entry-dialog .product-form-grid {
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+.product-entry-dialog .product-form-grid > label:not(.product-check) {
+  grid-column: 1 / -1;
+}
+.product-entry-dialog .product-form-options {
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.product-entry-dialog .product-dialog-actions {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
