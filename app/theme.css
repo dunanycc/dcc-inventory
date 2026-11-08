@@ -446,3 +446,42 @@ summary:focus-visible {
   outline: 2px solid var(--green-800);
   outline-offset: 2px;
 }
+
+.order-history-table .order-date-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.order-history-table .order-date-row .order-muted {
+  margin: 0;
+}
+.order-history-table .order-history-total {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  min-width: 100px;
+  background: #f5f8f3;
+  text-align: right;
+  box-shadow: -1px 0 0 var(--line);
+  font-weight: 500;
+}
+.order-history-table thead .order-history-total {
+  background: var(--green-100);
+}
+.order-history-table .order-category-row > :is(th, td) {
+  background: var(--green-100);
+  padding-top: 5px;
+  padding-bottom: 5px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--line);
+}
+@media (max-width: 600px) {
+  .order-history-table th:first-child {
+    min-width: 125px;
+    max-width: 150px;
+  }
+  .order-history-table .order-history-total {
+    min-width: 80px;
+  }
+}

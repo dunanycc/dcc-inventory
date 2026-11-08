@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
 import { moveOrderAction } from "@/app/(protected)/orders/actions";
@@ -43,6 +43,18 @@ export function OrderHistory({
       a[1].category.localeCompare(b[1].category) ||
       a[1].name.localeCompare(b[1].name),
   );
+  const orderTotals = visibleOrders.map(
+    (o) =>
+      receiptTotals(
+        o.lines.map((l) => ({
+          quantity: l.receivedQuantity ?? l.orderedQuantity,
+          price: l.unitPrice,
+        })),
+        o.taxIncluded,
+        o.gst,
+        o.pst,
+      ).total,
+  );
   return (
     <section className="order-panel">
       <div className="order-filters">
@@ -76,7 +88,7 @@ export function OrderHistory({
           <table className="inventory-table order-history-table">
             <thead>
               <tr>
-                <th>Product / unit</th>
+                <th>Product</th>
                 {visibleOrders.map((o) => (
                   <th
                     key={o.id}
@@ -89,127 +101,164 @@ export function OrderHistory({
                       setDragging(null);
                     }}
                   >
-                    {canManage && (
-                      <div className="order-grab-bar">
-                        <button
-                          type="button"
-                          className="order-grab-handle"
-                          title="Drag to reorder; use left or right arrow keys"
-                          disabled={busy}
-                          draggable={!busy}
-                          aria-label={`Move order ${o.number}`}
-                          onDragStart={(e) => {
-                            setDragging(o.id);
-                            e.dataTransfer.setData("text/plain", o.id);
-                          }}
-                          onDragEnd={() => setDragging(null)}
-                          onKeyDown={(e) => {
-                            const target =
-                              visibleOrders[
-                                visibleOrders.findIndex(
-                                  (order) => order.id === o.id,
-                                ) +
-                                  (e.key === "ArrowLeft"
-                                    ? -1
-                                    : e.key === "ArrowRight"
-                                      ? 1
-                                      : 0)
-                              ];
-                            if (target && target.id !== o.id) {
-                              e.preventDefault();
-                              move(o.id, target.id);
-                            }
-                          }}
-                        >
-                          <svg
-                            width="12"
-                            height="18"
-                            viewBox="0 0 12 18"
-                            fill="currentColor"
-                            aria-hidden="true"
-                          >
-                            {[4, 9, 14].map((y) => (
-                              <g key={y}>
-                                <circle cx="3" cy={y} r="1.3" />
-                                <circle cx="8" cy={y} r="1.3" />
-                              </g>
-                            ))}
-                          </svg>
-                        </button>
-                      </div>
-                    )}
                     <Link href={`/orders?id=${o.id}`}>#{o.number}</Link>
                     {o.isPrivate && (
                       <span className="order-private-badge">Private</span>
                     )}
-                    <span className="order-muted">
-                      {o.orderDate ?? "Date needs review"}
-                    </span>
+                    <div className="order-date-row">
+                      <span className="order-muted">
+                        {o.orderDate ?? "Date needs review"}
+                      </span>
+                      {canManage && (
+                        <>
+                          <button
+                            type="button"
+                            className="order-grab-handle"
+                            title="Drag to reorder; use left or right arrow keys"
+                            disabled={busy}
+                            draggable={!busy}
+                            aria-label={`Move order ${o.number}`}
+                            onDragStart={(e) => {
+                              setDragging(o.id);
+                              e.dataTransfer.setData("text/plain", o.id);
+                            }}
+                            onDragEnd={() => setDragging(null)}
+                            onKeyDown={(e) => {
+                              const target =
+                                visibleOrders[
+                                  visibleOrders.findIndex(
+                                    (order) => order.id === o.id,
+                                  ) +
+                                    (e.key === "ArrowLeft"
+                                      ? -1
+                                      : e.key === "ArrowRight"
+                                        ? 1
+                                        : 0)
+                                ];
+                              if (target && target.id !== o.id) {
+                                e.preventDefault();
+                                move(o.id, target.id);
+                              }
+                            }}
+                          >
+                            <svg
+                              width="12"
+                              height="18"
+                              viewBox="0 0 12 18"
+                              fill="currentColor"
+                              aria-hidden="true"
+                            >
+                              {[4, 9, 14].map((y) => (
+                                <g key={y}>
+                                  <circle cx="3" cy={y} r="1.3" />
+                                  <circle cx="8" cy={y} r="1.3" />
+                                </g>
+                              ))}
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </th>
                 ))}
+                <th className="order-history-total" scope="col">
+                  Total
+                </th>
               </tr>
             </thead>
             <tbody>
-              {products.map(([key, p]) => (
-                <tr key={key}>
-                  <th scope="row">
-                    {p.name}
-                    <small className="order-muted">
-                      {p.category} · {p.unit}
-                    </small>
-                  </th>
-                  {visibleOrders.map((o) => {
-                    const matches = o.lines.filter(
-                      (l) =>
-                        JSON.stringify([
-                          l.productName,
-                          l.categoryName,
-                          l.unit,
-                        ]) === key,
-                    );
-                    const values = matches.map((l) =>
-                      mode === "ordered"
-                        ? l.orderedQuantity
-                        : l.receivedQuantity,
-                    );
-                    return (
-                      <td key={o.id}>
-                        {!matches.length
-                          ? "—"
-                          : values.some((v) => v === null)
-                            ? "Pending"
-                            : values
-                                .reduce((sum, v) => sum + Number(v), 0)
-                                .toLocaleString("en-CA", {
-                                  maximumFractionDigits:
-                                    p.category.trim().toLowerCase() ===
-                                    "hard liquor"
-                                      ? 2
-                                      : 0,
-                                })}
-                      </td>
-                    );
-                  })}
-                </tr>
+              {products.map(([key, p], index) => (
+                <Fragment key={key}>
+                  {(index === 0 ||
+                    products[index - 1][1].category !== p.category) && (
+                    <tr className="order-category-row">
+                      <th scope="row">{p.category || "Other"}</th>
+                      {visibleOrders.map((o) => (
+                        <td key={o.id} />
+                      ))}
+                      <td className="order-history-total" />
+                    </tr>
+                  )}
+                  <tr>
+                    <th scope="row">{p.name}</th>
+                    {visibleOrders.map((o) => {
+                      const matches = o.lines.filter(
+                        (l) =>
+                          JSON.stringify([
+                            l.productName,
+                            l.categoryName,
+                            l.unit,
+                          ]) === key,
+                      );
+                      const values = matches.map((l) =>
+                        mode === "ordered"
+                          ? l.orderedQuantity
+                          : l.receivedQuantity,
+                      );
+                      return (
+                        <td key={o.id}>
+                          {!matches.length
+                            ? "—"
+                            : values.some((v) => v === null)
+                              ? "Pending"
+                              : values
+                                  .reduce((sum, v) => sum + Number(v), 0)
+                                  .toLocaleString("en-CA", {
+                                    maximumFractionDigits:
+                                      p.category.trim().toLowerCase() ===
+                                      "hard liquor"
+                                        ? 2
+                                        : 0,
+                                  })}
+                        </td>
+                      );
+                    })}
+                    <td className="order-history-total">
+                      {(() => {
+                        const values = visibleOrders.flatMap((o) =>
+                          o.lines
+                            .filter(
+                              (l) =>
+                                JSON.stringify([
+                                  l.productName,
+                                  l.categoryName,
+                                  l.unit,
+                                ]) === key,
+                            )
+                            .map((l) =>
+                              mode === "ordered"
+                                ? l.orderedQuantity
+                                : l.receivedQuantity,
+                            ),
+                        );
+                        return values.some((v) => v === null)
+                          ? "Pending"
+                          : values
+                              .reduce((sum, v) => sum + Number(v), 0)
+                              .toLocaleString("en-CA", {
+                                maximumFractionDigits:
+                                  p.category.trim().toLowerCase() ===
+                                  "hard liquor"
+                                    ? 2
+                                    : 0,
+                              });
+                      })()}
+                    </td>
+                  </tr>
+                </Fragment>
               ))}
               <tr>
                 <th scope="row">Grand total</th>
-                {visibleOrders.map((o) => {
-                  const total = receiptTotals(
-                    o.lines.map((l) => ({
-                      quantity: l.receivedQuantity ?? l.orderedQuantity,
-                      price: l.unitPrice,
-                    })),
-                    o.taxIncluded,
-                    o.gst,
-                    o.pst,
-                  ).total;
-                  return (
-                    <td key={o.id}>
-                      {total === null ? "Unavailable" : `$${total}`}
-                    </td>
-                  );
-                })}
+                {orderTotals.map((total, index) => (
+                  <td key={visibleOrders[index].id}>
+                    {total === null ? "Unavailable" : `$${total}`}
+                  </td>
+                ))}
+                <td className="order-history-total">
+                  {orderTotals.some((total) => total === null)
+                    ? "Unavailable"
+                    : `$${orderTotals.reduce((sum, total) => sum + Number(total), 0).toFixed(2)}`}
+                </td>
               </tr>
             </tbody>
           </table>
