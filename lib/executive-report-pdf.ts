@@ -3,6 +3,7 @@ import { autoTable, type RowInput } from "jspdf-autotable";
 import {
   EXECUTIVE_COLUMNS,
   executiveExportRows,
+  executiveDisplayCells,
 } from "./executive-report-export";
 import type { ExecutiveRow } from "./executive-report";
 export function executivePdf(
@@ -23,7 +24,7 @@ export function executivePdf(
     if (startsGroup) lastGroup = key;
     tableRows.push({
       record,
-      cells: record.cells.map((cell, index) => {
+      cells: executiveDisplayCells(record).map((cell, index) => {
         if (index === 0 && startsGroup)
           return {
             content: `${record.section} / ${record.category || "Other"}\n${cell}`,
@@ -33,14 +34,22 @@ export function executivePdf(
               textColor: [25, 65, 40],
             },
           };
-        if (cell === null)
-          return index === 8
-            ? `Unavailable${record.kind !== "Product" ? `\nKnown: $${record.knownCost.toFixed(2)}` : ""}`
-            : "";
-        if (typeof cell === "number")
-          return index >= 7
-            ? `$${cell.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : cell.toLocaleString("en-CA", { maximumFractionDigits: 2 });
+        if (cell === null) return "";
+        if (typeof cell === "number") {
+          const text =
+            index >= 7
+              ? `$${cell.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : cell.toLocaleString("en-CA", { maximumFractionDigits: 2 });
+          return (
+            text +
+            (record.missingFields.includes(index) ? " *" : "") +
+            (index === 8 &&
+            record.kind !== "Product" &&
+            record.missingFields.includes(index)
+              ? `\nKnown: $${record.knownCost.toFixed(2)}`
+              : "")
+          );
+        }
         return cell;
       }),
     });
@@ -56,7 +65,7 @@ export function executivePdf(
   );
   doc.text(filters, 12, 21);
   const notes = doc.splitTextToSize(
-    "Consumption = opening + receipts during year - remaining. Current year uses live stock; earlier years use closing counts. Costs exclude separately entered GST/PST. Missing data is unavailable; known cost is shown for incomplete totals.",
+    "Consumption = opening + receipts during year - remaining. Current year uses live stock; earlier years use closing counts. Costs exclude separately entered GST/PST. Empty values display as zero; * marks unavailable source data or averages, not confirmed zeros. Known cost is shown for incomplete totals.",
     273,
   );
   doc.text(notes, 12, 24 + filters.length * 4);

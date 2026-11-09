@@ -12,11 +12,11 @@ import {
 } from "@/lib/executive-report";
 const quantity = (value: string | null) =>
   value === null
-    ? "—"
+    ? "0"
     : Number(value).toLocaleString("en-CA", { maximumFractionDigits: 2 });
 const money = (value: string | null) =>
   value === null
-    ? "Unavailable"
+    ? "$0.00"
     : `$${Number(value).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 function Total({
   rows,
@@ -33,7 +33,7 @@ function Total({
   ) =>
     rows.every((row) => row.isPrivate) &&
     ["opening", "remaining", "consumed"].includes(field)
-      ? "—"
+      ? "0"
       : quantity(t[field].total) + (t[field].missing ? " *" : "");
   return (
     <tr className="executive-subtotal">
@@ -41,14 +41,21 @@ function Total({
       <td>{t.orders}</td>
       <td>{clubTotal ? "" : quantities("ordered")}</td>
       <td>{clubTotal ? "" : quantities("received")}</td>
-      <td>{clubTotal ? "" : quantities("opening") || "—"}</td>
-      <td>{clubTotal ? "" : quantities("consumed") || "—"}</td>
-      <td>{clubTotal ? "" : quantities("remaining") || "—"}</td>
+      <td>{clubTotal ? "" : quantities("opening") || "0"}</td>
+      <td>{clubTotal ? "" : quantities("consumed") || "0"}</td>
+      <td>{clubTotal ? "" : quantities("remaining") || "0"}</td>
       <td>
-        {clubTotal ? "" : t.averageCost === null ? "—" : money(t.averageCost)}
+        {clubTotal
+          ? ""
+          : money(t.averageCost) +
+            (t.averageCost === null &&
+            t.received.values.some((value) => Number(value.quantity) > 0)
+              ? " *"
+              : "")}
       </td>
       <td>
         {money(t.totalCost)}
+        {t.totalCost === null ? " *" : ""}
         {t.totalCost === null && <small>Known: {money(t.knownCost)}</small>}
       </td>
     </tr>
@@ -277,7 +284,12 @@ export function ExecutiveView({
                               <td>{row.orders.length}</td>
                               <td>{quantity(row.ordered)}</td>
                               <td>{quantity(row.received)}</td>
-                              <td>{quantity(row.opening)}</td>
+                              <td>
+                                {quantity(row.opening)}
+                                {!row.isPrivate && row.opening === null
+                                  ? " *"
+                                  : ""}
+                              </td>
                               <td
                                 className={
                                   row.consumed !== null &&
@@ -287,15 +299,26 @@ export function ExecutiveView({
                                 }
                               >
                                 {quantity(row.consumed)}
+                                {!row.isPrivate && row.consumed === null
+                                  ? " *"
+                                  : ""}
                               </td>
-                              <td>{quantity(row.remaining)}</td>
                               <td>
-                                {row.averageCost === null
-                                  ? "—"
-                                  : money(row.averageCost)}
+                                {quantity(row.remaining)}
+                                {!row.isPrivate && row.remaining === null
+                                  ? " *"
+                                  : ""}
+                              </td>
+                              <td>
+                                {money(row.averageCost)}
+                                {row.averageCost === null &&
+                                Number(row.received) > 0
+                                  ? " *"
+                                  : ""}
                               </td>
                               <td>
                                 {money(row.totalCost)}
+                                {row.totalCost === null ? " *" : ""}
                                 {row.totalCost === null && (
                                   <small>
                                     {row.missingPrices} unpriced receipt
@@ -327,11 +350,11 @@ export function ExecutiveView({
       })}
       {!rows.length && <p>No products match these filters.</p>}
       <p className="executive-description">
-        — means unavailable or not applicable. * Quantity subtotal is incomplete
-        where stock records are missing. Negative consumption needs review.
-        Archived labels without a product match have no stock balance. Mapped
-        legacy labels are combined under their current product to avoid counting
-        stock twice.
+        Zero is shown for empty or inapplicable values. * marks missing source
+        data, incomplete totals, or an unavailable average; those values are not
+        confirmed zeros. Negative consumption needs review. Archived labels
+        without a product match have no stock balance. Mapped legacy labels are
+        combined under their current product to avoid counting stock twice.
       </p>
     </section>
   );

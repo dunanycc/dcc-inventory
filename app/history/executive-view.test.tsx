@@ -115,3 +115,34 @@ it("hides all-zero products by default and lets users include them", () => {
     screen.queryByRole("rowheader", { name: "Zero lager" }),
   ).not.toBeInTheDocument();
 });
+
+it("uses zero instead of dashes and marks missing historical values", () => {
+  render(
+    <ExecutiveView
+      orders={[]}
+      vendors={[{ id: "saq", name: "SAQ" }]}
+      year={2026}
+      years={[2026]}
+      currentYear={2026}
+      stocks={[{ productId: "one", opening: null, remaining: "1" }]}
+      products={[
+        {
+          id: "one",
+          name: "Test wine",
+          vendorId: "saq",
+          categoryName: "Wine",
+          unit: "BOTTLE",
+          active: true,
+          historyCategoryOrder: 0,
+          historyProductOrder: 0,
+        },
+      ]}
+    />,
+  );
+  const row = screen
+    .getByRole("rowheader", { name: "Test wine" })
+    .closest("tr")!;
+  expect(within(row).queryByText("—")).not.toBeInTheDocument();
+  expect(within(row).getAllByText("$0.00")).toHaveLength(2);
+  expect(within(row).getAllByText("0 *")).toHaveLength(2);
+});

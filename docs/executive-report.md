@@ -18,8 +18,10 @@ Negative consumption is flagged for review. It can indicate receipts absent from
 
 Product rows show the name without a can/bottle format label. All numeric columns are right-aligned. Club total retains distinct orders and purchase cost; quantity and average-unit-cost summaries are omitted there.
 
-Export CSV and Export PDF use the selected year and vendor filters, include all filtered products even when categories are collapsed, and preserve report ordering and subtotals. CSV provides numeric product values plus section/category/row-type metadata, known cost and review notes; blanks are not converted to zero. Formula-like text is escaped for spreadsheet safety. PDF is a downloadable landscape report with repeated headings and page numbers. Exports are generated in the browser without sending report data to a third-party export service.
+Export CSV and Export PDF use the selected year and vendor filters, include all filtered products even when categories are collapsed, and preserve report ordering and subtotals. CSV provides numeric product values plus section/category/row-type metadata, known cost and review notes; empty and unavailable cells display as numeric zeros with missing-data details retained in Notes. Formula-like text is escaped for spreadsheet safety. PDF is a downloadable landscape report with repeated headings and page numbers. Exports are generated in the browser without sending report data to a third-party export service.
 
 Historical opening balances can be corrected through Admin → Counts → Season opening quantities. Counts is located at `/settings/counts`; old `/counts` links redirect there while preserving location and year. Seasonal opening corrections affect reporting without changing live inventory.
 
 Zero-value product rows are hidden by default; Show zero-value products includes them. Nonzero quantities, orders or costs remain visible, as do missing stock boundaries that need review. PDF and CSV exports follow this checkbox setting.
+
+Display formatting uses 0 for empty quantities and $0.00 for empty currency values. Missing source values or unavailable averages carry an asterisk in the report/PDF and explicit field notes in CSV. Stored values and calculation completeness are unchanged; intentional Club total quantity omissions remain blank.

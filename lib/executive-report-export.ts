@@ -17,6 +17,7 @@ export type ExecutiveExportRow = {
   cells: (string | number | null)[];
   knownCost: number;
   note: string;
+  missingFields: number[];
 };
 export function executiveExportRows(
   rows: ExecutiveRow[],
@@ -44,13 +45,31 @@ export function executiveExportRows(
         )
           return null;
         const q = t[field];
-        if (q.missing) return "Incomplete";
         return Number(q.total);
       };
       output.push({
         section,
         category,
         kind,
+        missingFields: [
+          ...(!isPrivate && kind !== "Total"
+            ? (
+                [
+                  ["opening", 4],
+                  ["consumed", 5],
+                  ["remaining", 6],
+                ] as const
+              )
+                .filter(([field]) => t[field].missing)
+                .map(([, index]) => index)
+            : []),
+          ...(t.averageCost === null &&
+          !(kind === "Total" && !isPrivate) &&
+          t.received.values.some((value) => Number(value.quantity) > 0)
+            ? [7]
+            : []),
+          ...(t.totalCost === null ? [8] : []),
+        ],
         cells: [
           label,
           t.orders,
@@ -76,6 +95,23 @@ export function executiveExportRows(
           section,
           category,
           kind: "Product",
+          missingFields: [
+            ...(!row.isPrivate
+              ? (
+                  [
+                    ["opening", 4],
+                    ["consumed", 5],
+                    ["remaining", 6],
+                  ] as const
+                )
+                  .filter(([field]) => row[field] === null)
+                  .map(([, index]) => index)
+              : []),
+            ...(row.averageCost === null && Number(row.received) > 0
+              ? [7]
+              : []),
+            ...(row.totalCost === null ? [8] : []),
+          ],
           cells: [
             row.name,
             row.orders.length,
@@ -143,12 +179,30 @@ export function executiveCsv(
         row.section,
         row.category,
         row.kind,
-        ...row.cells,
+        ...executiveDisplayCells(row),
         row.knownCost,
-        row.note,
+        [
+          row.note,
+          row.missingFields.length
+            ? `Unavailable fields: ${row.missingFields.map((index) => EXECUTIVE_COLUMNS[index]).join("; ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("; "),
       ]),
     ]
       .map((row) => row.map(escape).join(","))
       .join("\r\n")
+  );
+}
+
+export function executiveDisplayCells(row: ExecutiveExportRow) {
+  return row.cells.map((cell, index) =>
+    row.kind === "Total" &&
+    row.section === "Club inventory" &&
+    index >= 2 &&
+    index <= 7
+      ? null
+      : (cell ?? 0),
   );
 }

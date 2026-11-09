@@ -1,5 +1,9 @@
 import { expect, it } from "vitest";
-import { executiveCsv, executiveExportRows } from "./executive-report-export";
+import {
+  executiveCsv,
+  executiveExportRows,
+  executiveDisplayCells,
+} from "./executive-report-export";
 import { executivePdf } from "./executive-report-pdf";
 import type { ExecutiveRow } from "./executive-report";
 const row: ExecutiveRow = {
@@ -120,4 +124,38 @@ it("combines bottle and can quantities into a single numeric category subtotal",
       "Groceries",
     ]),
   ).not.toContain("bottle");
+});
+
+it("displays missing values as zero in exports without changing source values or hiding missing-data notes", () => {
+  const [record] = executiveExportRows([
+    {
+      ...row,
+      opening: null,
+      consumed: null,
+      totalCost: null,
+      averageCost: null,
+      missingPrices: 1,
+    },
+  ]);
+  expect(record.cells[4]).toBeNull();
+  expect(record.cells[8]).toBeNull();
+  expect(executiveDisplayCells(record).slice(4, 9)).toEqual([0, 0, 2, 0, 0]);
+  expect(record.missingFields).toEqual([4, 5, 7, 8]);
+  const csv = executiveCsv(
+    [
+      {
+        ...row,
+        opening: null,
+        consumed: null,
+        totalCost: null,
+        averageCost: null,
+        missingPrices: 1,
+      },
+    ],
+    2026,
+    ["Groceries"],
+  );
+  expect(csv).toContain(
+    "Unavailable fields: Opening units; Units consumed; Avg cost / unit; Total cost",
+  );
 });
