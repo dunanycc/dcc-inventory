@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/session";
+import { cancelPurchaseOrder } from "@/lib/order-cancellation";
 import { saveOrderEditor, type OrderEditInput } from "@/lib/order-editor";
 import {
   createPurchaseOrder,
@@ -10,6 +11,27 @@ import {
   editPurchaseOrder,
 } from "@/lib/purchase-order-service";
 const text = (f: FormData, key: string) => String(f.get(key) ?? "");
+export async function cancelOrderAction(input: {
+  id: string;
+  updatedAt: string;
+  reason: string;
+}) {
+  try {
+    const actor = await currentUser();
+    if (!actor) throw new Error("Sign in to cancel orders.");
+    await cancelPurchaseOrder(actor.id, input);
+    refresh();
+    return { ok: true, message: "Order cancelled." };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error && !("code" in error)
+          ? error.message
+          : "The order could not be cancelled. Reload and try again.",
+    };
+  }
+}
 export async function saveOrderEditorAction(input: OrderEditInput) {
   try {
     const actor = await currentUser();

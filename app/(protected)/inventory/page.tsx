@@ -150,6 +150,7 @@ export default async function InventoryPage({
         </p>
       )}
       <InventoryCategoryTabs
+        canUpdateInventory={hasPermission(actor.role, "operations:draft")}
         canSetOpening={hasPermission(actor.role, "operations:post")}
         categories={rows}
         initialCategoryId={parameters.category}

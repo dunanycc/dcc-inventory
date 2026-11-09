@@ -34,11 +34,13 @@ export default async function Page({
   const options = [...new Set([currentYear, ...years.map((y) => y.year)])].sort(
     (a, b) => b - a,
   );
-  const orders = await orderRows({ year });
+  const orders = (await orderRows({ year })).filter(
+    (o) => o.status !== "CANCELLED",
+  );
   return (
     <>
       <PageHeading
-        title="Order History"
+        title="Order Summary"
         eyebrow="Purchasing"
         description="All orders for the year, grouped by vendor with private orders below."
       />

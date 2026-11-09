@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { PRIVATE_ORDER_UNITS } from "@/lib/purchase-order";
 import { createOrderAction } from "@/app/(protected)/orders/actions";
@@ -7,9 +7,114 @@ export function SubmitOrder({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
   return (
     <button className="btn-primary" disabled={pending} type="submit">
-      {pending ? "Saving…" : children}
+      {pending ? "Submitting…" : children}
     </button>
   );
+}
+function Trash() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+    </svg>
+  );
+}
+function Quantity({
+  value,
+  onChange,
+  label,
+  privateIndex,
+}: {
+  value: number;
+  onChange(n: number): void;
+  label: string;
+  privateIndex?: number;
+}) {
+  const names = privateIndex
+    ? {
+        add: `Add quantity for private product ${privateIndex}`,
+        minus: `Decrease private quantity ${privateIndex}`,
+        plus: `Increase private quantity ${privateIndex}`,
+        output: `Private quantity ${privateIndex}`,
+      }
+    : {
+        add: `Add ${label}`,
+        minus: `Decrease ${label}`,
+        plus: `Increase ${label}`,
+        output: `Quantity for ${label}`,
+      };
+  return (
+    <div
+      className="order-quantity-control"
+      role="group"
+      aria-label={`Quantity controls for ${label}`}
+    >
+      {value <= 0 ? (
+        <button
+          type="button"
+          className="btn-secondary"
+          aria-label={names.add}
+          onClick={() => onChange(1)}
+        >
+          Add
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="btn-secondary"
+            aria-label={names.minus}
+            onClick={() => onChange(value - 1)}
+          >
+            −
+          </button>
+          <output aria-label={names.output} aria-live="polite">
+            {value}
+          </output>
+          <button
+            type="button"
+            className="btn-secondary"
+            aria-label={names.plus}
+            disabled={value >= 999999999}
+            onClick={() => onChange(value + 1)}
+          >
+            +
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+type Category = {
+  id: string;
+  name: string;
+  products: {
+    id: string;
+    name: string;
+    vendorId: string;
+    unit: string;
+    factor: string;
+    stockUnit: string;
+  }[];
+};
+type Manual = { id: string; name: string; unit: string; quantity: string };
+const emptyManual = (): Manual[] => [
+  { id: "first", name: "", unit: "BOTTLE", quantity: "0" },
+];
+function quantitySummary(items: { quantity: number; unit: string }[]) {
+  const counts = new Map<string, number>();
+  for (const item of items)
+    counts.set(item.unit, (counts.get(item.unit) || 0) + item.quantity);
+  return [...counts]
+    .map(([unit, n]) => `${n} ${unit.toLowerCase()}`)
+    .join(" · ");
 }
 export function NewOrder({
   vendors,
@@ -17,343 +122,417 @@ export function NewOrder({
   today,
 }: {
   vendors: { id: string; name: string }[];
-  categories: {
-    id: string;
-    name: string;
-    products: {
-      id: string;
-      name: string;
-      vendorId: string;
-      unit: string;
-      factor: string;
-      stockUnit: string;
-    }[];
-  }[];
+  categories: Category[];
   today: string;
 }) {
-  const [vendor, setVendor] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [manual, setManual] = useState([
-    { id: "first", name: "", unit: "BOTTLE", quantity: "0" },
-  ]);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const products = categories
-    .flatMap((c) => c.products)
-    .filter((p) => p.vendorId === vendor);
+  const [vendor, setVendor] = useState(""),
+    [isPrivate, setIsPrivate] = useState(false);
+  const [manual, setManual] = useState(emptyManual),
+    [values, setValues] = useState<Record<string, string>>({});
+  const [date, setDate] = useState(today),
+    [notes, setNotes] = useState("");
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  const vendorName = vendors.find((v) => v.id === vendor)?.name || "";
+  const shown = categories
+    .map((c) => ({
+      ...c,
+      products: c.products.filter((p) => p.vendorId === vendor),
+    }))
+    .filter((c) => c.products.length);
+  const products = shown.flatMap((c) =>
+    c.products.map((p) => ({ ...p, categoryName: c.name })),
+  );
   const items = products
     .filter((p) => Number(values[p.id]) > 0)
     .map((p) => ({ productId: p.id, quantity: values[p.id] }));
+  const cart = isPrivate
+    ? manual
+        .filter((l) => Number(l.quantity) > 0)
+        .map((l) => ({
+          id: l.id,
+          name: l.name || "Unnamed private product",
+          unit: l.unit,
+          quantity: Number(l.quantity),
+          categoryName: "Private products",
+        }))
+    : products
+        .filter((p) => Number(values[p.id]) > 0)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          unit: p.unit,
+          quantity: Number(values[p.id]),
+          categoryName: p.categoryName,
+        }));
+  const setQuantity = (id: string, n: number) =>
+    isPrivate
+      ? setManual((old) =>
+          old.map((l) => (l.id === id ? { ...l, quantity: String(n) } : l)),
+        )
+      : setValues((old) => ({ ...old, [id]: String(n) }));
+  const clear = () => {
+    setValues({});
+    setManual((old) => old.map((l) => ({ ...l, quantity: "0" })));
+  };
   return (
-    <section className="order-panel">
-      <h2>1. Select vendor</h2>
-      <label className="order-field">
-        Vendor
-        <select
-          value={vendor}
-          onChange={(e) => {
-            setVendor(e.target.value);
-            setValues({});
-            setManual([
-              { id: "first", name: "", unit: "BOTTLE", quantity: "0" },
-            ]);
-          }}
-        >
-          <option value="">Choose vendor</option>
-          {vendors.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {vendor && (
-        <form action={createOrderAction} key={vendor}>
-          <input type="hidden" name="vendorId" value={vendor} />
+    <form
+      className="order-panel new-order-workspace"
+      action={createOrderAction}
+      onSubmit={(e) => {
+        if (!cart.length) {
+          e.preventDefault();
+          return;
+        }
+        const summary = cart
+          .map((l) => `${l.name}: ${l.quantity} ${l.unit}`)
+          .join("\n");
+        if (
+          !window.confirm(
+            `Submit this ${isPrivate ? "private " : ""}${vendorName} order dated ${date}?\n\n${summary}`,
+          )
+        )
+          e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="vendorId" value={vendor} />
+      <input
+        type="hidden"
+        name="items"
+        value={JSON.stringify(isPrivate ? [] : items)}
+      />
+      <input
+        type="hidden"
+        name="manualItems"
+        value={JSON.stringify(
+          isPrivate
+            ? manual
+                .filter((l) => Number(l.quantity) > 0)
+                .map(({ name, unit, quantity }) => ({ name, unit, quantity }))
+            : [],
+        )}
+      />
+      <header className="order-builder-header">
+        <div className="order-vendor-selector">
+          <span>Vendor</span>
+          <div
+            className="order-vendor-pills"
+            role="group"
+            aria-label="Select vendor"
+          >
+            {vendors.map((v) => (
+              <button
+                type="button"
+                className={`btn-secondary ${vendor === v.id ? "is-selected" : ""}`}
+                aria-pressed={vendor === v.id}
+                key={v.id}
+                onClick={() => {
+                  if (v.id !== vendor) {
+                    setVendor(v.id);
+                    setValues({});
+                    setManual(emptyManual());
+                    setNotes("");
+                  }
+                }}
+              >
+                {v.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="product-check order-private-toggle">
           <input
-            type="hidden"
-            name="items"
-            value={JSON.stringify(isPrivate ? [] : items)}
+            type="checkbox"
+            role="switch"
+            name="isPrivate"
+            checked={isPrivate}
+            disabled={!vendor}
+            onChange={(e) => setIsPrivate(e.target.checked)}
           />
-          <input
-            type="hidden"
-            name="manualItems"
-            value={JSON.stringify(
-              isPrivate
-                ? manual
-                    .filter((line) => Number(line.quantity) > 0)
-                    .map(({ name, unit, quantity }) => ({
-                      name,
-                      unit,
-                      quantity,
-                    }))
-                : [],
-            )}
-          />
-          <h2>2. Enter order</h2>
-          <label className="product-check order-private-toggle">
-            <input
-              type="checkbox"
-              role="switch"
-              name="isPrivate"
-              checked={isPrivate}
-              onChange={(e) => setIsPrivate(e.target.checked)}
-            />{" "}
-            Private order
-          </label>
-          {isPrivate && (
-            <p>
-              Enter products manually for{" "}
-              {vendors.find((v) => v.id === vendor)?.name}. These products will
-              not be added to the catalog or club inventory.
-            </p>
-          )}
-          <label className="order-field">
-            Order date
-            <input type="date" name="date" defaultValue={today} required />
-          </label>
-          <p>
-            Order numbers are assigned separately for each vendor and year when
-            saved.
-          </p>
-          {!isPrivate &&
-            categories
-              .filter((c) => c.products.some((p) => p.vendorId === vendor))
-              .map((c) => (
-                <section key={c.id}>
-                  <h3>{c.name}</h3>
-                  <div className="table-scroll">
-                    <table className="inventory-table">
-                      <thead>
-                        <tr>
-                          <th>Product</th>
-                          <th>Order unit</th>
-                          <th>Quantity</th>
+          Private order
+        </label>
+      </header>
+      {!vendor ? (
+        <p className="order-empty-cart">Select a vendor to start an order.</p>
+      ) : (
+        <div className="order-builder-layout">
+          <div className="order-builder-products">
+            {isPrivate ? (
+              <section>
+                <p className="order-muted">
+                  Enter private products for {vendorName}. These stay outside
+                  the catalog and club inventory.
+                </p>
+                <div className="table-scroll">
+                  <table className="inventory-table order-builder-table private-builder-table">
+                    <colgroup>
+                      <col className="builder-product-column" />
+                      <col className="builder-unit-column" />
+                      <col className="builder-quantity-column" />
+                      <col className="builder-remove-column" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>Unit</th>
+                        <th>Quantity</th>
+                        <th>
+                          <span className="visually-hidden">Remove</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {manual.map((line, index) => (
+                        <tr key={line.id}>
+                          <td>
+                            <input
+                              aria-label={`Private product ${index + 1}`}
+                              value={line.name}
+                              maxLength={160}
+                              required={Number(line.quantity) > 0}
+                              onChange={(e) =>
+                                setManual((old) =>
+                                  old.map((l) =>
+                                    l.id === line.id
+                                      ? { ...l, name: e.target.value }
+                                      : l,
+                                  ),
+                                )
+                              }
+                            />
+                          </td>
+                          <td>
+                            <select
+                              aria-label={`Private unit ${index + 1}`}
+                              value={line.unit}
+                              onChange={(e) =>
+                                setManual((old) =>
+                                  old.map((l) =>
+                                    l.id === line.id
+                                      ? { ...l, unit: e.target.value }
+                                      : l,
+                                  ),
+                                )
+                              }
+                            >
+                              {PRIVATE_ORDER_UNITS.map((unit) => (
+                                <option key={unit} value={unit}>
+                                  {unit.charAt(0) + unit.slice(1).toLowerCase()}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <Quantity
+                              privateIndex={index + 1}
+                              label={`private product ${index + 1}`}
+                              value={Number(line.quantity)}
+                              onChange={(n) => setQuantity(line.id, n)}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              className="btn-secondary cart-trash"
+                              type="button"
+                              aria-label={`Remove private product ${index + 1}`}
+                              onClick={() =>
+                                setManual((old) =>
+                                  old.filter((l) => l.id !== line.id),
+                                )
+                              }
+                            >
+                              <Trash />
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {c.products
-                          .filter((p) => p.vendorId === vendor)
-                          .map((p) => (
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={manual.length >= 200}
+                  onClick={() =>
+                    setManual((old) => [
+                      ...old,
+                      {
+                        id: crypto.randomUUID(),
+                        name: "",
+                        unit: "BOTTLE",
+                        quantity: "0",
+                      },
+                    ])
+                  }
+                >
+                  Add private product
+                </button>
+              </section>
+            ) : products.length ? (
+              <div className="table-scroll">
+                <table className="inventory-table order-builder-table">
+                  <colgroup>
+                    <col className="builder-product-column" />
+                    <col className="builder-unit-column" />
+                    <col className="builder-quantity-column" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Order unit</th>
+                      <th>Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((c) => (
+                      <Fragment key={c.id}>
+                        <tr className="order-builder-category">
+                          <th colSpan={3}>
+                            <button
+                              type="button"
+                              aria-expanded={!collapsed.includes(c.id)}
+                              onClick={() =>
+                                setCollapsed((old) =>
+                                  old.includes(c.id)
+                                    ? old.filter((id) => id !== c.id)
+                                    : [...old, c.id],
+                                )
+                              }
+                            >
+                              <span aria-hidden="true">
+                                {collapsed.includes(c.id) ? "▸" : "▾"}
+                              </span>{" "}
+                              {c.name}
+                            </button>
+                          </th>
+                        </tr>
+                        {!collapsed.includes(c.id) &&
+                          c.products.map((p) => (
                             <tr key={p.id}>
-                              <td>{p.name}</td>
+                              <th scope="row">{p.name}</th>
                               <td>
                                 {p.unit}
                                 {p.factor !== "1" && (
-                                  <small>
-                                    {" "}
-                                    ({p.factor} {p.stockUnit})
+                                  <small className="order-muted">
+                                    {p.factor} {p.stockUnit}
                                   </small>
                                 )}
                               </td>
                               <td>
-                                <input
-                                  aria-label={`Quantity for ${p.name}`}
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  className="order-number"
-                                  value={values[p.id] ?? ""}
-                                  onChange={(e) =>
-                                    setValues({
-                                      ...values,
-                                      [p.id]: e.target.value,
-                                    })
-                                  }
+                                <Quantity
+                                  label={p.name}
+                                  value={Number(values[p.id] || 0)}
+                                  onChange={(n) => setQuantity(p.id, n)}
                                 />
                               </td>
                             </tr>
                           ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              ))}
-          {!isPrivate && !products.length && (
-            <p>
-              No active products are assigned to this vendor. Update Products
-              first.
-            </p>
-          )}
-          {isPrivate && (
-            <section>
-              <h3>Private products</h3>
-              {manual.map((line, index) => (
-                <div className="manual-order-line" key={line.id}>
-                  <label className="order-field">
-                    Product name
-                    <input
-                      aria-label={`Private product ${index + 1}`}
-                      value={line.name}
-                      maxLength={160}
-                      required={Number(line.quantity) > 0}
-                      onChange={(e) =>
-                        setManual(
-                          manual.map((l) =>
-                            l.id === line.id
-                              ? { ...l, name: e.target.value }
-                              : l,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="order-field">
-                    Unit
-                    <select
-                      aria-label={`Private unit ${index + 1}`}
-                      value={line.unit}
-                      onChange={(e) =>
-                        setManual(
-                          manual.map((l) =>
-                            l.id === line.id
-                              ? { ...l, unit: e.target.value }
-                              : l,
-                          ),
-                        )
-                      }
-                    >
-                      {PRIVATE_ORDER_UNITS.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit.charAt(0) + unit.slice(1).toLowerCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="order-field">
-                    <span>Quantity</span>
-                    <div
-                      className="private-quantity-stepper"
-                      role="group"
-                      aria-label={`Quantity for private product ${index + 1}`}
-                    >
-                      {Number(line.quantity) === 0 ? (
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          aria-label={`Add quantity for private product ${index + 1}`}
-                          onClick={() =>
-                            setManual(
-                              manual.map((l) =>
-                                l.id === line.id ? { ...l, quantity: "1" } : l,
-                              ),
-                            )
-                          }
-                        >
-                          Add
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            aria-label={`Decrease private quantity ${index + 1}`}
-                            onClick={() =>
-                              setManual(
-                                manual.map((l) =>
-                                  l.id === line.id
-                                    ? {
-                                        ...l,
-                                        quantity: String(
-                                          Number(l.quantity) - 1,
-                                        ),
-                                      }
-                                    : l,
-                                ),
-                              )
-                            }
-                          >
-                            −
-                          </button>
-                          <output
-                            aria-label={`Private quantity ${index + 1}`}
-                            aria-live="polite"
-                          >
-                            {line.quantity}
-                          </output>
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            aria-label={`Increase private quantity ${index + 1}`}
-                            disabled={Number(line.quantity) >= 999999999}
-                            onClick={() =>
-                              setManual(
-                                manual.map((l) =>
-                                  l.id === line.id
-                                    ? {
-                                        ...l,
-                                        quantity: String(
-                                          Number(l.quantity) + 1,
-                                        ),
-                                      }
-                                    : l,
-                                ),
-                              )
-                            }
-                          >
-                            +
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    className="btn-secondary private-product-trash"
-                    type="button"
-                    title="Remove product"
-                    aria-label={`Remove private product ${index + 1}`}
-                    onClick={() =>
-                      setManual(manual.filter((l) => l.id !== line.id))
-                    }
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p>
+                No active products are assigned to this vendor. Update Products
+                first.
+              </p>
+            )}
+          </div>
+          <aside className="order-cart" aria-label="Order in progress">
+            <header>
+              <h2>Order in progress</h2>
               <button
-                className="btn-secondary"
                 type="button"
-                disabled={manual.length >= 200}
-                onClick={() =>
-                  setManual([
-                    ...manual,
-                    {
-                      id: crypto.randomUUID(),
-                      name: "",
-                      unit: "BOTTLE",
-                      quantity: "0",
-                    },
-                  ])
-                }
+                className="btn-secondary"
+                onClick={clear}
+                disabled={!cart.length}
               >
-                Add private product
+                Clear
               </button>
-            </section>
-          )}
-          <label className="order-field">
-            Notes
-            <textarea name="notes" maxLength={1000} />
-          </label>
-          <p>
-            {isPrivate
-              ? manual.filter((line) => Number(line.quantity) > 0).length
-              : items.length}{" "}
-            products selected
-          </p>
-          {(isPrivate
-            ? manual.some((line) => Number(line.quantity) > 0)
-            : items.length > 0) && <SubmitOrder>Save order</SubmitOrder>}
-        </form>
+            </header>
+            <p className="cart-vendor">
+              {vendorName}
+              {isPrivate ? " · Private" : ""}
+            </p>
+            {!cart.length && (
+              <p className="order-empty-cart">
+                Add products to start this order.
+              </p>
+            )}
+            {[...new Set(cart.map((l) => l.categoryName))].map((category) => (
+              <section className="cart-category" key={category}>
+                <h3>{category}</h3>
+                {cart
+                  .filter((l) => l.categoryName === category)
+                  .map((l) => (
+                    <div className="cart-line" key={l.id}>
+                      <div>
+                        <span>{l.name}</span>
+                        <small>{l.unit}</small>
+                      </div>
+                      <Quantity
+                        label={`cart ${l.name}`}
+                        value={l.quantity}
+                        onChange={(n) => setQuantity(l.id, n)}
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary cart-trash"
+                        aria-label={`Remove ${l.name} from cart`}
+                        onClick={() => setQuantity(l.id, 0)}
+                      >
+                        <Trash />
+                      </button>
+                    </div>
+                  ))}
+                <p className="cart-subtotal">
+                  Subtotal{" "}
+                  <span>
+                    {quantitySummary(
+                      cart.filter((l) => l.categoryName === category),
+                    )}
+                  </span>
+                </p>
+              </section>
+            ))}
+            <div className="cart-counts">
+              <p>
+                Products <span>{cart.length}</span>
+              </p>
+              {!!cart.length && (
+                <p>
+                  Quantity <span>{quantitySummary(cart)}</span>
+                </p>
+              )}
+            </div>
+            <label className="order-field">
+              Order date
+              <input
+                type="date"
+                name="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </label>
+            <label className="order-field">
+              Comments
+              <textarea
+                name="notes"
+                rows={3}
+                value={notes}
+                maxLength={1000}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </label>
+            {!!cart.length && <SubmitOrder>Submit order</SubmitOrder>}
+            <small className="order-muted">
+              Order numbers are assigned for each vendor and year when
+              submitted.
+            </small>
+          </aside>
+        </div>
       )}
-    </section>
+    </form>
   );
 }

@@ -725,6 +725,87 @@ async function main() {
   await saveOrderEditor(admin.id, historicalVendorEdit);
   assert.equal((await editorInput(historical.id)).vendorId, beer.id);
   assert.equal(await prisma.inventoryMovement.count(), historicalStockBefore);
+  const { cancelPurchaseOrder } = await import("../lib/order-cancellation");
+  const cancelPendingId = await newOrder();
+  const pendingVersion = (await editorInput(cancelPendingId)).updatedAt;
+  const cancellation = {
+    id: cancelPendingId,
+    updatedAt: pendingVersion,
+    reason: "Duplicate order",
+  };
+  await assert.rejects(
+    cancelPurchaseOrder(admin.id, { ...cancellation, reason: "  " }),
+  );
+  await assert.rejects(cancelPurchaseOrder(reader.id, cancellation));
+  await assert.rejects(
+    cancelPurchaseOrder(admin.id, { ...cancellation, updatedAt: "stale" }),
+  );
+  const beforePendingCancel = await prisma.inventoryMovement.count();
+  await cancelPurchaseOrder(admin.id, cancellation);
+  assert.equal(await prisma.inventoryMovement.count(), beforePendingCancel);
+  assert.equal(
+    (
+      await prisma.purchaseOrder.findUniqueOrThrow({
+        where: { id: cancelPendingId },
+      })
+    ).status,
+    "CANCELLED",
+  );
+  await assert.rejects(cancelPurchaseOrder(admin.id, cancellation));
+  const cancelReceivedId = await newOrder();
+  const cancelLine = await prisma.purchaseOrderLine.findFirstOrThrow({
+    where: { orderId: cancelReceivedId },
+  });
+  await finalizePurchaseOrder(admin.id, {
+    id: cancelReceivedId,
+    receivedDate: "2026-11-08",
+    taxIncluded: true,
+    gst: "0",
+    pst: "0",
+    lines: [{ id: cancelLine.id, quantity: "1", price: "20" }],
+  });
+  const receivedVersion = (await editorInput(cancelReceivedId)).updatedAt;
+  const receivedDeliveryLine = await prisma.purchaseOrderLine.findUniqueOrThrow(
+    { where: { id: cancelLine.id } },
+  );
+  const beforeReceivedCancel = await prisma.inventoryMovement.count();
+  await cancelPurchaseOrder(admin.id, {
+    id: cancelReceivedId,
+    updatedAt: receivedVersion,
+    reason: "Returned entire order",
+  });
+  assert.equal(
+    await prisma.inventoryMovement.count(),
+    beforeReceivedCancel + 1,
+  );
+  const reversedLine = await prisma.deliveryLine.findUniqueOrThrow({
+    where: { id: receivedDeliveryLine.deliveryLineId! },
+    include: { delivery: true },
+  });
+  assert.equal(reversedLine.active, false);
+  assert.ok(reversedLine.delivery.voidedAt);
+  const reversal = await prisma.inventoryMovement.findFirstOrThrow({
+    where: { notes: { contains: "Returned entire order" } },
+  });
+  assert.equal(
+    reversal.quantity.toString(),
+    cancelLine.unitsPerEntry.toString(),
+  );
+  assert.equal(reversal.sourceLocationId, bar.id);
+  assert.equal(reversal.destinationLocationId, null);
+  const beforeArchiveCancel = await prisma.inventoryMovement.count();
+  for (const cancelId of [historical.id, privateId]) {
+    await cancelPurchaseOrder(admin.id, {
+      id: cancelId,
+      updatedAt: (await editorInput(cancelId)).updatedAt,
+      reason: "Archive correction",
+    });
+  }
+  assert.equal(await prisma.inventoryMovement.count(), beforeArchiveCancel);
+  assert.equal(
+    await prisma.auditEvent.count({ where: { action: "ORDER_CANCELLED" } }),
+    4,
+  );
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",
   );

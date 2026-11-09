@@ -8,6 +8,7 @@ import { compareHistoryProducts } from "@/lib/purchase-order-history";
 import { receiptTotals } from "@/lib/purchase-order";
 import { receiveOrderAction } from "@/app/(protected)/orders/actions";
 import { OrderEditor, type OrderProductOption } from "./order-editor";
+import { CancelOrderDialog } from "./cancel-order-dialog";
 
 function ReceiptFiles({
   order,
@@ -129,6 +130,7 @@ function OrderCard({
   canManage: boolean;
   today: string;
 }) {
+  const [cancelling, setCancelling] = useState(false);
   const [editing, setEditing] = useState(false),
     [receiving, setReceiving] = useState(false);
   const [busy, start] = useTransition(),
@@ -202,12 +204,16 @@ function OrderCard({
         <time dateTime={order.orderDate || undefined}>
           {order.orderDate || "Date needs review"}
         </time>
-        <span className={`order-state ${pending ? "pending" : "received"}`}>
+        <span
+          className={`order-state ${pending ? "pending" : order.status === "CANCELLED" ? "cancelled" : "received"}`}
+        >
           {pending
             ? "Submitted"
             : order.status === "RECEIVED"
               ? "Received"
-              : order.status.toLowerCase()}
+              : order.status === "CANCELLED"
+                ? "Cancelled"
+                : order.status.toLowerCase()}
         </span>
         {order.isPrivate && (
           <span className="order-private-badge">Private</span>
@@ -220,6 +226,14 @@ function OrderCard({
             : "No receipt"}
         </span>
         <div className="order-card-actions">
+          {manageable && (
+            <button
+              className="btn-secondary"
+              onClick={() => setCancelling(true)}
+            >
+              Cancel order
+            </button>
+          )}
           {manageable && (
             <button className="btn-secondary" onClick={() => setEditing(true)}>
               Edit
@@ -483,7 +497,15 @@ function OrderCard({
           </p>
         )}
       </form>
+      {order.cancellationReason && (
+        <p className="order-cancellation-reason">
+          Cancelled: {order.cancellationReason}
+        </p>
+      )}
       <ReceiptFiles order={order} canManage={manageable} />
+      {cancelling && (
+        <CancelOrderDialog order={order} onClose={() => setCancelling(false)} />
+      )}
       {editing && (
         <OrderEditor
           order={order}
@@ -563,6 +585,7 @@ export function Orders({
             <option value="">All statuses</option>
             <option value="PENDING">Submitted</option>
             <option value="RECEIVED">Received</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
         </label>
         <label className="order-field">

@@ -10,11 +10,9 @@ const navigation = [
   ["Inventory", "/inventory"],
   ["Products", "/products"],
   ["Order", "/order"],
-  ["Orders", "/orders"],
-  ["Order History", "/order-history"],
-  ["Deliveries", "/deliveries"],
+  ["Orders List", "/orders"],
+  ["Order Summary", "/order-history"],
   ["Starter Shack", "/requests"],
-  ["Counts", "/counts"],
   ["History", "/history"],
   ["Admin", "/settings"],
 ] as const;

@@ -36,13 +36,13 @@ export default async function Page({
   return (
     <>
       <PageHeading
-        title="Orders"
+        title="Orders List"
         eyebrow="Purchasing"
         description="Review orders, attach receipts, and finalize quantities received."
       />
       <p>
         <Link href="/order">New order</Link> ·{" "}
-        <Link href="/order-history">Order history</Link>
+        <Link href="/order-history">Order Summary</Link>
       </p>
       {query.error && (
         <p className="notice error" role="alert">

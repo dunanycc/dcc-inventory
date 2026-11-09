@@ -29,12 +29,14 @@ export function InventoryCategoryTabs({
   selectedLocation,
   categories,
   canSetOpening,
+  canUpdateInventory = false,
   initialCategoryId,
 }: {
   locations: InventoryLocationOption[];
   selectedLocation: InventoryLocationOption;
   categories: InventoryCategoryRow[];
   canSetOpening: boolean;
+  canUpdateInventory?: boolean;
   initialCategoryId?: string;
 }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(
@@ -105,15 +107,25 @@ export function InventoryCategoryTabs({
                 {selectedLocation.name}
               </p>
             </div>
-            {canSetOpening && (
-              <button
-                className="btn-secondary"
-                onClick={() => setShowOpening((value) => !value)}
-                type="button"
-              >
-                {showOpening ? "Cancel" : "Set opening inventory"}
-              </button>
-            )}
+            <div className="inventory-toolbar-actions">
+              {canUpdateInventory && (
+                <Link
+                  className="btn-secondary"
+                  href={`/counts?location=${selectedLocation.code}`}
+                >
+                  Update inventory
+                </Link>
+              )}
+              {canSetOpening && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowOpening((value) => !value)}
+                  type="button"
+                >
+                  {showOpening ? "Cancel" : "Set opening inventory"}
+                </button>
+              )}
+            </div>
           </div>
           {showOpening && (
             <form

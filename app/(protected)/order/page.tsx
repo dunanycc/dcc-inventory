@@ -33,8 +33,8 @@ export default async function Page() {
         eyebrow="Purchasing"
       />
       <p>
-        <Link href="/orders">View orders</Link> ·{" "}
-        <Link href="/order-history">Order history</Link>
+        <Link href="/orders">Orders List</Link> ·{" "}
+        <Link href="/order-history">Order Summary</Link>
       </p>
       {hasPermission(actor.role, "operations:post") ? (
         <NewOrder

@@ -10,10 +10,16 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import { Orders } from "./orders";
 import { NewOrder } from "./new-order";
 import type { OrderRow } from "@/lib/purchase-order-queries";
-import { saveOrderEditorAction } from "@/app/(protected)/orders/actions";
+import {
+  cancelOrderAction,
+  saveOrderEditorAction,
+} from "@/app/(protected)/orders/actions";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/app/(protected)/orders/actions", () => ({
   createOrderAction: vi.fn(),
+  cancelOrderAction: vi
+    .fn()
+    .mockResolvedValue({ ok: true, message: "Cancelled." }),
   finalizeOrderAction: vi.fn(),
   editOrderAction: vi.fn(),
   saveOrderEditorAction: vi
@@ -200,19 +206,30 @@ describe("orders workspace", () => {
       />,
     );
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole("combobox", { name: "Vendor" }), {
-      target: { value: "saq" },
-    });
-    fireEvent.change(
-      screen.getByRole("spinbutton", { name: "Quantity for Red wine" }),
-      { target: { value: "2" } },
+    fireEvent.click(screen.getByRole("button", { name: "SAQ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Red wine" }));
+    fireEvent.click(screen.getByRole("button", { name: "Increase Red wine" }));
+    expect(screen.getByLabelText("Quantity for Red wine")).toHaveTextContent(
+      "2",
     );
-    expect(screen.getByText("1 products selected")).toBeInTheDocument();
-    fireEvent.change(screen.getByRole("combobox", { name: "Vendor" }), {
-      target: { value: "beer" },
-    });
+    expect(
+      within(
+        screen.getByRole("complementary", { name: "Order in progress" }),
+      ).getByText("Red wine"),
+    ).toBeInTheDocument();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    expect(
+      fireEvent.submit(
+        screen.getByRole("button", { name: "Submit order" }).closest("form")!,
+      ),
+    ).toBe(false);
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("2 CASE"));
+    confirm.mockRestore();
+    fireEvent.click(screen.getByRole("button", { name: "Beer" }));
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
-    expect(screen.getByText("0 products selected")).toBeInTheDocument();
+    expect(
+      screen.getByText("Add products to start this order."),
+    ).toBeInTheDocument();
   });
   it("defaults tax included, enables manual taxes when unchecked, and totals received units", () => {
     render(
@@ -299,9 +316,7 @@ it("switches to manual private products for the selected vendor", () => {
       ]}
     />,
   );
-  fireEvent.change(screen.getByRole("combobox", { name: "Vendor" }), {
-    target: { value: "saq" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "SAQ" }));
   fireEvent.click(screen.getByRole("switch", { name: "Private order" }));
   expect(screen.queryByText("Inventory red")).not.toBeInTheDocument();
   fireEvent.change(screen.getByRole("textbox", { name: "Private product 1" }), {
@@ -322,7 +337,7 @@ it("switches to manual private products for the selected vendor", () => {
   );
   expect(screen.getByLabelText("Private quantity 1")).toHaveTextContent("3");
   const form = screen
-    .getByRole("button", { name: "Save order" })
+    .getByRole("button", { name: "Submit order" })
     .closest("form")!;
   const data = new FormData(form);
   expect(data.get("vendorId")).toBe("saq");
@@ -349,6 +364,38 @@ it("switches to manual private products for the selected vendor", () => {
     screen.getByRole("button", { name: "Add quantity for private product 1" }),
   ).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Save order" }),
+    screen.queryByRole("button", { name: "Submit order" }),
   ).not.toBeInTheDocument();
+});
+
+it("requires a cancellation reason and explicit confirmation", async () => {
+  vi.mocked(cancelOrderAction).mockClear();
+  render(<Orders orders={[order]} vendors={[]} canManage today="2026-11-08" />);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel order" }));
+  const dialog = within(screen.getByRole("dialog", { name: "Cancel order" }));
+  expect(
+    dialog.getByRole("button", { name: "Confirm cancellation" }),
+  ).toBeDisabled();
+  fireEvent.change(
+    dialog.getByRole("textbox", { name: "Reason for cancellation" }),
+    { target: { value: "  " } },
+  );
+  expect(
+    dialog.getByRole("button", { name: "Confirm cancellation" }),
+  ).toBeDisabled();
+  fireEvent.change(
+    dialog.getByRole("textbox", { name: "Reason for cancellation" }),
+    { target: { value: "Duplicate purchase" } },
+  );
+  fireEvent.click(dialog.getByRole("button", { name: "Confirm cancellation" }));
+  await waitFor(() =>
+    expect(cancelOrderAction).toHaveBeenCalledWith({
+      id: order.id,
+      updatedAt: order.updatedAt,
+      reason: "Duplicate purchase",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
 });

@@ -2,6 +2,7 @@ import { caseHistoryCategory } from "./purchase-order-history";
 import { inventoryQuantityScale } from "./quantity-policy";
 import { prisma } from "./prisma";
 import { CATEGORY_ORDER_BY } from "./category-management";
+import { cancellationReason } from "./order-cancellation";
 export async function orderRows(
   where: { vendorId?: string; year?: number; id?: string } = {},
 ) {
@@ -51,6 +52,7 @@ export async function orderRows(
     gst: o.gst.toString(),
     pst: o.pst.toString(),
     legacyData: undefined,
+    cancellationReason: cancellationReason(o.legacyData),
     lines: o.lines.map((l) => ({
       ...l,
       historyCategoryOrder:
