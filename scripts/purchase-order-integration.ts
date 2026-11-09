@@ -900,6 +900,70 @@ async function main() {
       ),
     Number(crossYearLine.unitsPerEntry),
   );
+  const { correctCountHistory, countHistoryRevision } =
+    await import("../lib/count-history-correction");
+  const historicalCount = await prisma.inventoryCount.findFirstOrThrow({
+    where: { locationId: bar.id, countDate: new Date("2025-10-01T00:00:00Z") },
+    include: { lines: true },
+  });
+  const historicalCorrection = {
+    countId: historicalCount.id,
+    revision: countHistoryRevision(historicalCount.lines),
+    reason: "Historical count correction test",
+    entries: [{ productId: product.id, quantity: "0" }],
+  };
+  const correctionsStockBefore = JSON.stringify(
+    await prisma.inventoryMovement.findMany({ orderBy: { id: "asc" } }),
+  );
+  await assert.rejects(correctCountHistory(reader.id, historicalCorrection));
+  await assert.rejects(
+    correctCountHistory(admin.id, { ...historicalCorrection, reason: " " }),
+  );
+  await assert.rejects(
+    correctCountHistory(admin.id, {
+      ...historicalCorrection,
+      entries: [{ productId: product.id, quantity: "0.25" }],
+    }),
+  );
+  await correctCountHistory(admin.id, historicalCorrection);
+  await assert.rejects(correctCountHistory(admin.id, historicalCorrection));
+  const correctedCount = await prisma.inventoryCount.findUniqueOrThrow({
+    where: { id: historicalCount.id },
+    include: { lines: true },
+  });
+  assert.equal(correctedCount.lines[0].countedQuantity!.toString(), "0");
+  await correctCountHistory(admin.id, {
+    ...historicalCorrection,
+    revision: countHistoryRevision(correctedCount.lines),
+    entries: [{ productId: liquor.id, quantity: "1.25" }],
+  });
+  const missingAdded = await prisma.inventoryCountLine.findUniqueOrThrow({
+    where: {
+      inventoryCountId_productId: {
+        inventoryCountId: historicalCount.id,
+        productId: liquor.id,
+      },
+    },
+  });
+  assert.equal(missingAdded.countedQuantity!.toString(), "1.25");
+  assert.equal(
+    JSON.stringify(
+      await prisma.inventoryMovement.findMany({ orderBy: { id: "asc" } }),
+    ),
+    correctionsStockBefore,
+  );
+  assert.equal(
+    await prisma.auditEvent.count({
+      where: { action: "COUNT_HISTORY_CORRECTED" },
+    }),
+    2,
+  );
+  const correctedSources = await executiveSources(2025, 2026);
+  assert.equal(
+    correctedSources.stocks.find((row) => row.productId === product.id)!
+      .remaining,
+    "0",
+  );
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",
   );

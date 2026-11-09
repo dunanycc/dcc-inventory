@@ -1,3 +1,4 @@
+import { countHistoryRevision } from "@/lib/count-history-correction";
 import Link from "next/link";
 import { inventoryQuantityScale } from "@/lib/quantity-policy";
 import { connection } from "next/server";
@@ -125,7 +126,14 @@ export default async function CountsPage({
               countedQuantity: true,
               difference: true,
               product: {
-                select: { name: true, stockUnit: true, stockUnitLabel: true },
+                select: {
+                  name: true,
+                  stockUnit: true,
+                  stockUnitLabel: true,
+                  allowFractionalStock: true,
+                  quantityScale: true,
+                  category: { select: { name: true } },
+                },
               },
             },
           },
@@ -224,6 +232,7 @@ export default async function CountsPage({
 
   const historyRows: CountHistoryRow[] = history.map((count) => ({
     id: count.id,
+    revision: countHistoryRevision(count.lines),
     countDate: count.countDate.toISOString().slice(0, 10),
     status: count.status,
     notes: count.notes,
@@ -235,6 +244,7 @@ export default async function CountsPage({
     lines: count.lines.map((line) => ({
       productId: line.productId,
       productName: line.product.name,
+      quantityScale: inventoryQuantityScale(line.product),
       unitLabel: unitLabel(line.product),
       expectedQuantity: line.expectedQuantity.toString(),
       countedQuantity: line.countedQuantity?.toString() ?? null,

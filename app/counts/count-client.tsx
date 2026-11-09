@@ -1,5 +1,6 @@
 "use client";
 
+import { CountHistoryEditor } from "./count-history-editor";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useMemo, useState } from "react";
@@ -39,6 +40,7 @@ export type ActiveDraft = {
 };
 
 export type CountHistoryLine = {
+  quantityScale?: number;
   productId: string;
   productName: string;
   unitLabel: string;
@@ -48,6 +50,7 @@ export type CountHistoryLine = {
 };
 
 export type CountHistoryRow = {
+  revision?: string;
   id: string;
   countDate: string;
   status: "DRAFT" | "ACCEPTED" | "CANCELLED";
@@ -157,6 +160,8 @@ export function CountWorkspace({
         </section>
       )}
       <CountHistoryList
+        canEdit={canAccept}
+        products={seasonOpening.entries}
         history={history}
         locationName={selectedLocation.name}
       />
@@ -541,16 +546,28 @@ function DraftCountEntry({
 }
 
 function CountHistoryList({
+  canEdit,
+  products,
   history,
   locationName,
 }: {
   history: CountHistoryRow[];
   locationName: string;
+  canEdit: boolean;
+  products: SeasonOpeningEntry[];
 }) {
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<CountHistoryRow | null>(null);
   return (
     <section className="count-history">
       <h2>Count history — {locationName}</h2>
+      {editing && (
+        <CountHistoryEditor
+          count={editing}
+          products={products}
+          onClose={() => setEditing(null)}
+        />
+      )}
       {history.length === 0 ? (
         <p className="muted">No Counts have been recorded yet.</p>
       ) : (
@@ -583,6 +600,15 @@ function CountHistoryList({
                   {count.status === "ACCEPTED" ? differenceCount : "—"}
                 </span>
               </div>
+              {canEdit && count.status === "ACCEPTED" && (
+                <button
+                  className="btn-secondary compact-action"
+                  type="button"
+                  onClick={() => setEditing(count)}
+                >
+                  Edit
+                </button>
+              )}
               <button
                 className="btn-secondary compact-action"
                 onClick={() => setViewingId(isViewing ? null : count.id)}

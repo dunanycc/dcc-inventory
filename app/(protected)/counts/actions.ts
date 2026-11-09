@@ -447,3 +447,31 @@ export async function acceptCountAction(formData: FormData) {
   }
   redirect(target);
 }
+
+export async function correctCountHistoryAction(
+  input: import("@/lib/count-history-correction").CountCorrectionInput,
+) {
+  try {
+    const actor = await currentUser();
+    if (!actor) throw new Error("Sign in to correct counts.");
+    const { correctCountHistory } =
+      await import("@/lib/count-history-correction");
+    const changed = await correctCountHistory(actor.id, input);
+    revalidatePath("/settings/counts");
+    revalidatePath("/history");
+    return {
+      ok: true,
+      message: changed
+        ? "Historical count corrected. Current inventory is unchanged."
+        : "No quantities changed.",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error && !("code" in error)
+          ? error.message
+          : "Count could not be corrected. Reload and try again.",
+    };
+  }
+}

@@ -1337,3 +1337,18 @@ summary:focus-visible {
   color: var(--muted);
   font-size: 12px;
 }
+.count-history-edit-table {
+  max-height: 55vh;
+  margin: 16px 0;
+}
+.count-history-edit-table input {
+  width: 140px;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.count-history-edit-table small {
+  display: block;
+  color: var(--muted);
+}

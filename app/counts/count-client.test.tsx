@@ -181,3 +181,37 @@ describe("CountWorkspace season opening panel", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+it("offers historical count editing only to users who can accept counts", () => {
+  const history = [
+    {
+      id: "accepted",
+      revision: "version",
+      countDate: "2026-11-08",
+      status: "ACCEPTED" as const,
+      notes: null,
+      createdBy: "Manager",
+      acceptedBy: "Manager",
+      acceptedAt: null,
+      lines: [],
+    },
+  ];
+  const props = {
+    canSetSeasonOpening: false,
+    canEditDraft: false,
+    draft: null,
+    history,
+    locations: [location],
+    selectedLocation: location,
+    seasonOpening: { year: 2026, entries: [] },
+  };
+  const { rerender } = render(<CountWorkspace {...props} canAccept={false} />);
+  expect(
+    screen.queryByRole("button", { name: "Edit" }),
+  ).not.toBeInTheDocument();
+  rerender(<CountWorkspace {...props} canAccept />);
+  fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+  expect(
+    screen.getByRole("dialog", { name: "Edit historical count — 2026-11-08" }),
+  ).toBeInTheDocument();
+});

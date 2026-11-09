@@ -25,3 +25,9 @@ Historical opening balances can be corrected through Admin → Counts → Season
 Zero-value product rows are hidden by default; Show zero-value products includes them. Nonzero quantities, orders or costs remain visible, as do missing stock boundaries that need review. PDF and CSV exports follow this checkbox setting.
 
 Display formatting uses 0 for empty quantities and $0.00 for empty currency values. Missing source values or unavailable averages carry an asterisk in the report/PDF and explicit field notes in CSV. Stored values and calculation completeness are unchanged; intentional Club total quantity omissions remain blank.
+
+## Correcting an accepted historical count
+
+In Admin → Counts → Count history, choose Edit on an accepted count. Existing values are prefilled and eligible products absent from that count are available with blank quantities. Enter only the changes needed, including explicit zero values, and provide a correction reason. Blank fields leave saved history unchanged.
+
+Historical corrections update counted quantities and their comparisons to the original expected quantities. The original count date, acceptance details and inventory movements remain intact; current stock is not adjusted. Each change is audited with its before/after values and reason. Concurrent edits require reloading the count. Accepted seasonal ending corrections update historical consumption and prior-year Executive reports; the current-year Executive view continues to use live stock for its remaining quantities.
