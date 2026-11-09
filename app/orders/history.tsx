@@ -26,6 +26,7 @@ export function OrderHistory({
   const [busy, start] = useTransition();
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [extra, setExtra] = useState(0);
+  const [removedColumns, setRemovedColumns] = useState<number[]>([]);
   const router = useRouter();
   const priority = ["saq", "beer", "groceries"];
   const sections = [...vendors]
@@ -46,7 +47,10 @@ export function OrderHistory({
     orders: orders.filter((o) => o.isPrivate),
   });
   const count = Math.max(5, ...orders.map((o) => o.number)) + extra;
-  const columns = Array.from({ length: count }, (_, i) => i + 1);
+  const occupiedColumns = new Set(orders.map((order) => order.number));
+  const columns = Array.from({ length: count }, (_, i) => i + 1).filter(
+    (n) => !removedColumns.includes(n) || occupiedColumns.has(n),
+  );
   function move(id: string, position: number) {
     if (busy) return;
     start(async () => {
@@ -139,6 +143,18 @@ export function OrderHistory({
               {columns.map((n) => (
                 <th key={n} className="order-column-number">
                   #{n}
+                  {canManage && !occupiedColumns.has(n) && (
+                    <button
+                      type="button"
+                      className="order-remove-column"
+                      aria-label={`Remove empty column ${n}`}
+                      title="Remove empty column"
+                      disabled={busy}
+                      onClick={() => setRemovedColumns((old) => [...old, n])}
+                    >
+                      ×
+                    </button>
+                  )}
                 </th>
               ))}
               <th className="order-history-total">Total</th>
@@ -214,9 +230,11 @@ export function OrderHistory({
                                           return;
                                         e.preventDefault();
                                         const next =
-                                          o.number +
-                                          (e.key === "ArrowLeft" ? -1 : 1);
-                                        if (next >= 1 && next <= 1000)
+                                          columns[
+                                            columns.indexOf(o.number) +
+                                              (e.key === "ArrowLeft" ? -1 : 1)
+                                          ];
+                                        if (next !== undefined)
                                           move(o.id, next);
                                       }}
                                     >
