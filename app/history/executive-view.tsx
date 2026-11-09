@@ -1,5 +1,6 @@
 "use client";
 import { Fragment, useState } from "react";
+import { executiveCsv } from "@/lib/executive-report-export";
 import type { OrderRow } from "@/lib/purchase-order-queries";
 import {
   executiveRows,
@@ -16,7 +17,15 @@ const money = (value: string | null) =>
   value === null
     ? "Unavailable"
     : `$${Number(value).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-function Total({ rows, label }: { rows: ExecutiveRow[]; label: string }) {
+function Total({
+  rows,
+  label,
+  clubTotal = false,
+}: {
+  rows: ExecutiveRow[];
+  label: string;
+  clubTotal?: boolean;
+}) {
   const t = executiveSubtotal(rows);
   const quantities = (
     field: "ordered" | "received" | "opening" | "remaining" | "consumed",
@@ -31,12 +40,14 @@ function Total({ rows, label }: { rows: ExecutiveRow[]; label: string }) {
     <tr className="executive-subtotal">
       <th scope="row">{label}</th>
       <td>{t.orders}</td>
-      <td>{quantities("ordered")}</td>
-      <td>{quantities("received")}</td>
-      <td>{quantities("opening") || "—"}</td>
-      <td>{quantities("consumed") || "—"}</td>
-      <td>{quantities("remaining") || "—"}</td>
-      <td>{t.averageCost === null ? "—" : money(t.averageCost)}</td>
+      <td>{clubTotal ? "" : quantities("ordered")}</td>
+      <td>{clubTotal ? "" : quantities("received")}</td>
+      <td>{clubTotal ? "" : quantities("opening") || "—"}</td>
+      <td>{clubTotal ? "" : quantities("consumed") || "—"}</td>
+      <td>{clubTotal ? "" : quantities("remaining") || "—"}</td>
+      <td>
+        {clubTotal ? "" : t.averageCost === null ? "—" : money(t.averageCost)}
+      </td>
       <td>
         {money(t.totalCost)}
         {t.totalCost === null && <small>Known: {money(t.knownCost)}</small>}
@@ -73,6 +84,11 @@ export function ExecutiveView({
   const selected = [...vendors.map((v) => v.id), "private"].filter(
     (id) => !hidden.includes(id),
   );
+  const [exporting, setExporting] = useState(false),
+    [exportError, setExportError] = useState("");
+  const selectedNames = [...sections, { id: "private", name: "Private" }]
+    .filter((v) => !hidden.includes(v.id))
+    .map((v) => v.name);
   const rows = executiveRows(orders, products, stocks, selected);
   return (
     <section className="order-panel executive-view">
@@ -112,6 +128,55 @@ export function ExecutiveView({
           ))}
         </div>
       </div>
+      <div className="executive-export-actions">
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={!rows.length || exporting}
+          onClick={() => {
+            const blob = new Blob([executiveCsv(rows, year, selectedNames)], {
+              type: "text/csv;charset=utf-8",
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `dcc-executive-${year}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }}
+        >
+          Export CSV
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={!rows.length || exporting}
+          onClick={async () => {
+            setExporting(true);
+            setExportError("");
+            try {
+              const { executivePdf } =
+                await import("@/lib/executive-report-pdf");
+              executivePdf(rows, year, selectedNames).save(
+                `dcc-executive-${year}.pdf`,
+              );
+            } catch {
+              setExportError("PDF export failed. Please try again.");
+            } finally {
+              setExporting(false);
+            }
+          }}
+        >
+          {exporting ? "Preparing PDF…" : "Export PDF"}
+        </button>
+        <small>
+          Exports include all products in the selected filters, including
+          collapsed categories.
+        </small>
+      </div>
+      {exportError && <p role="alert">{exportError}</p>}
       <p className="executive-description">
         {year === currentYear
           ? `${year} year to date · remaining units use current tracked stock.`
@@ -148,7 +213,7 @@ export function ExecutiveView({
                 <thead>
                   <tr>
                     {[
-                      "Product / unit",
+                      "Product",
                       "Orders",
                       "Units ordered",
                       "Units received",
@@ -194,13 +259,10 @@ export function ExecutiveView({
                           categoryRows.map((row) => (
                             <tr key={row.key}>
                               <th scope="row">
-                                {row.name}{" "}
-                                <small>
-                                  {row.unit.toLowerCase()}
-                                  {!row.productId && !row.isPrivate
-                                    ? " · archived label"
-                                    : ""}
-                                </small>
+                                {row.name}
+                                {!row.productId && !row.isPrivate && (
+                                  <small>Archived label</small>
+                                )}
                               </th>
                               <td>{row.orders.length}</td>
                               <td>{quantity(row.ordered)}</td>
@@ -244,6 +306,7 @@ export function ExecutiveView({
                 <tfoot>
                   <Total
                     rows={group}
+                    clubTotal={!isPrivate}
                     label={isPrivate ? "Private total" : "Club total"}
                   />
                 </tfoot>

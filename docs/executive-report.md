@@ -13,3 +13,9 @@ The view shows distinct orders per product, ordered stock units, received stock 
 - Order counts are distinct within each product/category/total. Category order counts are not sums of product counts. Quantity subtotals retain separate units instead of adding bottles, cans and kegs together; mixed-unit average costs are omitted.
 
 Negative consumption is flagged for review. It can indicate receipts absent from purchase history, incorrect opening quantities, or inconsistent remaining stock. This view does not change source data or guess missing prices/balances. The current-year view is year to date rather than a frozen closing report.
+
+## Display and exports
+
+Product rows show the name without a can/bottle format label. All numeric columns are right-aligned. Club total retains distinct orders and purchase cost; quantity and average-unit-cost summaries are omitted there.
+
+Export CSV and Export PDF use the selected year and vendor filters, include all filtered products even when categories are collapsed, and preserve report ordering and subtotals. CSV provides numeric product values plus section/category/row-type metadata, known cost and review notes; blanks are not converted to zero. Formula-like text is escaped for spreadsheet safety. PDF is a downloadable landscape report with repeated headings and page numbers. Exports are generated in the browser without sending report data to a third-party export service.

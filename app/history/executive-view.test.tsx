@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { ExecutiveView } from "./executive-view";
 afterEach(cleanup);
@@ -34,11 +40,26 @@ it("offers the Order Summary year and vendor controls, recomputing visible produ
     screen.getByRole("columnheader", { name: "Units consumed" }),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole("rowheader", { name: "Red wine bottle" }),
+    screen.getByRole("rowheader", { name: "Red wine" }),
   ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Export PDF" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Export CSV" }),
+  ).toBeInTheDocument();
+  const clubTotal = screen
+    .getByRole("rowheader", { name: "Club total" })
+    .closest("tr")!;
+  expect(
+    within(clubTotal)
+      .getAllByRole("cell")
+      .slice(1, 7)
+      .every((cell) => cell.textContent === ""),
+  ).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "SAQ" }));
   expect(
-    screen.queryByRole("rowheader", { name: "Red wine bottle" }),
+    screen.queryByRole("rowheader", { name: "Red wine" }),
   ).not.toBeInTheDocument();
   expect(
     screen.getByText("No products match these vendor filters."),
@@ -46,7 +67,7 @@ it("offers the Order Summary year and vendor controls, recomputing visible produ
   fireEvent.click(screen.getByRole("button", { name: "SAQ" }));
   fireEvent.click(screen.getByRole("button", { name: "Wine" }));
   expect(
-    screen.queryByRole("rowheader", { name: "Red wine bottle" }),
+    screen.queryByRole("rowheader", { name: "Red wine" }),
   ).not.toBeInTheDocument();
   expect(
     screen.getByRole("rowheader", { name: "Wine subtotal" }),

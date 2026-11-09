@@ -1322,3 +1322,18 @@ summary:focus-visible {
 .executive-warning {
   color: #9c3b1c;
 }
+.executive-table td,
+.executive-table thead th:not(:first-child) {
+  text-align: right;
+}
+.executive-export-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.executive-export-actions small {
+  color: var(--muted);
+  font-size: 12px;
+}
