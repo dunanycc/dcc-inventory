@@ -833,6 +833,73 @@ async function main() {
   const zeroMovements = await prisma.inventoryMovement.count();
   await setInventory(admin.id, setInput);
   assert.equal(await prisma.inventoryMovement.count(), zeroMovements);
+  const { executiveSources } = await import("../lib/executive-report-query");
+  for (const [date, quantity] of [
+    ["2025-05-01", "9"],
+    ["2025-10-01", "7"],
+    ["2026-05-01", "5"],
+    ["2026-10-01", "4"],
+  ]) {
+    await prisma.inventoryCount.create({
+      data: {
+        locationId: bar.id,
+        countDate: new Date(`${date}T00:00:00Z`),
+        status: "ACCEPTED",
+        createdById: admin.id,
+        acceptedById: admin.id,
+        acceptedAt: new Date(),
+        lines: {
+          create: {
+            productId: product.id,
+            expectedQuantity: quantity,
+            countedQuantity: quantity,
+          },
+        },
+      },
+    });
+  }
+  const priorExecutive = await executiveSources(2025, 2026);
+  assert.deepEqual(
+    (({ productId, opening, remaining }) => ({
+      productId,
+      opening,
+      remaining,
+    }))(priorExecutive.stocks.find((row) => row.productId === product.id)!),
+    { productId: product.id, opening: "9", remaining: "7" },
+  );
+  const currentExecutive = await executiveSources(2026, 2026);
+  assert.deepEqual(
+    (({ productId, opening, remaining }) => ({
+      productId,
+      opening,
+      remaining,
+    }))(currentExecutive.stocks.find((row) => row.productId === product.id)!),
+    { productId: product.id, opening: "5", remaining: "0" },
+  );
+  const crossYearOrder = await newOrder(admin.id, vendor.id, "2025-12-20");
+  const crossYearLine = await prisma.purchaseOrderLine.findFirstOrThrow({
+    where: { orderId: crossYearOrder },
+  });
+  await finalizePurchaseOrder(admin.id, {
+    id: crossYearOrder,
+    receivedDate: "2026-01-05",
+    taxIncluded: true,
+    gst: "0",
+    pst: "0",
+    lines: [{ id: crossYearLine.id, quantity: "1", price: "24" }],
+  });
+  const crossYearSources = await executiveSources(2026, 2026);
+  assert.equal(
+    Number(
+      crossYearSources.stocks.find((row) => row.productId === product.id)!
+        .receivedForConsumption,
+    ) -
+      Number(
+        currentExecutive.stocks.find((row) => row.productId === product.id)!
+          .receivedForConsumption,
+      ),
+    Number(crossYearLine.unitsPerEntry),
+  );
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",
   );

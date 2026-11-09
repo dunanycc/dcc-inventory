@@ -1254,3 +1254,71 @@ summary:focus-visible {
   grid-column: 3;
   width: 44px;
 }
+.executive-toolbar {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.executive-toolbar .order-filters {
+  margin: 0;
+}
+.executive-description {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.executive-section {
+  margin-top: 20px;
+}
+.executive-section h2 {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 12px 0;
+}
+.executive-table {
+  width: 100%;
+  table-layout: fixed;
+  min-width: 1100px;
+}
+.executive-product-column {
+  width: 22%;
+}
+.executive-table th[scope="row"] {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.executive-table td {
+  font-variant-numeric: tabular-nums;
+}
+.executive-table small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.executive-table :is(th, td) {
+  overflow-wrap: anywhere;
+}
+.executive-table .executive-category th {
+  background: var(--green-100);
+}
+.executive-category button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.executive-table .executive-subtotal > * {
+  background: var(--surface-subtle);
+  font-weight: 500;
+  font-size: 12px;
+}
+.executive-table tfoot .executive-subtotal > * {
+  border-top: 2px solid var(--line);
+}
+.executive-warning {
+  color: #9c3b1c;
+}

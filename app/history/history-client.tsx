@@ -60,14 +60,18 @@ export function HistoryWorkspace({
   categories,
   products,
   seasons,
+  executive,
+  initialView,
 }: {
   categories: string[];
   products: ProductHistory[];
   seasons: number[];
+  executive?: React.ReactNode;
+  initialView?: string;
 }) {
-  const [tab, setTab] = useState<"consumption" | "overview" | "review">(
-    "consumption",
-  );
+  const [tab, setTab] = useState<
+    "consumption" | "overview" | "review" | "executive"
+  >(initialView === "executive" ? "executive" : "consumption");
 
   const incompleteProducts = useMemo(
     () =>
@@ -84,6 +88,15 @@ export function HistoryWorkspace({
         role="tablist"
         aria-label="Stock history views"
       >
+        {executive && (
+          <button
+            type="button"
+            className={tab === "executive" ? "active" : ""}
+            onClick={() => setTab("executive")}
+          >
+            Executive view
+          </button>
+        )}
         <button
           className={tab === "consumption" ? "active" : ""}
           onClick={() => setTab("consumption")}
@@ -109,6 +122,7 @@ export function HistoryWorkspace({
           )}
         </button>
       </div>
+      {tab === "executive" && executive}
       {tab === "consumption" && (
         <ConsumptionTab categories={categories} products={products} />
       )}
