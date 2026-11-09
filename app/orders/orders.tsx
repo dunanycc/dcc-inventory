@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
 import { receivedQuantityScale } from "@/lib/quantity-policy";
@@ -532,6 +532,89 @@ function OrderCard({
     </article>
   );
 }
+function CheckboxFilter({
+  label,
+  options,
+  selected,
+  onChange,
+  allLabel,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange(values: string[]): void;
+  allLabel: string;
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (event: PointerEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node))
+        ref.current.open = false;
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, []);
+  const all =
+    options.length > 0 &&
+    options.every((option) => selected.includes(option.value));
+  const summary =
+    all && options.length > 1
+      ? allLabel
+      : selected.length
+        ? options
+            .filter((option) => selected.includes(option.value))
+            .map((option) => option.label)
+            .join(", ")
+        : "None selected";
+  return (
+    <div className="order-field order-checkbox-filter">
+      <span>{label}</span>
+      <details
+        ref={ref}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            ref.current!.open = false;
+            ref.current?.querySelector("summary")?.focus();
+          }
+        }}
+      >
+        <summary aria-label={`${label}: ${summary}`}>{summary}</summary>
+        <div
+          className="order-filter-options"
+          role="group"
+          aria-label={`${label} selections`}
+        >
+          <label>
+            <input
+              type="checkbox"
+              checked={all}
+              onChange={() =>
+                onChange(all ? [] : options.map((option) => option.value))
+              }
+            />
+            {allLabel}
+          </label>
+          {options.map((option) => (
+            <label key={option.value}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option.value)}
+                onChange={() =>
+                  onChange(
+                    selected.includes(option.value)
+                      ? selected.filter((value) => value !== option.value)
+                      : [...selected, option.value],
+                  )
+                }
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+}
 export function Orders({
   orders,
   vendors,
@@ -545,25 +628,38 @@ export function Orders({
   canManage: boolean;
   today: string;
 }) {
-  const [vendor, setVendor] = useState(""),
-    [status, setStatus] = useState(""),
-    [kind, setKind] = useState("");
-  const [year, setYear] = useState(
-    orders.length !== 1 &&
-      orders.some((o) => String(o.year) === today.slice(0, 4))
-      ? today.slice(0, 4)
-      : "",
+  const vendorOptions = [
+    ...new Map(
+      [
+        ...vendors,
+        ...orders.map((order) => ({
+          id: order.vendorId,
+          name: order.vendorName,
+        })),
+      ].map((vendor) => [vendor.id, { value: vendor.id, label: vendor.name }]),
+    ).values(),
+  ];
+  const [vendor, setVendor] = useState(() =>
+    vendorOptions.map((option) => option.value),
   );
-  const years = [...new Set(orders.map((o) => String(o.year)))]
+  const [status, setStatus] = useState(["PENDING", "RECEIVED"]);
+  const [kind, setKind] = useState(["inventory", "private"]);
+  const [year, setYear] = useState([today.slice(0, 4)]);
+  const years = [
+    ...new Set([
+      today.slice(0, 4),
+      ...orders.map((order) => String(order.year)),
+    ]),
+  ]
     .sort()
     .reverse();
   const filtered = orders
     .filter(
       (o) =>
-        (!vendor || o.vendorId === vendor) &&
-        (!status || o.status === status) &&
-        (!kind || (kind === "private" ? o.isPrivate : !o.isPrivate)) &&
-        (!year || String(o.year) === year),
+        vendor.includes(o.vendorId) &&
+        status.includes(o.status) &&
+        kind.includes(o.isPrivate ? "private" : "inventory") &&
+        year.includes(String(o.year)),
     )
     .sort(
       (a, b) =>
@@ -574,43 +670,41 @@ export function Orders({
   return (
     <>
       <div className="order-filters">
-        <label className="order-field">
-          Vendor
-          <select value={vendor} onChange={(e) => setVendor(e.target.value)}>
-            <option value="">All vendors</option>
-            {vendors.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="order-field">
-          Year
-          <select value={year} onChange={(e) => setYear(e.target.value)}>
-            <option value="">All years</option>
-            {years.map((y) => (
-              <option key={y}>{y}</option>
-            ))}
-          </select>
-        </label>
-        <label className="order-field">
-          Status
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">All statuses</option>
-            <option value="PENDING">Submitted</option>
-            <option value="RECEIVED">Received</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
-        </label>
-        <label className="order-field">
-          Order type
-          <select value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="">All orders</option>
-            <option value="inventory">Inventory</option>
-            <option value="private">Private</option>
-          </select>
-        </label>
+        <CheckboxFilter
+          label="Vendor"
+          options={vendorOptions}
+          selected={vendor}
+          onChange={setVendor}
+          allLabel="All vendors"
+        />
+        <CheckboxFilter
+          label="Year"
+          options={years.map((value) => ({ value, label: value }))}
+          selected={year}
+          onChange={setYear}
+          allLabel="All years"
+        />
+        <CheckboxFilter
+          label="Status"
+          options={[
+            { value: "PENDING", label: "Submitted" },
+            { value: "RECEIVED", label: "Received" },
+            { value: "CANCELLED", label: "Cancelled" },
+          ]}
+          selected={status}
+          onChange={setStatus}
+          allLabel="All statuses"
+        />
+        <CheckboxFilter
+          label="Order type"
+          options={[
+            { value: "inventory", label: "Inventory" },
+            { value: "private", label: "Private" },
+          ]}
+          selected={kind}
+          onChange={setKind}
+          allLabel="All orders"
+        />
       </div>
       {!filtered.length && <p>No orders match this view.</p>}
       {filtered.map((o) => (

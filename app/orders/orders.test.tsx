@@ -69,7 +69,7 @@ describe("orders workspace", () => {
     expect(screen.getByText("No receipt")).toHaveClass("receipt-missing");
     expect(screen.getAllByLabelText("Receipt photo or file")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
-    expect(document.querySelector("details")).toBeNull();
+    expect(document.querySelector("article details")).toBeNull();
     rerender(
       <Orders
         orders={[
@@ -398,4 +398,77 @@ it("requires a cancellation reason and explicit confirmation", async () => {
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
   );
+});
+
+it("defaults to the current year and excludes cancelled orders, with multi-selection filters", () => {
+  render(
+    <Orders
+      orders={[
+        { ...order, id: "current", number: 1 },
+        { ...order, id: "cancelled", number: 2, status: "CANCELLED" },
+        { ...order, id: "older", number: 3, year: 2025 },
+        {
+          ...order,
+          id: "beer",
+          number: 4,
+          vendorId: "beer",
+          vendorName: "Beer",
+          isPrivate: true,
+        },
+      ]}
+      vendors={[
+        { id: "saq", name: "SAQ" },
+        { id: "beer", name: "Beer" },
+      ]}
+      canManage={false}
+      today="2026-11-09"
+    />,
+  );
+  expect(
+    screen.getByRole("heading", { name: "SAQ · 2026-1" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "SAQ · 2026-2" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "SAQ · 2025-3" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText("Submitted, Received"));
+  expect(screen.getByRole("checkbox", { name: "Cancelled" })).not.toBeChecked();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Cancelled" }));
+  expect(
+    screen.getByRole("heading", { name: "SAQ · 2026-2" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByText("2026", { selector: "summary" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "2025" }));
+  expect(
+    screen.getByRole("heading", { name: "SAQ · 2025-3" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "2026" })).toBeChecked();
+  fireEvent.click(screen.getByText("All vendors", { selector: "summary" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "SAQ" }));
+  expect(
+    screen.queryByRole("heading", { name: "SAQ · 2026-1" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Beer · 2026-4" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByText("All orders", { selector: "summary" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Private" }));
+  expect(screen.getByText("No orders match this view.")).toBeInTheDocument();
+});
+
+it("keeps the current year selected even when only previous years have orders", () => {
+  render(
+    <Orders
+      orders={[{ ...order, year: 2025 }]}
+      vendors={[]}
+      canManage={false}
+      today="2026-11-09"
+    />,
+  );
+  expect(screen.getByText("No orders match this view.")).toBeInTheDocument();
+  fireEvent.click(screen.getByText("2026", { selector: "summary" }));
+  expect(screen.getByRole("checkbox", { name: "2026" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "2025" })).not.toBeChecked();
 });
