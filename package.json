@@ -42,7 +42,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.0",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.4.5",
     "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
