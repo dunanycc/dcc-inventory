@@ -1,13 +1,27 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { Orders } from "./orders";
 import { NewOrder } from "./new-order";
 import type { OrderRow } from "@/lib/purchase-order-queries";
+import { saveOrderEditorAction } from "@/app/(protected)/orders/actions";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/app/(protected)/orders/actions", () => ({
   createOrderAction: vi.fn(),
   finalizeOrderAction: vi.fn(),
   editOrderAction: vi.fn(),
+  saveOrderEditorAction: vi
+    .fn()
+    .mockResolvedValue({ ok: true, message: "Order saved." }),
+  receiveOrderAction: vi
+    .fn()
+    .mockResolvedValue({ ok: true, message: "Received." }),
 }));
 afterEach(cleanup);
 const order = {
@@ -24,6 +38,7 @@ const order = {
   gst: "0",
   pst: "0",
   historical: false,
+  isPrivate: false,
   receipts: [],
   updatedAt: "2026-11-08",
   lines: [
@@ -41,6 +56,123 @@ const order = {
   ],
 } as unknown as OrderRow;
 describe("orders workspace", () => {
+  it("shows receipt status on the card and uses one photo-or-file control", () => {
+    const { rerender } = render(
+      <Orders orders={[order]} vendors={[]} canManage today="2026-11-08" />,
+    );
+    expect(screen.getByText("No receipt")).toHaveClass("receipt-missing");
+    expect(screen.getAllByLabelText("Receipt photo or file")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(document.querySelector("details")).toBeNull();
+    rerender(
+      <Orders
+        orders={[
+          {
+            ...order,
+            receipts: [
+              {
+                id: "receipt",
+                name: "Receipt.pdf",
+                mimeType: "application/pdf",
+              },
+            ],
+          },
+        ]}
+        vendors={[]}
+        canManage
+        today="2026-11-08"
+      />,
+    );
+    expect(screen.queryByText("No receipt")).not.toBeInTheDocument();
+    expect(screen.getByText("Receipt attached")).toHaveClass(
+      "receipt-attached",
+    );
+    expect(screen.getByRole("link", { name: "Receipt.pdf" })).toHaveAttribute(
+      "href",
+      "/api/orders/order/receipts/receipt",
+    );
+  });
+  it("edits a received order in a dialog, including number and product additions/removals", async () => {
+    vi.mocked(saveOrderEditorAction).mockClear();
+    render(
+      <Orders
+        orders={[
+          {
+            ...order,
+            status: "RECEIVED",
+            receivedDate: "2026-11-08",
+            lines: order.lines.map((l) => ({
+              ...l,
+              receivedQuantity: "2",
+              unitPrice: "20",
+            })),
+          },
+        ]}
+        vendors={[{ id: "saq", name: "SAQ" }]}
+        products={[
+          {
+            id: "wine",
+            name: "Red wine",
+            vendorId: "saq",
+            categoryName: "Wine",
+            unit: "CASE",
+            factor: "12",
+            quantityScale: 0,
+          },
+          {
+            id: "white",
+            name: "White wine",
+            vendorId: "saq",
+            categoryName: "Wine",
+            unit: "CASE",
+            factor: "6",
+            quantityScale: 0,
+          },
+        ]}
+        canManage
+        today="2026-11-08"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const dialog = within(screen.getByRole("dialog", { name: "Edit order" }));
+    fireEvent.change(dialog.getByRole("spinbutton", { name: "Order number" }), {
+      target: { value: "7" },
+    });
+    fireEvent.change(dialog.getByRole("combobox", { name: "Add product" }), {
+      target: { value: "white" },
+    });
+    fireEvent.click(dialog.getByRole("button", { name: "Add product" }));
+    expect(
+      dialog.getByRole("spinbutton", { name: "Received White wine" }),
+    ).toHaveValue(1);
+    fireEvent.change(
+      dialog.getByRole("spinbutton", { name: "Price for White wine" }),
+      { target: { value: "12" } },
+    );
+    fireEvent.click(dialog.getByRole("button", { name: "Remove Red wine" }));
+    expect(
+      dialog.queryByRole("spinbutton", { name: "Received Red wine" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(dialog.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(saveOrderEditorAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          number: 7,
+          lines: [
+            expect.objectContaining({
+              productId: "white",
+              ordered: "1",
+              received: "1",
+              price: "12",
+            }),
+          ],
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
   it("selects the vendor first and clears products when the vendor changes", () => {
     render(
       <NewOrder
@@ -91,6 +223,7 @@ describe("orders workspace", () => {
         today="2026-11-08"
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Receive" }));
     const toggle = screen.getByRole("checkbox", { name: "Tax included" });
     expect(toggle).toBeChecked();
     const gst = screen.getByRole("spinbutton", { name: "GST ($)" });
@@ -113,10 +246,11 @@ describe("orders workspace", () => {
     expect(screen.getByText("$23.00")).toBeInTheDocument();
     fireEvent.click(toggle);
     expect(screen.queryByText("$23.00")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Take receipt photo")).toHaveAttribute(
-      "capture",
-      "environment",
+    expect(screen.getByLabelText("Receipt photo or file")).toHaveAttribute(
+      "accept",
+      "application/pdf,image/*",
     );
+    expect(screen.getAllByLabelText("Receipt photo or file")).toHaveLength(1);
   });
   it("keeps historical prices unavailable and hides finalization from read-only users", () => {
     render(

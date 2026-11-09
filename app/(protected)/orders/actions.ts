@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/session";
+import { saveOrderEditor, type OrderEditInput } from "@/lib/order-editor";
 import {
   createPurchaseOrder,
   finalizePurchaseOrder,
@@ -9,6 +10,42 @@ import {
   editPurchaseOrder,
 } from "@/lib/purchase-order-service";
 const text = (f: FormData, key: string) => String(f.get(key) ?? "");
+export async function saveOrderEditorAction(input: OrderEditInput) {
+  try {
+    const actor = await currentUser();
+    if (!actor) throw new Error("Sign in to manage orders.");
+    await saveOrderEditor(actor.id, input);
+    refresh();
+    return { ok: true, message: "Order saved." };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error && !("code" in error)
+          ? error.message
+          : "Order could not be saved. Reload and try again.",
+    };
+  }
+}
+export async function receiveOrderAction(
+  input: Parameters<typeof finalizePurchaseOrder>[1],
+) {
+  try {
+    const actor = await currentUser();
+    if (!actor) throw new Error("Sign in to receive orders.");
+    await finalizePurchaseOrder(actor.id, input);
+    refresh();
+    return { ok: true, message: "Order received." };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error && !("code" in error)
+          ? error.message
+          : "Receiving could not be finalized. Reload and try again.",
+    };
+  }
+}
 function refresh() {
   for (const path of [
     "/order",

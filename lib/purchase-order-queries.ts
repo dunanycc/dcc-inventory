@@ -63,10 +63,12 @@ export async function orderRows(
           ? l.product.name
           : l.productName,
       historyCaseSize:
-        l.product &&
-        caseHistoryCategory(l.categoryName) &&
-        l.product.purchaseUnit?.toLowerCase() === "case"
-          ? (l.product.unitsPerPurchaseUnit?.toString() ?? null)
+        l.product && caseHistoryCategory(l.categoryName)
+          ? l.unit.toLowerCase() === "case"
+            ? l.unitsPerEntry.toString()
+            : l.product.purchaseUnit?.toLowerCase() === "case"
+              ? (l.product.unitsPerPurchaseUnit?.toString() ?? null)
+              : null
           : null,
       product: undefined,
       quantityScale: l.product ? inventoryQuantityScale(l.product) : 0,

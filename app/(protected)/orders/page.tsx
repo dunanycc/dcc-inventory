@@ -6,6 +6,9 @@ import { hasPermission } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { orderRows } from "@/lib/purchase-order-queries";
 import { Orders } from "@/app/orders/orders";
+import { inventoryQuantityScale } from "@/lib/quantity-policy";
+import { CATEGORY_ORDER_BY } from "@/lib/category-management";
+import { PRODUCT_ORDER_BY } from "@/lib/product-order";
 export default async function Page({
   searchParams,
 }: {
@@ -14,12 +17,21 @@ export default async function Page({
   await connection();
   const actor = await requireInventoryWorkspaceUser();
   const query = await searchParams;
-  const [orders, vendors] = await Promise.all([
+  const [orders, vendors, categories] = await Promise.all([
     orderRows(query.id ? { id: query.id } : {}),
     prisma.vendor.findMany({
       orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
       select: { id: true, name: true },
     }),
+    hasPermission(actor.role, "operations:post")
+      ? prisma.category.findMany({
+          where: { active: true },
+          orderBy: CATEGORY_ORDER_BY,
+          include: {
+            products: { where: { active: true }, orderBy: PRODUCT_ORDER_BY },
+          },
+        })
+      : [],
   ]);
   return (
     <>
@@ -44,6 +56,17 @@ export default async function Page({
       )}
       <Orders
         orders={orders}
+        products={categories.flatMap((c) =>
+          c.products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            vendorId: p.vendorId,
+            categoryName: c.name,
+            unit: p.purchaseUnit || p.stockUnitLabel || p.stockUnit,
+            factor: p.unitsPerPurchaseUnit?.toString() || "1",
+            quantityScale: inventoryQuantityScale({ ...p, category: c }),
+          })),
+        )}
         vendors={vendors}
         canManage={hasPermission(actor.role, "operations:post")}
         today={new Intl.DateTimeFormat("en-CA", {

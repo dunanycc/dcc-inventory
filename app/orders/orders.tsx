@@ -1,15 +1,14 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
 import { receivedQuantityScale } from "@/lib/quantity-policy";
+import { compareHistoryProducts } from "@/lib/purchase-order-history";
 import { receiptTotals } from "@/lib/purchase-order";
-import {
-  finalizeOrderAction,
-  editOrderAction,
-} from "@/app/(protected)/orders/actions";
-import { SubmitOrder } from "./new-order";
+import { receiveOrderAction } from "@/app/(protected)/orders/actions";
+import { OrderEditor, type OrderProductOption } from "./order-editor";
+
 function ReceiptFiles({
   order,
   canManage,
@@ -17,8 +16,8 @@ function ReceiptFiles({
   order: OrderRow;
   canManage: boolean;
 }) {
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false);
   const router = useRouter();
   async function upload(file: File | undefined) {
     if (!file) return;
@@ -42,65 +41,98 @@ function ReceiptFiles({
     }
   }
   return (
-    <section className="order-receipts">
-      <h3>Receipts</h3>
-      {order.receipts.map((r) => (
-        <p key={r.id}>
-          <a
-            href={`/api/orders/${order.id}/receipts/${r.id}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {r.name}
-          </a>
-        </p>
-      ))}
+    <div className="order-card-receipts" aria-label="Order receipts">
       {canManage && (
-        <>
-          <p>PDF, JPEG, PNG, WebP, or HEIC; up to 3 MB per file.</p>
-          <label className="order-field">
-            Attach file
-            <input
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
-              disabled={busy}
-              onChange={(e) => {
-                void upload(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-          </label>
-          <label className="order-field">
-            Take receipt photo
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              disabled={busy}
-              onChange={(e) => {
-                void upload(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-          </label>
-        </>
+        <label
+          className={`btn-secondary receipt-upload ${busy ? "is-uploading" : ""}`}
+          title="Choose a file or take a photo on your phone. PDF or image, up to 3 MB."
+        >
+          {busy ? "Uploading…" : "Attach receipt"}
+          <input
+            type="file"
+            aria-label="Receipt photo or file"
+            accept="application/pdf,image/*"
+            disabled={busy}
+            onChange={(e) => {
+              void upload(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </label>
       )}
-      <p role="status">{message}</p>
-    </section>
+      {order.receipts.map((r) => (
+        <a
+          className="receipt-file-link"
+          key={r.id}
+          href={`/api/orders/${order.id}/receipts/${r.id}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {r.name}
+        </a>
+      ))}
+      {message && <span role="status">{message}</span>}
+    </div>
   );
 }
-function OrderDetail({
+function quantityText(value: string | null) {
+  return value === null
+    ? "—"
+    : Number(value).toLocaleString("en-CA", { maximumFractionDigits: 2 });
+}
+function quantitySummary(lines: OrderRow["lines"], received = false) {
+  if (received && lines.some((l) => l.receivedQuantity === null)) return "—";
+  const units = new Map<string, number>();
+  for (const l of lines) {
+    const unit = l.unit.toLowerCase();
+    units.set(
+      unit,
+      (units.get(unit) || 0) +
+        Number(received ? l.receivedQuantity : l.orderedQuantity),
+    );
+  }
+  return [...units]
+    .map(([unit, n]) => {
+      const plurals: Record<string, string> = {
+        case: "cases",
+        bottle: "bottles",
+        can: "cans",
+        keg: "kegs",
+        box: "boxes",
+        package: "packages",
+      };
+      return `${quantityText(String(n))} ${n === 1 ? unit : plurals[unit] || unit}`;
+    })
+    .join(" · ");
+}
+function printOrder(id: string) {
+  const card = document.getElementById(`order-${id}`)!;
+  card.setAttribute("data-printing", "true");
+  document.body.classList.add("printing-order");
+  try {
+    window.print();
+  } finally {
+    card.removeAttribute("data-printing");
+    document.body.classList.remove("printing-order");
+  }
+}
+function OrderCard({
   order,
-  canManage,
+  products,
   vendors,
+  canManage,
   today,
 }: {
   order: OrderRow;
-  canManage: boolean;
+  products: OrderProductOption[];
   vendors: { id: string; name: string }[];
+  canManage: boolean;
   today: string;
 }) {
-  const pending = order.status === "PENDING";
+  const [editing, setEditing] = useState(false),
+    [receiving, setReceiving] = useState(false);
+  const [busy, start] = useTransition(),
+    [message, setMessage] = useState("");
   const [lines, setLines] = useState(
     order.lines.map((l) => ({
       id: l.id,
@@ -108,387 +140,400 @@ function OrderDetail({
       price: l.unitPrice ?? "",
     })),
   );
-  const [taxIncluded, setTaxIncluded] = useState(order.taxIncluded);
-  const [gst, setGst] = useState(order.gst);
-  const [pst, setPst] = useState(order.pst);
+  const [taxIncluded, setTaxIncluded] = useState(order.taxIncluded),
+    [gst, setGst] = useState(order.gst),
+    [pst, setPst] = useState(order.pst);
+  const router = useRouter();
+  const pending = order.status === "PENDING";
+  const manageable =
+    canManage &&
+    !order.mergedIntoId &&
+    ["PENDING", "RECEIVED"].includes(order.status);
+  const displayLines = receiving
+    ? order.lines.map((l, i) => ({
+        ...l,
+        receivedQuantity: lines[i].quantity,
+        unitPrice: lines[i].price || null,
+      }))
+    : order.lines.map((l) => {
+        if (!l.historyCaseSize) return l;
+        const ratio = Number(l.unitsPerEntry) / Number(l.historyCaseSize);
+        return {
+          ...l,
+          unit: "Case",
+          unitsPerEntry: l.historyCaseSize,
+          orderedQuantity: String(Number(l.orderedQuantity) * ratio),
+          receivedQuantity:
+            l.receivedQuantity === null
+              ? null
+              : String(Number(l.receivedQuantity) * ratio),
+          unitPrice:
+            l.unitPrice === null
+              ? null
+              : (Number(l.unitPrice) / ratio).toFixed(2),
+        };
+      });
+  const sorted = [...displayLines].sort(compareHistoryProducts);
+  const categories = [...new Set(sorted.map((l) => l.categoryName))];
   let totals;
   try {
-    totals = receiptTotals(lines, taxIncluded, gst || "0", pst || "0");
+    totals = receiptTotals(
+      receiving
+        ? lines
+        : order.lines.map((l) => ({
+            quantity: l.receivedQuantity ?? l.orderedQuantity,
+            price: l.unitPrice,
+          })),
+      taxIncluded,
+      gst || "0",
+      pst || "0",
+    );
   } catch {
     totals = null;
   }
+  const label = `${order.vendorName} ${order.year}-${order.number}`;
+  const emailBody = `${label}\nOrder date: ${order.orderDate || "Not set"}\n${order.notes || ""}\n\n${sorted.map((l) => `${l.productName}: ordered ${quantityText(l.orderedQuantity)}, received ${quantityText(l.receivedQuantity)} ${l.unit}`).join("\n")}\n\nGrand total: ${totals?.total == null ? "Unavailable" : "$" + totals.total}`;
   return (
-    <div className="order-detail">
+    <article id={`order-${order.id}`} className="order-panel submitted-order">
+      <header className="order-card-header">
+        <h2>
+          {order.vendorName} · {order.year}-{order.number}
+        </h2>
+        <time dateTime={order.orderDate || undefined}>
+          {order.orderDate || "Date needs review"}
+        </time>
+        <span className={`order-state ${pending ? "pending" : "received"}`}>
+          {pending
+            ? "Submitted"
+            : order.status === "RECEIVED"
+              ? "Received"
+              : order.status.toLowerCase()}
+        </span>
+        {order.isPrivate && (
+          <span className="order-private-badge">Private</span>
+        )}
+        <span
+          className={`receipt-marker ${order.receipts.length ? "receipt-attached" : "receipt-missing"}`}
+        >
+          {order.receipts.length
+            ? `${order.receipts.length === 1 ? "Receipt attached" : `${order.receipts.length} receipts`}`
+            : "No receipt"}
+        </span>
+        <div className="order-card-actions">
+          {manageable && (
+            <button className="btn-secondary" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+          )}
+          {pending && manageable && (
+            <button
+              className="btn-primary"
+              onClick={() => setReceiving((v) => !v)}
+            >
+              {receiving ? "Cancel receiving" : "Receive"}
+            </button>
+          )}
+          <button
+            className="btn-secondary"
+            onClick={() => printOrder(order.id)}
+          >
+            Print
+          </button>
+          <a
+            className="btn-secondary"
+            href={`mailto:?subject=${encodeURIComponent(label)}&body=${encodeURIComponent(emailBody)}`}
+          >
+            Email
+          </a>
+        </div>
+      </header>
       {order.mergedIntoId && (
         <p className="notice">
-          This original record was merged.{" "}
+          Original merged record.{" "}
           <Link href={`/orders?id=${order.mergedIntoId}`}>
-            View the combined order
+            View combined order
           </Link>
           .
         </p>
       )}
-      <p>{order.notes}</p>
-      {order.isPrivate && (
-        <p className="notice">
-          Private order — manual products, outside club inventory. Finalizing
-          will not create a stock delivery.
-        </p>
-      )}
-      {order.historical && (
-        <p className="notice">
-          Imported history. No inventory is posted by this record. Historical
-          prices may be unavailable.
-        </p>
-      )}
+      {order.notes && <p className="order-card-comments">{order.notes}</p>}
       <form
-        action={finalizeOrderAction}
         onSubmit={(e) => {
-          if (
-            !window.confirm(
-              order.isPrivate
-                ? "Finalize this private order using the received quantities and prices shown? Club inventory will not change."
-                : "Finalize this order using the received quantities and prices shown? This closes the order and posts stock once.",
-            )
-          )
-            e.preventDefault();
+          e.preventDefault();
+          const receivedDate = String(
+            new FormData(e.currentTarget).get("receivedDate"),
+          );
+          start(async () => {
+            setMessage("");
+            const result = await receiveOrderAction({
+              id: order.id,
+              receivedDate,
+              taxIncluded,
+              gst: gst || "0",
+              pst: pst || "0",
+              lines,
+            });
+            if (!result.ok) setMessage(result.message);
+            else {
+              router.refresh();
+              setReceiving(false);
+            }
+          });
         }}
       >
-        <input type="hidden" name="orderId" value={order.id} />
-        <input type="hidden" name="lines" value={JSON.stringify(lines)} />
         <div className="table-scroll">
-          <table className="inventory-table">
+          <table className="inventory-table order-card-table">
             <thead>
               <tr>
                 <th>Product</th>
-                <th>Unit</th>
                 <th>Ordered</th>
                 <th>Received</th>
-                <th>Price per unit</th>
-                <th>Line total</th>
+                <th>Price / unit</th>
+                <th>Amount</th>
               </tr>
             </thead>
             <tbody>
-              {order.lines.map((l, i) => {
-                let total: string | null = null;
-                try {
-                  total = receiptTotals([lines[i]], true).total;
-                } catch {}
+              {categories.map((category) => {
+                const group = sorted.filter((l) => l.categoryName === category);
                 return (
-                  <tr key={l.id}>
-                    <td>
-                      {l.productName}
-                      <small className="order-muted">{l.categoryName}</small>
-                    </td>
-                    <td>
-                      {l.unit}
-                      {l.unitsPerEntry !== "1" && (
-                        <small className="order-muted">
-                          {l.unitsPerEntry} stock units
-                        </small>
-                      )}
-                    </td>
-                    <td>{l.orderedQuantity}</td>
-                    <td>
-                      {pending && canManage ? (
-                        <input
-                          className="order-number"
-                          aria-label={`Received ${l.productName}`}
-                          type="number"
-                          required
-                          min="0"
-                          step={
-                            receivedQuantityScale(l, order.isPrivate)
-                              ? "0.01"
-                              : "1"
+                  <Fragment key={category}>
+                    <tr className="order-card-category">
+                      <th colSpan={5}>{category || "Other"}</th>
+                    </tr>
+                    {group.map((l) => {
+                      const index = order.lines.findIndex((x) => x.id === l.id);
+                      let amount: string | null = null;
+                      try {
+                        amount = receiptTotals(
+                          [
+                            {
+                              quantity: receiving
+                                ? lines[index].quantity
+                                : (l.receivedQuantity ?? l.orderedQuantity),
+                              price: receiving
+                                ? lines[index].price
+                                : l.unitPrice,
+                            },
+                          ],
+                          true,
+                        ).total;
+                      } catch {}
+                      return (
+                        <tr key={l.id}>
+                          <th scope="row">
+                            {l.productName}
+                            <small className="order-muted">{l.unit}</small>
+                          </th>
+                          <td>{quantityText(l.orderedQuantity)}</td>
+                          <td className="received-quantity">
+                            {receiving ? (
+                              <input
+                                className="order-number"
+                                aria-label={`Received ${l.productName}`}
+                                type="number"
+                                min="0"
+                                required
+                                step={
+                                  receivedQuantityScale(l, order.isPrivate)
+                                    ? "0.01"
+                                    : "1"
+                                }
+                                value={lines[index].quantity}
+                                onChange={(e) =>
+                                  setLines((old) =>
+                                    old.map((x, i) =>
+                                      i === index
+                                        ? { ...x, quantity: e.target.value }
+                                        : x,
+                                    ),
+                                  )
+                                }
+                              />
+                            ) : (
+                              quantityText(l.receivedQuantity)
+                            )}
+                          </td>
+                          <td>
+                            {receiving ? (
+                              <input
+                                className="order-number"
+                                aria-label={`Price per ${l.unit} for ${l.productName}`}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                required={Number(lines[index].quantity) > 0}
+                                value={lines[index].price}
+                                onChange={(e) =>
+                                  setLines((old) =>
+                                    old.map((x, i) =>
+                                      i === index
+                                        ? { ...x, price: e.target.value }
+                                        : x,
+                                    ),
+                                  )
+                                }
+                              />
+                            ) : l.unitPrice === null ? (
+                              "Unavailable"
+                            ) : (
+                              `$${Number(l.unitPrice).toFixed(2)}`
+                            )}
+                          </td>
+                          <td>
+                            {amount === null ? "Unavailable" : `$${amount}`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="order-card-subtotal">
+                      <th scope="row">Subtotal</th>
+                      <td>{quantitySummary(group)}</td>
+                      <td>{quantitySummary(group, true)}</td>
+                      <td />
+                      <td>
+                        {(() => {
+                          try {
+                            const total = receiptTotals(
+                              group.map((l) => ({
+                                quantity:
+                                  l.receivedQuantity ?? l.orderedQuantity,
+                                price: l.unitPrice,
+                              })),
+                              true,
+                            ).total;
+                            return total === null ? "Unavailable" : `$${total}`;
+                          } catch {
+                            return "Unavailable";
                           }
-                          value={lines[i].quantity}
-                          onChange={(e) =>
-                            setLines(
-                              lines.map((x, j) =>
-                                j === i
-                                  ? { ...x, quantity: e.target.value }
-                                  : x,
-                              ),
-                            )
-                          }
-                        />
-                      ) : (
-                        (l.receivedQuantity ?? "—")
-                      )}
-                    </td>
-                    <td>
-                      {pending && canManage ? (
-                        <input
-                          className="order-number"
-                          aria-label={`Price per ${l.unit} for ${l.productName}`}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          required={Number(lines[i].quantity) > 0}
-                          value={lines[i].price}
-                          onChange={(e) =>
-                            setLines(
-                              lines.map((x, j) =>
-                                j === i ? { ...x, price: e.target.value } : x,
-                              ),
-                            )
-                          }
-                        />
-                      ) : l.unitPrice === null ? (
-                        "Unavailable"
-                      ) : (
-                        `$${l.unitPrice}`
-                      )}
-                    </td>
-                    <td>{total === null ? "Unavailable" : `$${total}`}</td>
-                  </tr>
+                        })()}
+                      </td>
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="order-totals">
-          <p>
-            Subtotal{" "}
-            <strong>
-              {totals?.subtotal == null ? "Unavailable" : `$${totals.subtotal}`}
-            </strong>
-          </p>
-          <label className="product-check">
-            <input
-              type="checkbox"
-              name="taxIncluded"
-              checked={taxIncluded}
-              disabled={!pending || !canManage}
-              onChange={(e) => setTaxIncluded(e.target.checked)}
-            />{" "}
-            Tax included
-          </label>
-          <label className="order-field">
-            GST ($)
-            <input
-              name="gst"
-              type="number"
-              min="0"
-              step="0.01"
-              value={taxIncluded ? "0" : gst}
-              disabled={taxIncluded || !pending || !canManage}
-              onChange={(e) => setGst(e.target.value)}
-            />
-          </label>
-          <label className="order-field">
-            PST ($)
-            <input
-              name="pst"
-              type="number"
-              min="0"
-              step="0.01"
-              value={taxIncluded ? "0" : pst}
-              disabled={taxIncluded || !pending || !canManage}
-              onChange={(e) => setPst(e.target.value)}
-            />
-          </label>
-          <p className="order-grand-total">
+        <div className="order-card-footer">
+          {receiving ? (
+            <div className="order-edit-taxes">
+              <label className="product-check">
+                <input
+                  type="checkbox"
+                  checked={taxIncluded}
+                  onChange={(e) => setTaxIncluded(e.target.checked)}
+                />
+                Tax included
+              </label>
+              <label className="order-field">
+                GST ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  disabled={taxIncluded}
+                  value={taxIncluded ? "0" : gst}
+                  onChange={(e) => setGst(e.target.value)}
+                />
+              </label>
+              <label className="order-field">
+                PST ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  disabled={taxIncluded}
+                  value={taxIncluded ? "0" : pst}
+                  onChange={(e) => setPst(e.target.value)}
+                />
+              </label>
+              <label className="order-field">
+                Received date
+                <input
+                  type="date"
+                  name="receivedDate"
+                  defaultValue={today}
+                  required
+                />
+              </label>
+              <button className="btn-primary" disabled={busy}>
+                {busy ? "Finalizing…" : "Finalize receiving"}
+              </button>
+            </div>
+          ) : (
+            <span className="order-muted">
+              {order.receivedDate
+                ? `Received ${order.receivedDate}`
+                : pending
+                  ? "Awaiting receipt of goods"
+                  : ""}
+              {!taxIncluded ? ` · GST $${gst} · PST $${pst}` : ""}
+            </span>
+          )}
+          <p className="order-card-total">
             Grand total{" "}
             <strong>
               {totals?.total == null ? "Unavailable" : `$${totals.total}`}
             </strong>
           </p>
-          {pending && canManage && (
-            <>
-              <label className="order-field">
-                Received date
-                <input
-                  type="date"
-                  required
-                  name="receivedDate"
-                  defaultValue={today}
-                />
-              </label>
-              <SubmitOrder>Finalize receiving</SubmitOrder>
-            </>
-          )}
-          {!pending && order.receivedDate && (
-            <p>Received {order.receivedDate}</p>
-          )}
         </div>
+        {message && (
+          <p role="alert" className="notice error">
+            {message}
+          </p>
+        )}
       </form>
-      <ReceiptFiles order={order} canManage={canManage} />
-      {canManage && (pending || order.historical) && (
-        <details>
-          <summary>Correct order details</summary>
-          <form action={editOrderAction} className="order-correction">
-            <input type="hidden" name="orderId" value={order.id} />
-            <input type="hidden" name="year" value={order.year} />
-            {order.historical && (
-              <label className="product-check order-private-toggle">
-                <input
-                  type="checkbox"
-                  name="isPrivate"
-                  defaultChecked={order.isPrivate}
-                />{" "}
-                Private order (no club inventory)
-              </label>
-            )}
-            <label className="order-field">
-              Vendor
-              <select name="vendorId" defaultValue={order.vendorId}>
-                {vendors
-                  .filter((v) => order.historical || v.id === order.vendorId)
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <label className="order-field">
-              Order date
-              <input
-                type="date"
-                name="date"
-                defaultValue={order.orderDate ?? ""}
-                required={!order.historical}
-              />
-            </label>
-            <label className="order-field">
-              Notes
-              <textarea
-                name="notes"
-                defaultValue={order.notes ?? ""}
-                maxLength={1000}
-              />
-            </label>
-            <div className="table-scroll">
-              <table className="inventory-table">
-                <thead>
-                  <tr>
-                    <th>Product / unit</th>
-                    <th>Ordered</th>
-                    {order.historical && (
-                      <>
-                        <th>Received</th>
-                        <th>Price (optional)</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.lines.map((l) => (
-                    <tr key={l.id}>
-                      <td>
-                        {order.isPrivate ? (
-                          <>
-                            <label className="order-field">
-                              Product name
-                              <input
-                                name={`name-${l.id}`}
-                                defaultValue={l.productName}
-                                maxLength={160}
-                                required
-                              />
-                            </label>
-                            <label className="order-field">
-                              Unit
-                              <input
-                                name={`unit-${l.id}`}
-                                defaultValue={l.unit}
-                                maxLength={80}
-                                required
-                              />
-                            </label>
-                          </>
-                        ) : (
-                          <>
-                            {l.productName} ({l.unit})
-                          </>
-                        )}
-                        <input type="hidden" name="lineId" value={l.id} />
-                      </td>
-                      <td>
-                        <input
-                          className="order-number"
-                          aria-label={`Correct ordered ${l.productName}`}
-                          name={`ordered-${l.id}`}
-                          defaultValue={l.orderedQuantity}
-                          type="number"
-                          min="0"
-                          step="1"
-                          required
-                        />
-                      </td>
-                      {order.historical && (
-                        <>
-                          <td>
-                            <input
-                              className="order-number"
-                              aria-label={`Correct received ${l.productName}`}
-                              name={`received-${l.id}`}
-                              defaultValue={l.receivedQuantity ?? ""}
-                              type="number"
-                              min="0"
-                              step={
-                                receivedQuantityScale(l, order.isPrivate)
-                                  ? "0.01"
-                                  : "1"
-                              }
-                              required
-                            />
-                          </td>
-                          <td>
-                            <input
-                              className="order-number"
-                              aria-label={`Correct price ${l.productName}`}
-                              name={`price-${l.id}`}
-                              defaultValue={l.unitPrice ?? ""}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                            />
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {order.historical && (
-              <p>
-                Historical corrections update order history only; they do not
-                change inventory or existing deliveries.
-              </p>
-            )}
-            <label className="order-field">
-              Reason for correction
-              <input name="reason" maxLength={500} required />
-            </label>
-            <p>
-              Vendor/year changes assign the next available number. Use Order
-              History to reposition the whole order.
-            </p>
-            <SubmitOrder>Save correction</SubmitOrder>
-          </form>
-        </details>
+      <ReceiptFiles order={order} canManage={manageable} />
+      {editing && (
+        <OrderEditor
+          order={order}
+          products={products}
+          vendors={vendors}
+          onClose={() => setEditing(false)}
+        />
       )}
-    </div>
+    </article>
   );
 }
 export function Orders({
   orders,
   vendors,
+  products = [],
   canManage,
   today,
 }: {
   orders: OrderRow[];
   vendors: { id: string; name: string }[];
+  products?: OrderProductOption[];
   canManage: boolean;
   today: string;
 }) {
-  const [vendor, setVendor] = useState("");
-  const [status, setStatus] = useState("");
-  const [kind, setKind] = useState("");
+  const [vendor, setVendor] = useState(""),
+    [status, setStatus] = useState(""),
+    [kind, setKind] = useState("");
+  const [year, setYear] = useState(
+    orders.length !== 1 &&
+      orders.some((o) => String(o.year) === today.slice(0, 4))
+      ? today.slice(0, 4)
+      : "",
+  );
+  const years = [...new Set(orders.map((o) => String(o.year)))]
+    .sort()
+    .reverse();
+  const filtered = orders
+    .filter(
+      (o) =>
+        (!vendor || o.vendorId === vendor) &&
+        (!status || o.status === status) &&
+        (!kind || (kind === "private" ? o.isPrivate : !o.isPrivate)) &&
+        (!year || String(o.year) === year),
+    )
+    .sort(
+      (a, b) =>
+        (b.orderDate || "").localeCompare(a.orderDate || "") ||
+        b.number - a.number ||
+        a.vendorName.localeCompare(b.vendorName),
+    );
   return (
     <>
       <div className="order-filters">
@@ -504,10 +549,19 @@ export function Orders({
           </select>
         </label>
         <label className="order-field">
+          Year
+          <select value={year} onChange={(e) => setYear(e.target.value)}>
+            <option value="">All years</option>
+            {years.map((y) => (
+              <option key={y}>{y}</option>
+            ))}
+          </select>
+        </label>
+        <label className="order-field">
           Status
           <select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
-            <option value="PENDING">Pending</option>
+            <option value="PENDING">Submitted</option>
             <option value="RECEIVED">Received</option>
           </select>
         </label>
@@ -520,35 +574,17 @@ export function Orders({
           </select>
         </label>
       </div>
-      {!orders.length && <p>No orders yet.</p>}
-      {orders
-        .filter(
-          (o) =>
-            (!vendor || o.vendorId === vendor) &&
-            (!status || o.status === status) &&
-            (!kind || (kind === "private" ? o.isPrivate : !o.isPrivate)),
-        )
-        .map((o) => (
-          <details
-            className="order-panel"
-            key={`${o.id}-${o.updatedAt}`}
-            open={orders.length === 1}
-          >
-            <summary>
-              <strong>
-                {o.vendorName} · {o.year} · #{o.number}
-                {o.isPrivate ? " · Private" : ""}
-              </strong>{" "}
-              — {o.orderDate ?? "Date needs review"} · {o.status.toLowerCase()}
-            </summary>
-            <OrderDetail
-              order={o}
-              vendors={vendors}
-              canManage={canManage && !o.mergedIntoId}
-              today={today}
-            />
-          </details>
-        ))}
+      {!filtered.length && <p>No orders match this view.</p>}
+      {filtered.map((o) => (
+        <OrderCard
+          key={`${o.id}-${o.updatedAt}`}
+          order={o}
+          products={products}
+          vendors={vendors}
+          canManage={canManage}
+          today={today}
+        />
+      ))}
     </>
   );
 }
