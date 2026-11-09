@@ -290,16 +290,20 @@ export function ProductCategoryTabs({
     const next = [...selectedProducts];
     const from = next.findIndex((product) => product.id === productId);
     const to = next.findIndex((product) => product.id === targetId);
-    if (from < 0 || to < 0) return;
+    if (from < 0 || to < 0 || next[from].active !== next[to].active) return;
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
     saveOrder(next);
   }
   function moveProductBy(productId: string, offset: number) {
-    const index = selectedProducts.findIndex(
+    const current = selectedProducts.find(
       (product) => product.id === productId,
     );
-    const target = selectedProducts[index + offset];
+    const group = selectedProducts.filter(
+      (product) => product.active === current?.active,
+    );
+    const index = group.findIndex((product) => product.id === productId);
+    const target = group[index + offset];
     if (target) moveProduct(productId, target.id);
   }
   if (!selected)
@@ -385,26 +389,41 @@ export function ProductCategoryTabs({
                 {canManageCatalog && <th>Actions</th>}
               </tr>
             </thead>
-            <tbody>
-              {selectedProducts.map((product) => (
-                <ProductTableRow
-                  dragging={draggingId === product.id}
-                  key={product.id}
-                  product={product}
-                  canManageCatalog={canManageCatalog}
-                  onDragEnd={() => setDraggingId(null)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={() => {
-                    if (draggingId) moveProduct(draggingId, product.id);
-                    setDraggingId(null);
-                  }}
-                  onEdit={() => setEditingId(product.id)}
-                  onMove={(offset) => moveProductBy(product.id, offset)}
-                  onNotes={() => setNotesId(product.id)}
-                  onDragStart={() => setDraggingId(product.id)}
-                />
-              ))}
-            </tbody>
+            {[true, false].map((active) => (
+              <tbody
+                key={String(active)}
+                aria-label={active ? "Active products" : "Inactive products"}
+              >
+                {!active &&
+                  selectedProducts.some((product) => !product.active) && (
+                    <tr className="inactive-product-group">
+                      <th colSpan={canManageCatalog ? 6 : 4} scope="rowgroup">
+                        Inactive products
+                      </th>
+                    </tr>
+                  )}
+                {selectedProducts
+                  .filter((product) => product.active === active)
+                  .map((product) => (
+                    <ProductTableRow
+                      dragging={draggingId === product.id}
+                      key={product.id}
+                      product={product}
+                      canManageCatalog={canManageCatalog}
+                      onDragEnd={() => setDraggingId(null)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => {
+                        if (draggingId) moveProduct(draggingId, product.id);
+                        setDraggingId(null);
+                      }}
+                      onEdit={() => setEditingId(product.id)}
+                      onMove={(offset) => moveProductBy(product.id, offset)}
+                      onNotes={() => setNotesId(product.id)}
+                      onDragStart={() => setDraggingId(product.id)}
+                    />
+                  ))}
+              </tbody>
+            ))}
           </table>
         </div>
       )}
