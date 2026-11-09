@@ -170,3 +170,26 @@ describe("FulfillmentQueue", () => {
     expect(screen.getByText("COMPLETED")).toBeInTheDocument();
   });
 });
+
+it("saves separate new-request and requester notification addresses", () => {
+  render(
+    <FulfillmentQueue
+      notificationSettings={{
+        orderNotificationEmail: "orders@example.com",
+        requesterNotificationEmail: "shack@example.com",
+      }}
+      requests={[]}
+    />,
+  );
+  const order = screen.getByLabelText(
+    "Order notification email",
+  ) as HTMLInputElement;
+  const requester = screen.getByLabelText(
+    "Requester notification email",
+  ) as HTMLInputElement;
+  expect(order).toHaveValue("orders@example.com");
+  expect(requester).toHaveValue("shack@example.com");
+  const data = new FormData(order.closest("form")!);
+  expect(data.get("orderNotificationEmail")).toBe("orders@example.com");
+  expect(data.get("requesterNotificationEmail")).toBe("shack@example.com");
+});

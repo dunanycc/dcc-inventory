@@ -104,6 +104,8 @@ export default async function RequestsPage({
       )}
       <FulfillmentQueue
         notificationSettings={{
+          requesterNotificationEmail:
+            notificationSettings?.requesterNotificationEmail ?? "",
           orderNotificationEmail:
             notificationSettings?.orderNotificationEmail ?? "",
         }}

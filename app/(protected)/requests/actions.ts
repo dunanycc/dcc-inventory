@@ -420,7 +420,7 @@ export async function fulfillStockRequestAction(formData: FormData) {
     if (finalStatus === "GIVEN" || finalStatus === "PARTIALLY_GIVEN") {
       try {
         await notifyStockRequestChanged(
-          requesterEmail,
+          await requesterRecipients(requesterEmail),
           finalStatus,
           requestId,
           { givenItems },
@@ -490,9 +490,14 @@ export async function cancelStockRequestAction(formData: FormData) {
       { isolationLevel: "Serializable" },
     );
     try {
-      await notifyStockRequestChanged(requesterEmail, "CANCELLED", requestId, {
-        closureComment,
-      });
+      await notifyStockRequestChanged(
+        await requesterRecipients(requesterEmail),
+        "CANCELLED",
+        requestId,
+        {
+          closureComment,
+        },
+      );
     } catch (error) {
       console.error("Cancelled stock request email failed", error);
     }
@@ -566,9 +571,14 @@ export async function closeStockRequestAction(formData: FormData) {
       { isolationLevel: "Serializable" },
     );
     try {
-      await notifyStockRequestChanged(requesterEmail, "CLOSED", requestId, {
-        closureComment,
-      });
+      await notifyStockRequestChanged(
+        await requesterRecipients(requesterEmail),
+        "CLOSED",
+        requestId,
+        {
+          closureComment,
+        },
+      );
     } catch (error) {
       console.error("Closed stock request email failed", error);
     }
@@ -589,6 +599,20 @@ export async function closeStockRequestAction(formData: FormData) {
   redirect(target);
 }
 
+async function requesterRecipients(email: string) {
+  const settings = await prisma.stockRequestNotificationSettings.findUnique({
+    where: { id: "default" },
+    select: { requesterNotificationEmail: true },
+  });
+  return [
+    ...new Set(
+      [email, settings?.requesterNotificationEmail]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.trim().toLowerCase()),
+    ),
+  ].join(", ");
+}
+
 export async function updateRequestNotificationSettingsAction(
   formData: FormData,
 ) {
@@ -602,7 +626,15 @@ export async function updateRequestNotificationSettingsAction(
     )
       .trim()
       .toLowerCase();
-    if (!optionalEmail.safeParse(orderNotificationEmail).success)
+    const requesterNotificationEmail = String(
+      formData.get("requesterNotificationEmail") ?? "",
+    )
+      .trim()
+      .toLowerCase();
+    if (
+      !optionalEmail.safeParse(requesterNotificationEmail).success ||
+      !optionalEmail.safeParse(orderNotificationEmail).success
+    )
       throw new StockRequestError("INVALID_INPUT");
     await prisma.$transaction(async (transaction) => {
       const freshActor = await transaction.user.findUnique({
@@ -625,9 +657,11 @@ export async function updateRequestNotificationSettingsAction(
           create: {
             id: "default",
             orderNotificationEmail: orderNotificationEmail || null,
+            requesterNotificationEmail: requesterNotificationEmail || null,
           },
           update: {
             orderNotificationEmail: orderNotificationEmail || null,
+            requesterNotificationEmail: requesterNotificationEmail || null,
           },
         });
       await transaction.auditEvent.create({
@@ -637,9 +671,15 @@ export async function updateRequestNotificationSettingsAction(
           entityType: "StockRequestNotificationSettings",
           entityId: settings.id,
           before: before
-            ? { orderNotificationEmail: before.orderNotificationEmail }
+            ? {
+                orderNotificationEmail: before.orderNotificationEmail,
+                requesterNotificationEmail: before.requesterNotificationEmail,
+              }
             : undefined,
-          after: { orderNotificationEmail: settings.orderNotificationEmail },
+          after: {
+            orderNotificationEmail: settings.orderNotificationEmail,
+            requesterNotificationEmail: settings.requesterNotificationEmail,
+          },
         },
       });
     });

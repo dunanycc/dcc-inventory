@@ -306,6 +306,7 @@ model StockRequest {
 model StockRequestNotificationSettings {
   id                     String   @id @default("default")
   orderNotificationEmail String?
+  requesterNotificationEmail String?
   updatedAt              DateTime @updatedAt
 }
 

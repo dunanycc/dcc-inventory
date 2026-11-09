@@ -279,6 +279,7 @@ export function FulfillmentQueue({
 }: {
   notificationSettings: {
     orderNotificationEmail: string;
+    requesterNotificationEmail?: string;
   };
   requests: RequestView[];
 }) {
@@ -319,13 +320,24 @@ export function FulfillmentQueue({
             type="email"
           />
         </label>
+        <label>
+          Requester notification email
+          <input
+            defaultValue={notificationSettings.requesterNotificationEmail ?? ""}
+            maxLength={320}
+            name="requesterNotificationEmail"
+            placeholder="requester@example.com"
+            type="email"
+          />
+        </label>
         <button className="btn-secondary compact-action" type="submit">
-          Save Email
+          Save Emails
         </button>
         <small>
-          Order notifications are sent for new requests. The requester is
-          emailed directly at their own account address whenever their request
-          is given, partially given, cancelled, or closed.
+          Order notification email receives new requests. Requester notification
+          email and the person who submitted the request receive fulfilment
+          updates, including partial fulfilment, completion, cancellation, and
+          closure.
         </small>
       </form>
       <div className="fulfillment-toolbar">
