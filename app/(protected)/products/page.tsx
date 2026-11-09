@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/authorization";
 import { CATEGORY_ORDER_BY } from "@/lib/category-management";
 import { prisma } from "@/lib/prisma";
 import { PRODUCT_ORDER_BY } from "@/lib/product-order";
+import { productCatalogViewKey } from "@/lib/product-catalog-view";
 import { requireInventoryWorkspaceUser } from "@/lib/session";
 
 export default async function ProductsPage({
@@ -91,7 +92,7 @@ export default async function ProductsPage({
         canManageCatalog={hasPermission(actor.role, "catalog:manage")}
         categories={rows}
         vendors={vendors.map(({ id, name, active }) => ({ id, name, active }))}
-        key={JSON.stringify(rows)}
+        key={productCatalogViewKey(rows)}
         initialCategoryId={message.category}
       />
     </>

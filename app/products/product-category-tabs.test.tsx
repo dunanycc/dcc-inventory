@@ -1,6 +1,16 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ProductCategoryTabs } from "./product-category-tabs";
+import {
+  ProductCategoryTabs,
+  type ProductCategoryRow,
+} from "./product-category-tabs";
+import { productCatalogViewKey } from "@/lib/product-catalog-view";
 
 vi.mock("@/app/(protected)/products/actions", () => ({
   createProductAction: vi.fn(),
@@ -15,6 +25,66 @@ vi.mock("@/app/(protected)/products/actions", () => ({
 afterEach(cleanup);
 
 describe("ProductCategoryTabs", () => {
+  it("keeps the selected category and mounted view after a reorder refresh", async () => {
+    const product = {
+      categoryId: "beer",
+      packageSize: null,
+      stockUnit: "CAN" as const,
+      stockUnitLabel: null,
+      allowFractionalStock: false,
+      quantityScale: 0,
+      purchaseUnit: null,
+      unitsPerPurchaseUnit: null,
+      active: true,
+      starterShackRequestEligible: false,
+    };
+    const categories: ProductCategoryRow[] = [
+      { id: "wine", name: "Wine", displayOrder: 0, active: true, products: [] },
+      {
+        id: "beer",
+        name: "Beer",
+        displayOrder: 1,
+        active: true,
+        products: [
+          { ...product, id: "first", name: "First", displayOrder: 0 },
+          { ...product, id: "second", name: "Second", displayOrder: 1 },
+        ],
+      },
+    ];
+    const view = (rows: ProductCategoryRow[]) => (
+      <ProductCategoryTabs
+        key={productCatalogViewKey(rows)}
+        categories={rows}
+        canManageCatalog
+      />
+    );
+    const { rerender } = render(view(categories));
+    const tab = screen.getByRole("tab", { name: "Beer" });
+    fireEvent.click(tab);
+    const handle = screen.getByRole("button", { name: /Reorder Second/ });
+    handle.focus();
+    fireEvent.keyDown(handle, { key: "ArrowUp" });
+    await waitFor(() =>
+      expect(screen.getByText("Product order saved.")).toBeInTheDocument(),
+    );
+    rerender(
+      view([
+        categories[0],
+        {
+          ...categories[1],
+          products: [
+            { ...categories[1].products[1], displayOrder: 0 },
+            { ...categories[1].products[0], displayOrder: 1 },
+          ],
+        },
+      ]),
+    );
+    expect(screen.getByRole("tab", { name: "Beer" })).toBe(tab);
+    expect(tab).toHaveAttribute("aria-selected", "true");
+    expect(handle).toHaveFocus();
+    expect(screen.getAllByRole("row")[1]).toHaveTextContent("Second");
+  });
+
   it("renders a fully expanded selected category and switches tabs", () => {
     render(
       <ProductCategoryTabs
