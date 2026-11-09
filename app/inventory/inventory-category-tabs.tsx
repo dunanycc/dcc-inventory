@@ -29,14 +29,12 @@ export function InventoryCategoryTabs({
   selectedLocation,
   categories,
   canSetOpening,
-  canUpdateInventory = false,
   initialCategoryId,
 }: {
   locations: InventoryLocationOption[];
   selectedLocation: InventoryLocationOption;
   categories: InventoryCategoryRow[];
   canSetOpening: boolean;
-  canUpdateInventory?: boolean;
   initialCategoryId?: string;
 }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(
@@ -108,21 +106,13 @@ export function InventoryCategoryTabs({
               </p>
             </div>
             <div className="inventory-toolbar-actions">
-              {canUpdateInventory && (
-                <Link
-                  className="btn-secondary"
-                  href={`/counts?location=${selectedLocation.code}`}
-                >
-                  Update inventory
-                </Link>
-              )}
               {canSetOpening && (
                 <button
                   className="btn-secondary"
                   onClick={() => setShowOpening((value) => !value)}
                   type="button"
                 >
-                  {showOpening ? "Cancel" : "Set opening inventory"}
+                  {showOpening ? "Cancel" : "Set Inventory"}
                 </button>
               )}
             </div>
@@ -135,7 +125,7 @@ export function InventoryCategoryTabs({
               onSubmit={(event) => {
                 if (
                   !window.confirm(
-                    `Set opening inventory for ${selectedLocation.name}? Saved opening quantities cannot be replaced; later corrections should use a physical count.`,
+                    `Set Inventory for ${selectedLocation.name}? Saved opening quantities cannot be replaced; later corrections should use a physical count.`,
                   )
                 )
                   event.preventDefault();
@@ -157,7 +147,7 @@ export function InventoryCategoryTabs({
                 value={selectedCategory.id}
               />
               <div>
-                <h3>Set opening inventory</h3>
+                <h3>Set Inventory</h3>
                 <p>
                   Enter the quantity currently on hand in each Product&apos;s
                   counted-as unit. Leave blank or 0 when there is no opening
@@ -182,7 +172,7 @@ export function InventoryCategoryTabs({
                   </label>
                   <div className="opening-actions">
                     <button className="btn-primary" type="submit">
-                      Confirm opening inventory
+                      Confirm Inventory
                     </button>
                   </div>
                 </>

@@ -91,12 +91,10 @@ describe("InventoryCategoryTabs", () => {
         selectedLocation={locations[0]}
       />,
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Set opening inventory" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Set Inventory" }));
     expect(screen.getByLabelText(/Club Lager/)).toHaveAttribute("step", "1");
     const form = screen
-      .getByRole("button", { name: "Confirm opening inventory" })
+      .getByRole("button", { name: "Confirm Inventory" })
       .closest("form")!;
     const quantity = screen.getByRole("spinbutton", { name: /Club Lager/ });
     expect(quantity.closest("tr")).toHaveTextContent("Club Lager");
@@ -122,7 +120,7 @@ describe("InventoryCategoryTabs", () => {
       />,
     );
     expect(
-      screen.queryByRole("button", { name: "Set opening inventory" }),
+      screen.queryByRole("button", { name: "Set Inventory" }),
     ).not.toBeInTheDocument();
   });
 });
