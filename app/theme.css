@@ -944,10 +944,11 @@ summary:focus-visible {
   cursor: pointer;
 }
 .order-quantity-control {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px 28px 44px;
   align-items: center;
   gap: 4px;
-  min-width: 104px;
+  min-width: 108px;
 }
 .order-quantity-control button {
   min-width: 28px;
@@ -991,7 +992,7 @@ summary:focus-visible {
 }
 .cart-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 104px 28px;
+  grid-template-columns: minmax(0, 1fr) 108px 28px;
   gap: 6px;
   align-items: center;
   padding: 9px 0;
@@ -1211,7 +1212,7 @@ summary:focus-visible {
   font-weight: 500;
 }
 .shack-order-workspace .request-summary li {
-  grid-template-columns: minmax(0, 1fr) 104px 28px;
+  grid-template-columns: minmax(0, 1fr) 108px 28px;
 }
 .shack-order-workspace .request-summary .order-quantity-control button {
   background: #fff;
@@ -1236,7 +1237,7 @@ summary:focus-visible {
   font-weight: 400;
 }
 .shack-order-workspace .request-confirm-summary li {
-  grid-template-columns: minmax(0, 1fr) 104px 28px;
+  grid-template-columns: minmax(0, 1fr) 108px 28px;
 }
 .shack-order-workspace
   :is(.request-summary, .request-confirm-summary)
@@ -1247,4 +1248,9 @@ summary:focus-visible {
   color: var(--green-800);
   border: 1px solid var(--line);
   padding: 4px 8px;
+}
+
+.order-quantity-increase {
+  grid-column: 3;
+  width: 44px;
 }

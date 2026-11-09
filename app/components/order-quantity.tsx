@@ -29,39 +29,32 @@ export function OrderQuantity({
       role="group"
       aria-label={`Quantity controls for ${label}`}
     >
-      {value <= 0 ? (
+      {value > 0 && (
         <button
+          key="decrease"
           type="button"
           className="btn-secondary"
-          aria-label={names.add}
-          onClick={() => onChange(1)}
+          aria-label={names.minus}
+          onClick={() => onChange(value - 1)}
         >
-          Add
+          −
         </button>
-      ) : (
-        <>
-          <button
-            type="button"
-            className="btn-secondary"
-            aria-label={names.minus}
-            onClick={() => onChange(value - 1)}
-          >
-            −
-          </button>
-          <output aria-label={names.output} aria-live="polite">
-            {value}
-          </output>
-          <button
-            type="button"
-            className="btn-secondary"
-            aria-label={names.plus}
-            disabled={value >= 999999999}
-            onClick={() => onChange(value + 1)}
-          >
-            +
-          </button>
-        </>
       )}
+      {value > 0 && (
+        <output key="quantity" aria-label={names.output} aria-live="polite">
+          {value}
+        </output>
+      )}
+      <button
+        key="increase"
+        type="button"
+        className="btn-secondary order-quantity-increase"
+        aria-label={value > 0 ? names.plus : names.add}
+        disabled={value >= 999999999}
+        onClick={() => onChange(value > 0 ? value + 1 : 1)}
+      >
+        {value > 0 ? "+" : "Add"}
+      </button>
     </div>
   );
 }
