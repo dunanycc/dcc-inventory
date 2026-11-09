@@ -426,71 +426,79 @@ function OrderCard({
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr className="order-card-total">
+                <th scope="row" colSpan={4}>
+                  Grand total
+                </th>
+                <td>
+                  <strong>
+                    {totals?.total == null ? "Unavailable" : `$${totals.total}`}
+                  </strong>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
-        <div className="order-card-footer">
-          {receiving ? (
-            <div className="order-edit-taxes">
-              <label className="product-check">
-                <input
-                  type="checkbox"
-                  checked={taxIncluded}
-                  onChange={(e) => setTaxIncluded(e.target.checked)}
-                />
-                Tax included
-              </label>
-              <label className="order-field">
-                GST ($)
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  disabled={taxIncluded}
-                  value={taxIncluded ? "0" : gst}
-                  onChange={(e) => setGst(e.target.value)}
-                />
-              </label>
-              <label className="order-field">
-                PST ($)
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  disabled={taxIncluded}
-                  value={taxIncluded ? "0" : pst}
-                  onChange={(e) => setPst(e.target.value)}
-                />
-              </label>
-              <label className="order-field">
-                Received date
-                <input
-                  type="date"
-                  name="receivedDate"
-                  defaultValue={today}
-                  required
-                />
-              </label>
-              <button className="btn-primary" disabled={busy}>
-                {busy ? "Finalizing…" : "Finalize receiving"}
-              </button>
-            </div>
-          ) : (
-            <span className="order-muted">
-              {order.receivedDate
-                ? `Received ${order.receivedDate}`
-                : pending
-                  ? "Awaiting receipt of goods"
-                  : ""}
-              {!taxIncluded ? ` · GST $${gst} · PST $${pst}` : ""}
-            </span>
-          )}
-          <p className="order-card-total">
-            Grand total{" "}
-            <strong>
-              {totals?.total == null ? "Unavailable" : `$${totals.total}`}
-            </strong>
-          </p>
-        </div>
+        {(receiving || order.receivedDate || !taxIncluded) && (
+          <div className="order-card-footer">
+            {receiving ? (
+              <div className="order-edit-taxes">
+                <label className="product-check">
+                  <input
+                    type="checkbox"
+                    checked={taxIncluded}
+                    onChange={(e) => setTaxIncluded(e.target.checked)}
+                  />
+                  Tax included
+                </label>
+                <label className="order-field">
+                  GST ($)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    disabled={taxIncluded}
+                    value={taxIncluded ? "0" : gst}
+                    onChange={(e) => setGst(e.target.value)}
+                  />
+                </label>
+                <label className="order-field">
+                  PST ($)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    disabled={taxIncluded}
+                    value={taxIncluded ? "0" : pst}
+                    onChange={(e) => setPst(e.target.value)}
+                  />
+                </label>
+                <label className="order-field">
+                  Received date
+                  <input
+                    type="date"
+                    name="receivedDate"
+                    defaultValue={today}
+                    required
+                  />
+                </label>
+                <button className="btn-primary" disabled={busy}>
+                  {busy ? "Finalizing…" : "Finalize receiving"}
+                </button>
+              </div>
+            ) : (
+              <span className="order-muted">
+                {order.receivedDate
+                  ? `Received ${order.receivedDate}`
+                  : pending
+                    ? "Awaiting receipt of goods"
+                    : ""}
+                {!taxIncluded ? ` · GST $${gst} · PST $${pst}` : ""}
+              </span>
+            )}
+          </div>
+        )}
         {message && (
           <p role="alert" className="notice error">
             {message}
