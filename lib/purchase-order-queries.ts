@@ -1,35 +1,46 @@
 import { caseHistoryCategory } from "./purchase-order-history";
 import { inventoryQuantityScale } from "./quantity-policy";
 import { prisma } from "./prisma";
+import { CATEGORY_ORDER_BY } from "./category-management";
 export async function orderRows(
   where: { vendorId?: string; year?: number; id?: string } = {},
 ) {
-  const orders = await prisma.purchaseOrder.findMany({
-    where: { ...where, ...(where.id ? {} : { mergedIntoId: null }) },
-    orderBy: [
-      { year: "desc" },
-      { vendor: { displayOrder: "asc" } },
-      { number: "asc" },
-    ],
-    include: {
-      lines: {
-        orderBy: { id: "asc" },
-        include: {
-          product: {
-            select: {
-              name: true,
-              purchaseUnit: true,
-              unitsPerPurchaseUnit: true,
-              allowFractionalStock: true,
-              quantityScale: true,
-              category: { select: { name: true } },
+  const [orders, categories] = await Promise.all([
+    prisma.purchaseOrder.findMany({
+      where: { ...where, ...(where.id ? {} : { mergedIntoId: null }) },
+      orderBy: [
+        { year: "desc" },
+        { vendor: { displayOrder: "asc" } },
+        { number: "asc" },
+      ],
+      include: {
+        lines: {
+          orderBy: { id: "asc" },
+          include: {
+            product: {
+              select: {
+                name: true,
+                displayOrder: true,
+                purchaseUnit: true,
+                unitsPerPurchaseUnit: true,
+                allowFractionalStock: true,
+                quantityScale: true,
+                category: { select: { name: true } },
+              },
             },
           },
         },
+        receipts: { select: { id: true, name: true, mimeType: true } },
       },
-      receipts: { select: { id: true, name: true, mimeType: true } },
-    },
-  });
+    }),
+    prisma.category.findMany({
+      orderBy: CATEGORY_ORDER_BY,
+      select: { name: true },
+    }),
+  ]);
+  const categoryOrder = new Map(
+    categories.map((c, index) => [c.name.trim().toLowerCase(), index]),
+  );
   return orders.map((o) => ({
     ...o,
     orderDate: o.orderDate?.toISOString().slice(0, 10) ?? null,
@@ -42,6 +53,11 @@ export async function orderRows(
     legacyData: undefined,
     lines: o.lines.map((l) => ({
       ...l,
+      historyCategoryOrder:
+        categoryOrder.get(l.categoryName.trim().toLowerCase()) ??
+        Number.MAX_SAFE_INTEGER,
+      historyProductOrder: l.product?.displayOrder ?? Number.MAX_SAFE_INTEGER,
+      historySortName: l.product?.name ?? l.productName,
       historyName:
         l.product && caseHistoryCategory(l.categoryName)
           ? l.product.name

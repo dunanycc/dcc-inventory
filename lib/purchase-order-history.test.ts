@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   historyLineKey,
   historyReceivedQuantity,
+  compareHistoryProducts,
 } from "./purchase-order-history";
 
 const legacy = {
@@ -40,5 +41,66 @@ describe("case quantities in order history", () => {
       historyLineKey({ ...wine, productName: "Another brand" }),
     );
     expect(historyReceivedQuantity(wine)).toBe("48");
+  });
+});
+
+describe("history follows catalog ordering", () => {
+  const row = {
+    categoryName: "Wine",
+    historyCategoryOrder: 0,
+    historyProductOrder: 0,
+    historySortName: "White wine",
+    productId: "white",
+    historyName: "White wine",
+  };
+  it("uses category and product positions instead of alphabetical headings", () => {
+    const liquor = {
+      ...row,
+      categoryName: "Hard Liquor",
+      historyCategoryOrder: 1,
+      historyName: "Vodka",
+    };
+    const red = {
+      ...row,
+      productId: "red",
+      historySortName: "Red wine",
+      historyName: "Red wine",
+      historyProductOrder: 1,
+    };
+    expect(
+      [liquor, red, row].sort(compareHistoryProducts).map((r) => r.historyName),
+    ).toEqual(["White wine", "Red wine", "Vodka"]);
+  });
+  it("keeps archived labels after mapped products within their category", () => {
+    const archived = {
+      ...row,
+      productId: null,
+      historyProductOrder: Number.MAX_SAFE_INTEGER,
+      historySortName: "Archived",
+      historyName: "Archived",
+    };
+    const liquor = {
+      ...row,
+      categoryName: "Hard Liquor",
+      historyCategoryOrder: 1,
+      historyName: "Vodka",
+    };
+    expect(
+      [liquor, archived, row]
+        .sort(compareHistoryProducts)
+        .map((r) => r.historyName),
+    ).toEqual(["White wine", "Archived", "Vodka"]);
+  });
+  it("uses catalog names to break equal product positions while retaining brand labels", () => {
+    const brand = { ...row, historyName: "A brand label" };
+    const red = {
+      ...row,
+      productId: "red",
+      historySortName: "Red wine",
+      historyName: "Z brand label",
+    };
+    expect(
+      [brand, red].sort(compareHistoryProducts).map((r) => r.productId),
+    ).toEqual(["red", "white"]);
   });
 });

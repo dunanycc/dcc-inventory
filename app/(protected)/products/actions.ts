@@ -424,6 +424,7 @@ export async function reorderProductsAction(formData: FormData) {
       "/deliveries",
       "/requests",
       "/starter-shack",
+      "/order-history",
     ].forEach((path) => revalidatePath(path));
     return { ok: true, message: "Product order saved." };
   } catch (error) {

@@ -7,6 +7,7 @@ import { moveOrderAction } from "@/app/(protected)/orders/actions";
 import {
   historyLineKey,
   historyReceivedQuantity,
+  compareHistoryProducts,
 } from "@/lib/purchase-order-history";
 import { receiptTotals } from "@/lib/purchase-order";
 
@@ -153,11 +154,7 @@ export function OrderHistory({
                       o.lines.map((l) => [keyOf(l), l] as const),
                     ),
                   ).entries(),
-                ].sort(
-                  (a, b) =>
-                    a[1].categoryName.localeCompare(b[1].categoryName) ||
-                    a[1].historyName.localeCompare(b[1].historyName),
-                );
+                ].sort((a, b) => compareHistoryProducts(a[1], b[1]));
                 return (
                   <Fragment key={section.id}>
                     <tr className="order-section-row">
@@ -180,21 +177,19 @@ export function OrderHistory({
                             .filter((o) => o.number === n)
                             .map((o) => (
                               <div key={o.id} className="order-column-card">
-                                <Link
-                                  href={`/orders?id=${o.id}`}
-                                  className="order-column-number"
-                                >
-                                  #{o.number}
-                                </Link>
                                 {section.id === "private" && (
                                   <span className="order-muted">
                                     {o.vendorName}
                                   </span>
                                 )}
                                 <div className="order-date-row">
-                                  <span className="order-muted">
+                                  <Link
+                                    href={`/orders?id=${o.id}`}
+                                    className="order-muted"
+                                    aria-label={`Open ${o.vendorName} order ${o.number}, ${o.orderDate ?? "date needs review"}`}
+                                  >
                                     {o.orderDate ?? "Date needs review"}
-                                  </span>
+                                  </Link>
                                   {canManage && (
                                     <button
                                       type="button"

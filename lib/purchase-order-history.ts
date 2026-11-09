@@ -4,6 +4,27 @@ export function caseHistoryCategory(category: string) {
   );
 }
 
+type HistorySortRow = {
+  categoryName: string;
+  historyCategoryOrder: number;
+  historyProductOrder: number;
+  historySortName: string;
+  productId: string | null;
+  historyName: string;
+};
+
+/** Match the catalog's category/product ordering; archived labels follow mapped products. */
+export function compareHistoryProducts(a: HistorySortRow, b: HistorySortRow) {
+  return (
+    a.historyCategoryOrder - b.historyCategoryOrder ||
+    a.categoryName.localeCompare(b.categoryName) ||
+    a.historyProductOrder - b.historyProductOrder ||
+    a.historySortName.localeCompare(b.historySortName) ||
+    (a.productId ?? "").localeCompare(b.productId ?? "") ||
+    a.historyName.localeCompare(b.historyName)
+  );
+}
+
 type HistoryLine = {
   productId: string | null;
   productName: string;
