@@ -105,7 +105,7 @@ describe("InventoryCategoryTabs", () => {
     expect(data.getAll("productId")).toEqual(["lager"]);
     fireEvent.submit(form);
     expect(confirm).toHaveBeenCalledWith(
-      expect.stringContaining("cannot be replaced"),
+      expect.stringContaining("replace the current tracked balances"),
     );
     confirm.mockRestore();
   });

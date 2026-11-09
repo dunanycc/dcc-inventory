@@ -806,6 +806,33 @@ async function main() {
     await prisma.auditEvent.count({ where: { action: "ORDER_CANCELLED" } }),
     4,
   );
+  const { setInventory } = await import("../lib/set-inventory");
+  const setInput = {
+    locationId: bar.id,
+    entries: [{ productId: product.id, quantity: "0" }],
+    notes: "Zero stock test",
+  };
+  await assert.rejects(setInventory(reader.id, setInput));
+  await assert.rejects(
+    setInventory(admin.id, {
+      ...setInput,
+      entries: [{ productId: product.id, quantity: "-1" }],
+    }),
+  );
+  await setInventory(admin.id, {
+    ...setInput,
+    entries: [{ productId: product.id, quantity: "7" }],
+  });
+  await setInventory(admin.id, setInput);
+  const { inventoryBalancesForLocation } =
+    await import("../lib/inventory-balances");
+  assert.equal(
+    (await inventoryBalancesForLocation(bar.id)).get(product.id),
+    "0",
+  );
+  const zeroMovements = await prisma.inventoryMovement.count();
+  await setInventory(admin.id, setInput);
+  assert.equal(await prisma.inventoryMovement.count(), zeroMovements);
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",
   );

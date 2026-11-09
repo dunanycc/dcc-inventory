@@ -49,8 +49,7 @@ export function InventoryCategoryTabs({
       categories[0],
     [categories, selectedCategoryId],
   );
-  const availableOpeningProducts =
-    selectedCategory?.products.filter((product) => !product.openingSet) ?? [];
+  const availableOpeningProducts = selectedCategory?.products ?? [];
 
   return (
     <div className="inventory-workspace">
@@ -125,7 +124,7 @@ export function InventoryCategoryTabs({
               onSubmit={(event) => {
                 if (
                   !window.confirm(
-                    `Set Inventory for ${selectedLocation.name}? Saved opening quantities cannot be replaced; later corrections should use a physical count.`,
+                    `Set Inventory for ${selectedLocation.name}? Entered quantities will replace the current tracked balances. Blank fields will stay unchanged.`,
                   )
                 )
                   event.preventDefault();
@@ -150,14 +149,13 @@ export function InventoryCategoryTabs({
                 <h3>Set Inventory</h3>
                 <p>
                   Enter the quantity currently on hand in each Product&apos;s
-                  counted-as unit. Leave blank or 0 when there is no opening
-                  stock.
+                  counted-as unit. Enter 0 for no stock. Leave blank to keep the
+                  current quantity.
                 </p>
               </div>
               {availableOpeningProducts.length === 0 && (
                 <p className="opening-complete">
-                  Opening inventory is already set for every Product in this
-                  Category.
+                  No Products are available in this Category.
                 </p>
               )}
               {availableOpeningProducts.length > 0 && (
@@ -167,7 +165,7 @@ export function InventoryCategoryTabs({
                     <input
                       maxLength={1000}
                       name="notes"
-                      placeholder="e.g. 2026 opening count"
+                      placeholder="e.g. physical stock check"
                     />
                   </label>
                   <div className="opening-actions">
@@ -187,7 +185,7 @@ export function InventoryCategoryTabs({
                   <th>Package</th>
                   <th>Counted as</th>
                   <th>Current tracked quantity</th>
-                  {showOpening && <th>Opening quantity</th>}
+                  {showOpening && <th>Set quantity</th>}
                 </tr>
               </thead>
               <tbody>
@@ -201,12 +199,10 @@ export function InventoryCategoryTabs({
                     <td className="inventory-quantity">{product.balance}</td>
                     {showOpening && (
                       <td>
-                        {product.openingSet ? (
-                          <span>Already set</span>
-                        ) : (
+                        {
                           <>
                             <input
-                              aria-label={`Opening quantity for ${product.name} (${product.packageSize || product.unitLabel})`}
+                              aria-label={`Set quantity for ${product.name} (${product.packageSize || product.unitLabel})`}
                               className="opening-quantity-input"
                               form="opening-inventory-form"
                               inputMode="decimal"
@@ -227,7 +223,7 @@ export function InventoryCategoryTabs({
                               value={product.id}
                             />
                           </>
-                        )}
+                        }
                       </td>
                     )}
                   </tr>
