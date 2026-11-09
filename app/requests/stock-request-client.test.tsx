@@ -12,7 +12,7 @@ vi.mock("@/app/(protected)/requests/actions", () => ({
 afterEach(cleanup);
 
 describe("NewStockRequest", () => {
-  it("shows horizontal category tabs and accumulates repeated additions", () => {
+  it("shows category sections and keeps product and cart quantities in sync", () => {
     render(
       <NewStockRequest
         categories={[
@@ -33,16 +33,19 @@ describe("NewStockRequest", () => {
     );
     expect(screen.getByText("Beer")).toBeInTheDocument();
     expect(screen.getByText("Add items to get started.")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Quantity for Sapporo"), {
-      target: { value: "12" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(screen.getByLabelText("Requested quantity for Sapporo")).toHaveValue(
-      12,
+    fireEvent.click(screen.getByRole("button", { name: "Add Sapporo" }));
+    expect(screen.getByLabelText("Quantity for Sapporo")).toHaveTextContent(
+      "1",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(screen.getByLabelText("Requested quantity for Sapporo")).toHaveValue(
-      24,
+    fireEvent.click(screen.getByRole("button", { name: "Increase Sapporo" }));
+    expect(
+      screen.getByLabelText("Quantity for cart Sapporo"),
+    ).toHaveTextContent("2");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Decrease cart Sapporo" }),
+    );
+    expect(screen.getByLabelText("Quantity for Sapporo")).toHaveTextContent(
+      "1",
     );
     expect(
       screen.getByRole("button", { name: "Submit Request" }),
@@ -70,7 +73,7 @@ describe("NewStockRequest", () => {
         ]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Sapporo" }));
     fireEvent.click(screen.getByRole("button", { name: "Submit Request" }));
     expect(
       screen.getByRole("dialog", { name: "Confirm Request" }),
@@ -80,9 +83,9 @@ describe("NewStockRequest", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close and Update" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Requested quantity for Sapporo")).toHaveValue(
-      1,
-    );
+    expect(
+      screen.getByLabelText("Quantity for cart Sapporo"),
+    ).toHaveTextContent("1");
   });
 });
 

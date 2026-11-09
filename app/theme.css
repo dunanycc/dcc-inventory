@@ -1192,3 +1192,59 @@ summary:focus-visible {
     grid-column: 1;
   }
 }
+.shack-order-workspace {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+}
+.shack-order-workspace .request-products .table-scroll {
+  border-top: 0;
+}
+.shack-order-workspace .order-cart {
+  padding: 0;
+}
+.shack-order-workspace .request-summary header {
+  background: var(--surface-subtle);
+  color: var(--green-800);
+  padding: 12px 14px;
+}
+.shack-order-workspace .request-summary header strong {
+  font-weight: 500;
+}
+.shack-order-workspace .request-summary li {
+  grid-template-columns: minmax(0, 1fr) 104px 28px;
+}
+.shack-order-workspace .request-summary .order-quantity-control button {
+  background: #fff;
+  color: var(--green-800);
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+}
+.shack-order-workspace .request-summary .order-quantity-control output {
+  font-weight: 400;
+}
+.request-table .request-product-inline small {
+  display: inline;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+@media (max-width: 1000px) {
+  .shack-order-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.shack-order-workspace .request-summary li strong {
+  font-weight: 400;
+}
+.shack-order-workspace .request-confirm-summary li {
+  grid-template-columns: minmax(0, 1fr) 104px 28px;
+}
+.shack-order-workspace
+  :is(.request-summary, .request-confirm-summary)
+  .order-quantity-control
+  button {
+  font-size: 13px;
+  background: #fff;
+  color: var(--green-800);
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+}

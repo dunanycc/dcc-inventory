@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { OrderQuantity } from "@/app/components/order-quantity";
+import { Fragment, useMemo, useState } from "react";
 import {
   cancelStockRequestAction,
   closeStockRequestAction,
@@ -53,27 +54,15 @@ export function NewStockRequest({
       ),
     [categories],
   );
-  const [selectedId, setSelectedId] = useState(categories[0]?.id ?? "");
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [collapsed, setCollapsed] = useState<string[]>([]);
   const [cart, setCart] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [confirming, setConfirming] = useState(false);
   const items = Object.entries(cart).filter(
     ([, quantity]) => Number(quantity) > 0,
   );
-  const selected =
-    categories.find((category) => category.id === selectedId) ?? categories[0];
-  function addToCart(productId: string) {
-    const quantity = Number(drafts[productId] ?? "1");
-    const scale = 10 ** (products.get(productId)?.quantityScale ?? 0);
-    if (quantity > 0)
-      setCart((current) => ({
-        ...current,
-        [productId]: String(
-          Math.round((Number(current[productId] ?? 0) + quantity) * scale) /
-            scale,
-        ),
-      }));
+  function setQuantity(id: string, quantity: number) {
+    setCart((current) => ({ ...current, [id]: String(quantity) }));
   }
   if (!categories.length)
     return (
@@ -94,15 +83,10 @@ export function NewStockRequest({
               <strong>{products.get(id)?.name}</strong>
               <small>{products.get(id)?.unit}</small>
             </span>
-            <input
-              aria-label={`Requested quantity for ${products.get(id)?.name}`}
-              min="0"
-              step="1"
-              value={quantity}
-              onChange={(event) =>
-                setCart({ ...cart, [id]: event.target.value })
-              }
-              type="number"
+            <OrderQuantity
+              label={`cart ${products.get(id)?.name}`}
+              value={Number(quantity)}
+              onChange={(n) => setQuantity(id, n)}
             />
             <button
               aria-label={`Remove ${products.get(id)?.name}`}
@@ -132,57 +116,66 @@ export function NewStockRequest({
     </>
   );
   return (
-    <div className="request-workspace">
+    <div className="request-workspace shack-order-workspace">
       <section className="request-products">
-        <div
-          aria-label="Product categories"
-          className="category-tabs"
-          role="tablist"
-        >
-          {categories.map((category) => (
-            <button
-              aria-selected={selected.id === category.id}
-              className={selected.id === category.id ? "active" : ""}
-              key={category.id}
-              onClick={() => setSelectedId(category.id)}
-              role="tab"
-              type="button"
-            >
-              {category.name}
-              <span aria-hidden="true" className="category-count">
-                {category.products.length}
-              </span>
-            </button>
-          ))}
+        <div className="table-scroll">
+          <table className="inventory-table order-builder-table">
+            <colgroup>
+              <col className="builder-product-column" />
+              <col className="builder-unit-column" />
+              <col className="builder-quantity-column" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Order unit</th>
+                <th>Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <Fragment key={category.id}>
+                  <tr className="order-builder-category">
+                    <th colSpan={3}>
+                      <button
+                        type="button"
+                        aria-expanded={!collapsed.includes(category.id)}
+                        onClick={() =>
+                          setCollapsed((old) =>
+                            old.includes(category.id)
+                              ? old.filter((id) => id !== category.id)
+                              : [...old, category.id],
+                          )
+                        }
+                      >
+                        <span aria-hidden="true">
+                          {collapsed.includes(category.id) ? "▸" : "▾"}
+                        </span>{" "}
+                        {category.name}
+                      </button>
+                    </th>
+                  </tr>
+                  {!collapsed.includes(category.id) &&
+                    category.products.map((product) => (
+                      <tr key={product.id}>
+                        <th scope="row">{product.name}</th>
+                        <td>{product.unit}</td>
+                        <td>
+                          <OrderQuantity
+                            label={product.name}
+                            value={Number(cart[product.id] || 0)}
+                            onChange={(n) => setQuantity(product.id, n)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="request-category-head">
-          <span>Product</span>
-          <span>Counted as</span>
-          <span>Quantity</span>
-        </div>
-        {selected.products.map((product) => (
-          <div className="request-product-row" key={product.id}>
-            <strong>{product.name}</strong>
-            <span>{product.unit}</span>
-            <div>
-              <input
-                aria-label={`Quantity for ${product.name}`}
-                min="0"
-                step="1"
-                type="number"
-                value={drafts[product.id] ?? "1"}
-                onChange={(event) =>
-                  setDrafts({ ...drafts, [product.id]: event.target.value })
-                }
-              />
-              <button type="button" onClick={() => addToCart(product.id)}>
-                Add
-              </button>
-            </div>
-          </div>
-        ))}
       </section>
-      <aside className="request-summary">
+      <aside className="request-summary order-cart">
         <header>
           <strong>Request Summary</strong>
           {items.length > 0 && (

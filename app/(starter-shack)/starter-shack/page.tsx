@@ -204,7 +204,7 @@ export default async function StarterShackRequestPage({
                     <tbody>
                       {request.lines.map((line) => (
                         <tr key={line.id}>
-                          <td>
+                          <td className="request-product-inline">
                             <strong>{line.product.name}</strong>
                             <small>{unitLabel(line.product)}</small>
                           </td>

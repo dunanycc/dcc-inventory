@@ -1,4 +1,5 @@
 "use client";
+import { OrderQuantity } from "@/app/components/order-quantity";
 import { Fragment, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { PRIVATE_ORDER_UNITS } from "@/lib/purchase-order";
@@ -24,72 +25,6 @@ function Trash() {
     >
       <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
     </svg>
-  );
-}
-function Quantity({
-  value,
-  onChange,
-  label,
-  privateIndex,
-}: {
-  value: number;
-  onChange(n: number): void;
-  label: string;
-  privateIndex?: number;
-}) {
-  const names = privateIndex
-    ? {
-        add: `Add quantity for private product ${privateIndex}`,
-        minus: `Decrease private quantity ${privateIndex}`,
-        plus: `Increase private quantity ${privateIndex}`,
-        output: `Private quantity ${privateIndex}`,
-      }
-    : {
-        add: `Add ${label}`,
-        minus: `Decrease ${label}`,
-        plus: `Increase ${label}`,
-        output: `Quantity for ${label}`,
-      };
-  return (
-    <div
-      className="order-quantity-control"
-      role="group"
-      aria-label={`Quantity controls for ${label}`}
-    >
-      {value <= 0 ? (
-        <button
-          type="button"
-          className="btn-secondary"
-          aria-label={names.add}
-          onClick={() => onChange(1)}
-        >
-          Add
-        </button>
-      ) : (
-        <>
-          <button
-            type="button"
-            className="btn-secondary"
-            aria-label={names.minus}
-            onClick={() => onChange(value - 1)}
-          >
-            −
-          </button>
-          <output aria-label={names.output} aria-live="polite">
-            {value}
-          </output>
-          <button
-            type="button"
-            className="btn-secondary"
-            aria-label={names.plus}
-            disabled={value >= 999999999}
-            onClick={() => onChange(value + 1)}
-          >
-            +
-          </button>
-        </>
-      )}
-    </div>
   );
 }
 type Category = {
@@ -322,7 +257,7 @@ export function NewOrder({
                             </select>
                           </td>
                           <td>
-                            <Quantity
+                            <OrderQuantity
                               privateIndex={index + 1}
                               label={`private product ${index + 1}`}
                               value={Number(line.quantity)}
@@ -418,7 +353,7 @@ export function NewOrder({
                                 )}
                               </td>
                               <td>
-                                <Quantity
+                                <OrderQuantity
                                   label={p.name}
                                   value={Number(values[p.id] || 0)}
                                   onChange={(n) => setQuantity(p.id, n)}
@@ -470,7 +405,7 @@ export function NewOrder({
                         <span>{l.name}</span>
                         <small>{l.unit}</small>
                       </div>
-                      <Quantity
+                      <OrderQuantity
                         label={`cart ${l.name}`}
                         value={l.quantity}
                         onChange={(n) => setQuantity(l.id, n)}
