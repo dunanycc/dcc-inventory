@@ -1,3 +1,7 @@
+import { revalidatePath } from "next/cache";
+import { hasPermission } from "@/lib/authorization";
+import { sameOrigin } from "@/lib/order-receipts";
+import { deleteOrderReceipt } from "@/lib/delete-order-receipt";
 import { currentUser } from "@/lib/session";
 import { isStarterShackStaff } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -23,4 +27,28 @@ export async function GET(
       "Content-Security-Policy": "default-src 'none'; sandbox",
     },
   });
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string; receiptId: string }> },
+) {
+  const actor = await currentUser();
+  if (!actor || !hasPermission(actor.role, "operations:post"))
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  if (!sameOrigin(request))
+    return Response.json({ error: "Invalid request origin" }, { status: 403 });
+  try {
+    const { id, receiptId } = await params;
+    if (!(await deleteOrderReceipt(actor.id, id, receiptId)))
+      return Response.json({ error: "Receipt not found." }, { status: 404 });
+    revalidatePath("/orders");
+    revalidatePath("/receipts");
+    return Response.json({ ok: true });
+  } catch {
+    return Response.json(
+      { error: "Receipt could not be deleted. Reload and try again." },
+      { status: 400 },
+    );
+  }
 }

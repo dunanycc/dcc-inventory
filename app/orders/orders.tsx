@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ReceiptFiles } from "./receipt-files";
 import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderRow } from "@/lib/purchase-order-queries";
@@ -10,72 +11,6 @@ import { receiveOrderAction } from "@/app/(protected)/orders/actions";
 import { OrderEditor, type OrderProductOption } from "./order-editor";
 import { CancelOrderDialog } from "./cancel-order-dialog";
 
-function ReceiptFiles({
-  order,
-  canManage,
-}: {
-  order: OrderRow;
-  canManage: boolean;
-}) {
-  const [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
-  const router = useRouter();
-  async function upload(file: File | undefined) {
-    if (!file) return;
-    setBusy(true);
-    setMessage("Uploading receipt…");
-    try {
-      const form = new FormData();
-      form.set("file", file);
-      const response = await fetch(`/api/orders/${order.id}/receipts`, {
-        method: "POST",
-        body: form,
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Upload failed.");
-      setMessage("Receipt saved.");
-      router.refresh();
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Upload failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="order-card-receipts" aria-label="Order receipts">
-      {canManage && (
-        <label
-          className={`btn-secondary receipt-upload ${busy ? "is-uploading" : ""}`}
-          title="Choose a file or take a photo on your phone. PDF or image, up to 3 MB."
-        >
-          {busy ? "Uploading…" : "Attach receipt"}
-          <input
-            type="file"
-            aria-label="Receipt photo or file"
-            accept="application/pdf,image/*"
-            disabled={busy}
-            onChange={(e) => {
-              void upload(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-        </label>
-      )}
-      {order.receipts.map((r) => (
-        <a
-          className="receipt-file-link"
-          key={r.id}
-          href={`/api/orders/${order.id}/receipts/${r.id}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {r.name}
-        </a>
-      ))}
-      {message && <span role="status">{message}</span>}
-    </div>
-  );
-}
 function quantityText(value: string | null) {
   return value === null
     ? "—"
@@ -517,7 +452,11 @@ function OrderCard({
           Cancelled: {order.cancellationReason}
         </p>
       )}
-      <ReceiptFiles order={order} canManage={manageable} />
+      <ReceiptFiles
+        order={order}
+        canManage={manageable}
+        canDelete={canManage}
+      />
       {cancelling && (
         <CancelOrderDialog order={order} onClose={() => setCancelling(false)} />
       )}

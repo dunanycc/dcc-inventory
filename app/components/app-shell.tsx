@@ -19,9 +19,11 @@ const navigation = [
 export function AppShell({
   user,
   children,
+  compact = false,
 }: {
   user: { name: string | null; email: string; role: AppRole };
   children: React.ReactNode;
+  compact?: boolean;
 }) {
   const visibleNavigation = navigation.filter(
     ([label]) =>
@@ -30,12 +32,20 @@ export function AppShell({
       hasPermission(user.role, "catalog:manage"),
   );
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${compact ? "receipt-frame" : ""}`}>
       <header className="topbar">
-        <Link href={landingPathForRole(user.role)} className="brand">
+        <Link
+          href={compact ? "/mobile" : landingPathForRole(user.role)}
+          className="brand"
+        >
           <span className="brand-mark">DCC</span>
-          <span>Inventory</span>
+          <span>{compact ? "Receipts" : "Inventory"}</span>
         </Link>
+        {compact && (
+          <Link className="text-button" href="/inventory">
+            Full Site
+          </Link>
+        )}
         <div className="account">
           <span>
             <strong>{user.name || user.email}</strong>
@@ -51,13 +61,15 @@ export function AppShell({
           </form>
         </div>
       </header>
-      <nav className="primary-nav" aria-label="Primary navigation">
-        {visibleNavigation.map(([label, href]) => (
-          <Link key={href} href={href}>
-            {label}
-          </Link>
-        ))}
-      </nav>
+      {!compact && (
+        <nav className="primary-nav" aria-label="Primary navigation">
+          {visibleNavigation.map(([label, href]) => (
+            <Link key={href} href={href}>
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <main className="page-shell">{children}</main>
     </div>
   );

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/session";
 import { hasPermission } from "@/lib/authorization";
 import { orderTransaction } from "@/lib/purchase-order-service";
@@ -56,6 +57,8 @@ export async function POST(
         },
       });
     });
+    revalidatePath("/orders");
+    revalidatePath("/receipts");
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json(

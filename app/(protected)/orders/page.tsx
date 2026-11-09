@@ -43,6 +43,12 @@ export default async function Page({
       <p>
         <Link href="/order">New order</Link> ·{" "}
         <Link href="/order-history">Order Summary</Link>
+        {hasPermission(actor.role, "operations:post") && (
+          <>
+            {" "}
+            · <Link href="/receipts">Add receipts</Link>
+          </>
+        )}
       </p>
       {query.error && (
         <p className="notice error" role="alert">

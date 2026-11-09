@@ -964,6 +964,38 @@ async function main() {
       .remaining,
     "0",
   );
+  const { deleteOrderReceipt } = await import("../lib/delete-order-receipt");
+  const receiptToDelete = await prisma.orderReceipt.create({
+    data: {
+      orderId: id2,
+      name: "Incorrect receipt.pdf",
+      mimeType: "application/pdf",
+      data: new TextEncoder().encode("%PDF-1.7"),
+    },
+  });
+  await assert.rejects(deleteOrderReceipt(reader.id, id2, receiptToDelete.id));
+  assert.equal(
+    await deleteOrderReceipt(admin.id, id, receiptToDelete.id),
+    false,
+  );
+  assert.equal(
+    await prisma.orderReceipt.count({ where: { id: receiptToDelete.id } }),
+    1,
+  );
+  assert.equal(
+    await deleteOrderReceipt(admin.id, id2, receiptToDelete.id),
+    true,
+  );
+  assert.equal(
+    await deleteOrderReceipt(admin.id, id2, receiptToDelete.id),
+    false,
+  );
+  assert.equal(
+    await prisma.auditEvent.count({
+      where: { action: "ORDER_RECEIPT_DELETED", entityId: id2 },
+    }),
+    1,
+  );
   console.log(
     "Order integration passed: all migrations, authorization, vendor restriction, numbering, unit snapshots, partial receipt, exact totals, duplicate finalization, whole-order moves, rollback, split/import idempotence, historical correction, private receipt storage.",
   );
