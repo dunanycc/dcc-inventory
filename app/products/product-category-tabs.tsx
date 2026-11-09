@@ -476,9 +476,6 @@ function ProductTableRow({
     product.purchaseUnit && product.unitsPerPurchaseUnit
       ? `${product.unitsPerPurchaseUnit} per ${product.purchaseUnit}`
       : null,
-    product.allowFractionalStock
-      ? `${product.quantityScale} decimal places`
-      : null,
   ]
     .filter(Boolean)
     .join(" · ");
