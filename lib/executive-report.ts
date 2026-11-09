@@ -217,6 +217,9 @@ export function executiveSubtotal(rows: ExecutiveRow[]) {
       );
     }
     return {
+      total: microsToDecimal(
+        [...totals.values()].reduce((sum, value) => sum + value, 0n),
+      ),
       values: [...totals].map(([unit, n]) => ({
         unit,
         quantity: microsToDecimal(n),

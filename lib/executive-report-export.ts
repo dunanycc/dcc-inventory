@@ -45,11 +45,7 @@ export function executiveExportRows(
           return null;
         const q = t[field];
         if (q.missing) return "Incomplete";
-        return q.values.length === 1
-          ? Number(q.values[0].quantity)
-          : q.values
-              .map((v) => `${v.quantity} ${v.unit.toLowerCase()}`)
-              .join("; ");
+        return Number(q.total);
       };
       output.push({
         section,

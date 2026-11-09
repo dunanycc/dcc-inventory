@@ -33,9 +33,7 @@ function Total({
     rows.every((row) => row.isPrivate) &&
     ["opening", "remaining", "consumed"].includes(field)
       ? "—"
-      : t[field].values
-          .map((v) => `${quantity(v.quantity)} ${v.unit.toLowerCase()}`)
-          .join(" · ") + (t[field].missing ? " *" : "");
+      : quantity(t[field].total) + (t[field].missing ? " *" : "");
   return (
     <tr className="executive-subtotal">
       <th scope="row">{label}</th>

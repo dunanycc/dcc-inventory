@@ -71,7 +71,15 @@ export function HistoryWorkspace({
 }) {
   const [tab, setTab] = useState<
     "consumption" | "overview" | "review" | "executive"
-  >(initialView === "executive" ? "executive" : "consumption");
+  >(
+    initialView === "consumption" ||
+      initialView === "overview" ||
+      initialView === "review"
+      ? initialView
+      : executive
+        ? "executive"
+        : "consumption",
+  );
 
   const incompleteProducts = useMemo(
     () =>

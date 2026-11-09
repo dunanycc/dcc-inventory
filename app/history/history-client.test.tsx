@@ -102,3 +102,22 @@ describe("ReviewTab", () => {
     expect(screen.getByText("Showing 1 of 3")).toBeInTheDocument();
   });
 });
+
+it("opens Executive view by default when the report is available", () => {
+  render(
+    <HistoryWorkspace
+      categories={[]}
+      products={[]}
+      seasons={[2025, 2026]}
+      executive={<p>Executive report content</p>}
+    />,
+  );
+  expect(screen.getByText("Executive report content")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Executive view" })).toHaveClass(
+    "active",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Consumption" }));
+  expect(
+    screen.queryByText("Executive report content"),
+  ).not.toBeInTheDocument();
+});

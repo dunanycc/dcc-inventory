@@ -95,3 +95,29 @@ it("produces a downloadable landscape PDF with multiple pages for a long report"
     pdf.internal.pageSize.getHeight(),
   );
 });
+
+it("combines bottle and can quantities into a single numeric category subtotal", () => {
+  const records = executiveExportRows([
+    row,
+    {
+      ...row,
+      key: "two",
+      productId: "two",
+      unit: "BOTTLE",
+      ordered: "3",
+      received: "3",
+      opening: "1",
+      remaining: "1",
+      consumed: "3",
+    },
+  ]);
+  const subtotal = records.find(
+    (record) => record.kind === "Category subtotal",
+  )!;
+  expect(subtotal.cells.slice(2, 7)).toEqual([15, 15, 1, 13, 3]);
+  expect(
+    executiveCsv([row, { ...row, key: "two", unit: "BOTTLE" }], 2026, [
+      "Groceries",
+    ]),
+  ).not.toContain("bottle");
+});
