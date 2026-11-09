@@ -62,7 +62,7 @@ it("offers the Order Summary year and vendor controls, recomputing visible produ
     screen.queryByRole("rowheader", { name: "Red wine" }),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByText("No products match these vendor filters."),
+    screen.getByText("No products match these filters."),
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "SAQ" }));
   fireEvent.click(screen.getByRole("button", { name: "Wine" }));
@@ -72,4 +72,46 @@ it("offers the Order Summary year and vendor controls, recomputing visible produ
   expect(
     screen.getByRole("rowheader", { name: "Wine subtotal" }),
   ).toBeInTheDocument();
+});
+
+it("hides all-zero products by default and lets users include them", () => {
+  render(
+    <ExecutiveView
+      orders={[]}
+      vendors={[{ id: "beer", name: "Beer" }]}
+      year={2026}
+      years={[2026]}
+      currentYear={2026}
+      stocks={[{ productId: "zero", opening: "0", remaining: "0" }]}
+      products={[
+        {
+          id: "zero",
+          name: "Zero lager",
+          vendorId: "beer",
+          categoryName: "Beer",
+          unit: "CAN",
+          active: true,
+          historyCategoryOrder: 0,
+          historyProductOrder: 0,
+        },
+      ]}
+    />,
+  );
+  const toggle = screen.getByRole("checkbox", {
+    name: "Show zero-value products",
+  });
+  expect(toggle).not.toBeChecked();
+  expect(
+    screen.queryByRole("rowheader", { name: "Zero lager" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Export CSV" })).toBeDisabled();
+  fireEvent.click(toggle);
+  expect(
+    screen.getByRole("rowheader", { name: "Zero lager" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Export CSV" })).toBeEnabled();
+  fireEvent.click(toggle);
+  expect(
+    screen.queryByRole("rowheader", { name: "Zero lager" }),
+  ).not.toBeInTheDocument();
 });

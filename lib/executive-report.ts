@@ -251,3 +251,22 @@ export function executiveSubtotal(rows: ExecutiveRow[]) {
         : null,
   };
 }
+
+/** Unknown inventory boundaries remain visible for review rather than being assumed zero. */
+export function hasExecutiveValues(row: ExecutiveRow) {
+  if (row.orders.length || row.missingPrices) return true;
+  if (
+    !row.isPrivate &&
+    [row.opening, row.remaining, row.consumed].some((value) => value === null)
+  )
+    return true;
+  return [
+    row.ordered,
+    row.received,
+    row.opening,
+    row.remaining,
+    row.consumed,
+    row.knownCost,
+    row.totalCost,
+  ].some((value) => value !== null && decimalToMicros(value) !== 0n);
+}

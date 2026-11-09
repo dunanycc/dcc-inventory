@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   executiveRows,
+  hasExecutiveValues,
   executiveSubtotal,
   type ExecutiveProduct,
 } from "./executive-report";
@@ -176,4 +177,21 @@ describe("executive report", () => {
     expect(rows[0].orders).toHaveLength(0);
     expect(rows[0].totalCost).toBe("0.00");
   });
+});
+
+it("keeps nonzero and unknown balances visible while hiding fully zero rows", () => {
+  const [zero] = executiveRows(
+    [],
+    [product],
+    [{ productId: product.id, opening: "0", remaining: "0" }],
+    ["vendor"],
+  );
+  expect(hasExecutiveValues(zero)).toBe(false);
+  expect(
+    hasExecutiveValues({ ...zero, remaining: "96", consumed: "-96" }),
+  ).toBe(true);
+  expect(hasExecutiveValues({ ...zero, opening: null, consumed: null })).toBe(
+    true,
+  );
+  expect(hasExecutiveValues({ ...zero, orders: ["order"] })).toBe(true);
 });

@@ -4,6 +4,7 @@ import { executiveCsv } from "@/lib/executive-report-export";
 import type { OrderRow } from "@/lib/purchase-order-queries";
 import {
   executiveRows,
+  hasExecutiveValues,
   executiveSubtotal,
   type ExecutiveProduct,
   type ExecutiveStock,
@@ -87,7 +88,10 @@ export function ExecutiveView({
   const selectedNames = [...sections, { id: "private", name: "Private" }]
     .filter((v) => !hidden.includes(v.id))
     .map((v) => v.name);
-  const rows = executiveRows(orders, products, stocks, selected);
+  const [showZero, setShowZero] = useState(false);
+  const rows = executiveRows(orders, products, stocks, selected).filter(
+    (row) => showZero || hasExecutiveValues(row),
+  );
   return (
     <section className="order-panel executive-view">
       <div className="executive-toolbar">
@@ -127,6 +131,14 @@ export function ExecutiveView({
         </div>
       </div>
       <div className="executive-export-actions">
+        <label className="product-check">
+          <input
+            type="checkbox"
+            checked={showZero}
+            onChange={(event) => setShowZero(event.target.checked)}
+          />
+          Show zero-value products
+        </label>
         <button
           type="button"
           className="btn-secondary"
@@ -313,7 +325,7 @@ export function ExecutiveView({
           </section>
         );
       })}
-      {!rows.length && <p>No products match these vendor filters.</p>}
+      {!rows.length && <p>No products match these filters.</p>}
       <p className="executive-description">
         — means unavailable or not applicable. * Quantity subtotal is incomplete
         where stock records are missing. Negative consumption needs review.
