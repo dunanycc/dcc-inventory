@@ -297,6 +297,13 @@ function OrderCard({
       >
         <div className="table-scroll">
           <table className="inventory-table order-card-table">
+            <colgroup>
+              <col className="order-card-product-column" />
+              <col className="order-card-quantity-column" />
+              <col className="order-card-quantity-column" />
+              <col className="order-card-price-column" />
+              <col className="order-card-amount-column" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Product</th>

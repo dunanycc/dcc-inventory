@@ -623,6 +623,25 @@ summary:focus-visible {
 }
 .order-card-table {
   width: 100%;
+  table-layout: fixed;
+}
+.order-card-product-column {
+  width: 40%;
+}
+.order-card-quantity-column {
+  width: 15%;
+}
+.order-card-price-column {
+  width: 15%;
+}
+.order-card-amount-column {
+  width: 15%;
+}
+.order-card-table :is(th, td) {
+  overflow-wrap: anywhere;
+}
+.order-card-table .order-number {
+  max-width: 100%;
 }
 .order-card-table th[scope="row"] {
   font-weight: 400;
