@@ -72,7 +72,10 @@ export default async function RequestsPage({
     completedAt: request.completedAt?.toISOString() ?? null,
     closureComment: request.closureComment,
     status: request.status,
-    requestedBy: request.requestedBy.name || request.requestedBy.email,
+    requestedBy:
+      request.requestedBy?.name ||
+      request.requestedBy?.email ||
+      "Starter Shack (public)",
     notes: request.notes,
     lines: request.lines.map((line) => ({
       id: line.id,
@@ -102,6 +105,16 @@ export default async function RequestsPage({
           {query.error}
         </p>
       )}
+      <p>
+        <a
+          className="btn-secondary"
+          href="/starter-shack"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open Starter Shack order page ↗
+        </a>
+      </p>
       <FulfillmentQueue
         notificationSettings={{
           requesterNotificationEmail:

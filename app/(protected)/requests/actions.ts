@@ -1,4 +1,6 @@
 "use server";
+import { cookies } from "next/headers";
+import { randomUUID } from "node:crypto";
 
 import { inventoryQuantityScale } from "@/lib/quantity-policy";
 
@@ -128,7 +130,25 @@ export async function submitStockRequestAction(formData: FormData) {
   let target: string;
   try {
     const actor = await currentUser();
-    if (!actor) throw new StockRequestError("FORBIDDEN");
+    const jar = await cookies();
+    const existingSession = jar.get("shack-session")?.value;
+    const publicSessionId =
+      existingSession && /^[0-9a-f-]{36}$/i.test(existingSession)
+        ? existingSession
+        : randomUUID();
+    if (!actor)
+      jar.set("shack-session", publicSessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/starter-shack",
+        maxAge: 60 * 60 * 24 * 180,
+      });
+    const publicActor = {
+      id: "public",
+      role: "INVENTORY_USER" as const,
+      status: "ACTIVE" as const,
+    };
     const raw = parseEntries(formData.get("items"), "productId");
     const productIds = raw.map((item) => item.productId);
     const products = await prisma.product.findMany({
@@ -141,7 +161,7 @@ export async function submitStockRequestAction(formData: FormData) {
       },
     });
     validateRequestSubmission(
-      actor,
+      actor ?? publicActor,
       raw,
       new Map(products.map((product) => [product.id, productShape(product)])),
     );
@@ -149,11 +169,13 @@ export async function submitStockRequestAction(formData: FormData) {
     if (notes.length > 1000) throw new StockRequestError("INVALID_INPUT");
     const created = await prisma.$transaction(
       async (transaction) => {
-        const freshActor = await transaction.user.findUnique({
-          where: { id: actor.id },
-          select: { id: true, role: true, status: true },
-        });
-        if (!freshActor) throw new StockRequestError("FORBIDDEN");
+        const freshActor = actor
+          ? await transaction.user.findUnique({
+              where: { id: actor.id },
+              select: { id: true, role: true, status: true },
+            })
+          : null;
+        if (actor && !freshActor) throw new StockRequestError("FORBIDDEN");
         const freshProducts = await transaction.product.findMany({
           where: { id: { in: productIds } },
           include: {
@@ -164,7 +186,7 @@ export async function submitStockRequestAction(formData: FormData) {
           },
         });
         const validated = validateRequestSubmission(
-          freshActor,
+          freshActor ?? publicActor,
           raw,
           new Map(
             freshProducts.map((product) => [product.id, productShape(product)]),
@@ -172,7 +194,8 @@ export async function submitStockRequestAction(formData: FormData) {
         );
         const stockRequest = await transaction.stockRequest.create({
           data: {
-            requestedById: freshActor.id,
+            requestedById: freshActor?.id ?? null,
+            publicSessionId: actor ? null : publicSessionId,
             notes: notes || null,
             lines: {
               create: validated.map((item) => ({
@@ -204,7 +227,7 @@ export async function submitStockRequestAction(formData: FormData) {
       }));
       await notifyNewStockRequest(
         settings?.orderNotificationEmail ?? null,
-        actor.name || actor.email,
+        actor?.name || actor?.email || "Starter Shack",
         created.id,
         items,
         notes || null,
@@ -412,7 +435,7 @@ export async function fulfillStockRequestAction(formData: FormData) {
         return {
           status,
           givenItems,
-          requesterEmail: request.requestedBy.email,
+          requesterEmail: request.requestedBy?.email ?? "",
         };
       },
       { isolationLevel: "Serializable" },
@@ -485,7 +508,7 @@ export async function cancelStockRequestAction(formData: FormData) {
             closureComment,
           },
         });
-        return request.requestedBy.email;
+        return request.requestedBy?.email ?? "";
       },
       { isolationLevel: "Serializable" },
     );
@@ -566,7 +589,7 @@ export async function closeStockRequestAction(formData: FormData) {
             },
           },
         });
-        return request.requestedBy.email;
+        return request.requestedBy?.email ?? "";
       },
       { isolationLevel: "Serializable" },
     );

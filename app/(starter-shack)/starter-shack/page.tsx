@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { PageHeading } from "@/app/components/page-heading";
 import {
@@ -9,7 +10,7 @@ import { hasPermission } from "@/lib/authorization";
 import { CATEGORY_ORDER_BY } from "@/lib/category-management";
 import { prisma } from "@/lib/prisma";
 import { PRODUCT_ORDER_BY } from "@/lib/product-order";
-import { requireCurrentUser } from "@/lib/session";
+import { currentUser } from "@/lib/session";
 
 function unitLabel(product: {
   stockUnit: string;
@@ -31,9 +32,10 @@ export default async function StarterShackRequestPage({
   searchParams: Promise<{ tab?: string; success?: string; error?: string }>;
 }) {
   await connection();
-  const actor = await requireCurrentUser();
+  const actor = await currentUser();
   const query = await searchParams;
-  const canSubmit = hasPermission(actor.role, "operations:draft");
+  const canSubmit = !actor || hasPermission(actor.role, "operations:draft");
+  const publicSessionId = (await cookies()).get("shack-session")?.value;
   const tab = query.tab === "status" ? "status" : canSubmit ? "new" : "status";
   const [categories, ownRequests] = await Promise.all([
     canSubmit
@@ -72,7 +74,14 @@ export default async function StarterShackRequestPage({
         })
       : Promise.resolve([]),
     prisma.stockRequest.findMany({
-      where: { requestedById: actor.id },
+      where: actor
+        ? { requestedById: actor.id }
+        : {
+            publicSessionId:
+              publicSessionId && /^[0-9a-f-]{36}$/i.test(publicSessionId)
+                ? publicSessionId
+                : "00000000-0000-0000-0000-000000000000",
+          },
       orderBy: [{ requestedAt: "desc" }, { id: "desc" }],
       include: {
         lines: {

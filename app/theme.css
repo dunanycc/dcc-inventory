@@ -1165,3 +1165,30 @@ summary:focus-visible {
   color: #8b3826;
   border-color: #8b3826;
 }
+.request-email-settings {
+  grid-template-columns: 200px minmax(0, 1fr);
+  align-items: center;
+}
+.request-email-settings > label {
+  display: contents;
+}
+.request-email-settings > label input {
+  width: 100%;
+  min-width: 0;
+}
+.request-email-settings > button {
+  grid-column: 2;
+  justify-self: start;
+  width: auto;
+}
+@media (max-width: 600px) {
+  .request-email-settings {
+    grid-template-columns: 1fr;
+  }
+  .request-email-settings > label {
+    display: grid;
+  }
+  .request-email-settings > button {
+    grid-column: 1;
+  }
+}

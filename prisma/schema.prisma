@@ -289,17 +289,19 @@ model StockRequest {
   status         StockRequestStatus @default(SUBMITTED)
   notes          String?
   closureComment String?
-  requestedById  String             @db.Uuid
+  requestedById  String?            @db.Uuid
+  publicSessionId String? @db.Uuid
   createdAt      DateTime           @default(now())
   completedAt    DateTime?
   sourceSystem   String?
   sourceId       String?
-  requestedBy    User               @relation("StockRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  requestedBy    User?              @relation("StockRequestRequester", fields: [requestedById], references: [id], onDelete: Restrict)
   lines          StockRequestLine[]
   transfers      Transfer[]
 
   @@unique([sourceSystem, sourceId])
   @@index([requestedById, requestedAt])
+  @@index([publicSessionId, requestedAt])
   @@index([status, requestedAt])
 }
 
