@@ -110,7 +110,7 @@ export function CountWorkspace({
         {locations.map((location) => (
           <Link
             className={location.id === selectedLocation.id ? "active" : ""}
-            href={`/counts?location=${encodeURIComponent(location.code)}`}
+            href={`/settings/counts?location=${encodeURIComponent(location.code)}`}
             key={location.id}
           >
             {location.name}
@@ -220,7 +220,7 @@ function SeasonOpeningPanel({
               <select
                 onChange={(event) =>
                   router.push(
-                    `/counts?location=${encodeURIComponent(selectedLocation.code)}&openingYear=${event.target.value}`,
+                    `/settings/counts?location=${encodeURIComponent(selectedLocation.code)}&openingYear=${event.target.value}`,
                   )
                 }
                 value={seasonOpening.year}

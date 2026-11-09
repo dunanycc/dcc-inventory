@@ -63,7 +63,7 @@ export async function setOpeningInventoryAction(formData: FormData) {
     revalidatePath("/inventory");
     revalidatePath("/products");
     revalidatePath("/history");
-    revalidatePath("/counts");
+    revalidatePath("/settings/counts");
     destination = `/inventory?${returnContext}&success=${encodeURIComponent("Inventory saved.")}`;
   } catch (error) {
     const code = errorCode(error);

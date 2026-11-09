@@ -120,7 +120,7 @@ export default async function SettingsPage({
       <PageHeading
         eyebrow="Administration"
         title="Admin"
-        description="Manage approved users and controlled master data."
+        description="Manage approved users, catalog settings, and inventory counts."
       />
       {message.success && (
         <p className="notice success" role="status">
@@ -165,6 +165,7 @@ export default async function SettingsPage({
             Vendors
           </Link>
         )}
+        <Link href="/settings/counts">Counts</Link>
       </nav>
       <div className="settings-sections">
         {tab === "users" && canManageUsers && (

@@ -158,7 +158,9 @@ describe("CountWorkspace season opening panel", () => {
     fireEvent.change(screen.getByLabelText("Season"), {
       target: { value: "2024" },
     });
-    expect(push).toHaveBeenCalledWith("/counts?location=BAR&openingYear=2024");
+    expect(push).toHaveBeenCalledWith(
+      "/settings/counts?location=BAR&openingYear=2024",
+    );
   });
 
   it("does not render for a role without accept permission", () => {

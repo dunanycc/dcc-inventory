@@ -49,7 +49,7 @@ function destination(
   kind: "success" | "error",
   message: string,
 ) {
-  return `/counts?location=${encodeURIComponent(locationCode)}&${kind}=${encodeURIComponent(message)}`;
+  return `/settings/counts?location=${encodeURIComponent(locationCode)}&${kind}=${encodeURIComponent(message)}`;
 }
 
 export async function startCountAction(formData: FormData) {
@@ -106,8 +106,8 @@ export async function startCountAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
-    revalidatePath("/counts");
-    target = `/counts?location=${encodeURIComponent(locationCode)}`;
+    revalidatePath("/settings/counts");
+    target = `/settings/counts?location=${encodeURIComponent(locationCode)}`;
   } catch (error) {
     target = destination(
       locationCode,
@@ -176,7 +176,7 @@ export async function saveCountDraftAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
-    revalidatePath("/counts");
+    revalidatePath("/settings/counts");
     target = destination(locationCode, "success", "Count draft saved.");
   } catch (error) {
     target = destination(
@@ -217,7 +217,7 @@ export async function cancelCountAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
-    revalidatePath("/counts");
+    revalidatePath("/settings/counts");
     target = destination(locationCode, "success", "Count cancelled.");
   } catch (error) {
     target = destination(
@@ -332,7 +332,7 @@ export async function setSeasonOpeningAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
-    revalidatePath("/counts");
+    revalidatePath("/settings/counts");
     revalidatePath("/history");
     target = destination(
       locationCode,
@@ -430,7 +430,7 @@ export async function acceptCountAction(formData: FormData) {
       },
       { isolationLevel: "Serializable" },
     );
-    revalidatePath("/counts");
+    revalidatePath("/settings/counts");
     revalidatePath("/inventory");
     revalidatePath("/history");
     target = destination(
