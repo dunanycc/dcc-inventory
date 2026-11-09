@@ -38,11 +38,7 @@ export function ShackShell({
               <button className="text-button">Sign out</button>
             </form>
           </div>
-        ) : (
-          <Link href="/sign-in" className="text-button">
-            Staff sign in
-          </Link>
-        )}
+        ) : null}
       </header>
       <main className="page-shell">{children}</main>
     </div>

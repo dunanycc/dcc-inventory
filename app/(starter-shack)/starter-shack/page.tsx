@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { PageHeading } from "@/app/components/page-heading";
 import {
@@ -35,9 +34,8 @@ export default async function StarterShackRequestPage({
   const actor = await currentUser();
   const query = await searchParams;
   const canSubmit = !actor || hasPermission(actor.role, "operations:draft");
-  const publicSessionId = (await cookies()).get("shack-session")?.value;
   const tab = query.tab === "status" ? "status" : canSubmit ? "new" : "status";
-  const [categories, ownRequests] = await Promise.all([
+  const [categories, requests] = await Promise.all([
     canSubmit
       ? prisma.category.findMany({
           where: { active: true },
@@ -74,14 +72,6 @@ export default async function StarterShackRequestPage({
         })
       : Promise.resolve([]),
     prisma.stockRequest.findMany({
-      where: actor
-        ? { requestedById: actor.id }
-        : {
-            publicSessionId:
-              publicSessionId && /^[0-9a-f-]{36}$/i.test(publicSessionId)
-                ? publicSessionId
-                : "00000000-0000-0000-0000-000000000000",
-          },
       orderBy: [{ requestedAt: "desc" }, { id: "desc" }],
       include: {
         lines: {
@@ -167,13 +157,13 @@ export default async function StarterShackRequestPage({
         ))}
       {tab === "status" && (
         <section className="request-status-list">
-          {ownRequests.length === 0 ? (
+          {requests.length === 0 ? (
             <div className="empty-panel">
               <h2>No requests yet</h2>
-              <p>Your submitted Starter Shack requests will appear here.</p>
+              <p>Submitted Starter Shack requests will appear here.</p>
             </div>
           ) : (
-            ownRequests.map((request) => (
+            requests.map((request) => (
               <article
                 className="request-card"
                 id={`request-${request.id}`}
